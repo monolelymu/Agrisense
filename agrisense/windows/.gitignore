@@ -1,133 +1,17 @@
+flutter/ephemeral/
 
-# ==========================================
-# AGRISENSE - PROJECT ROOT .gitignore
-# ==========================================
-
-# ------------------------------------------
-# 1. Flutter / Dart generated files
-# ------------------------------------------
-
-**/.dart_tool/
-**/.pub/
-**/.pub-cache/
-**/.flutter-plugins
-**/.flutter-plugins-dependencies
-**/build/
-**/coverage/
-**/doc/api/
-**/.packages
-
-# ------------------------------------------
-# 2. IDE / Editor local configurations
-# ------------------------------------------
-
-**/.idea/
-**/.vscode/
-
-*.iml
-*.ipr
-*.iws
-
-# Visual Studio user-specific files
+# Visual Studio user-specific files.
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
 
-# ------------------------------------------
-# 3. Local SDKs and development tools
-# ------------------------------------------
+# Visual Studio build-related files.
+x64/
+x86/
 
-**/.tools/
-**/.gradle/
-
-# Android machine-specific configurations
-**/android/local.properties
-**/android/key.properties
-**/android/captures/
-**/android/.cxx/
-
-# ------------------------------------------
-# 4. Sensitive files and credentials
-# ------------------------------------------
-
-# Environment configuration
-.env
-.env.*
-!.env.example
-!.env.*.example
-
-# Signing keys and certificates
-*.jks
-*.keystore
-*.p12
-*.pfx
-*.pem
-
-# Private credential files
-**/secrets/
-**/credentials.json
-**/*service-account*.json
-**/*firebase-adminsdk-*.json
-
-# ------------------------------------------
-# 5. Platform generated files
-# ------------------------------------------
-
-# Windows / Linux / macOS
-**/flutter/ephemeral/
-**/CMakeFiles/
-
-# iOS
-**/ios/Pods/
-**/ios/.symlinks/
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/flutter_export_environment.sh
-**/ios/Flutter/.last_build_id
-
-# macOS
-**/macos/Pods/
-
-# ------------------------------------------
-# 6. Logs, temporary files and caches
-# ------------------------------------------
-
-*.log
-*.tmp
-*.temp
-*.bak
-*.swp
-*.swo
-*.orig
-*~
-
-*.cache
-
-# ------------------------------------------
-# 7. Operating system files
-# ------------------------------------------
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# ------------------------------------------
-# 8. Local personal notes
-# ------------------------------------------
-
-*.private.md
-local-notes/
-
-# ==========================================
-# IMPORTANT:
-# Keep Flutter application source files,
-# assets, pubspec.yaml and pubspec.lock
-# tracked in Git.
-# ==========================================
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!*.[Cc]ache/

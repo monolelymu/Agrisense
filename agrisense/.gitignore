@@ -1,45 +1,133 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
 
-# IntelliJ related
+# ==========================================
+# AGRISENSE - PROJECT ROOT .gitignore
+# ==========================================
+
+# ------------------------------------------
+# 1. Flutter / Dart generated files
+# ------------------------------------------
+
+**/.dart_tool/
+**/.pub/
+**/.pub-cache/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+**/coverage/
+**/doc/api/
+**/.packages
+
+# ------------------------------------------
+# 2. IDE / Editor local configurations
+# ------------------------------------------
+
+**/.idea/
+**/.vscode/
+
 *.iml
 *.ipr
 *.iws
-.idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Visual Studio user-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Flutter/Dart/Pub related
-**/doc/api/
+# ------------------------------------------
+# 3. Local SDKs and development tools
+# ------------------------------------------
+
+**/.tools/
+**/.gradle/
+
+# Android machine-specific configurations
+**/android/local.properties
+**/android/key.properties
+**/android/captures/
+**/android/.cxx/
+
+# ------------------------------------------
+# 4. Sensitive files and credentials
+# ------------------------------------------
+
+# Environment configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Signing keys and certificates
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+
+# Private credential files
+**/secrets/
+**/credentials.json
+**/*service-account*.json
+**/*firebase-adminsdk-*.json
+
+# ------------------------------------------
+# 5. Platform generated files
+# ------------------------------------------
+
+# Windows / Linux / macOS
+**/flutter/ephemeral/
+**/CMakeFiles/
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
 **/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
 
-# Symbolication related
-app.*.symbols
+# macOS
+**/macos/Pods/
 
-# Obfuscation related
-app.*.map.json
+# ------------------------------------------
+# 6. Logs, temporary files and caches
+# ------------------------------------------
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*.orig
+*~
+
+*.cache
+
+# ------------------------------------------
+# 7. Operating system files
+# ------------------------------------------
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ------------------------------------------
+# 8. Local personal notes
+# ------------------------------------------
+
+*.private.md
+local-notes/
+
+# ==========================================
+# IMPORTANT:
+# Keep Flutter application source files,
+# assets, pubspec.yaml and pubspec.lock
+# tracked in Git.
+# ==========================================
