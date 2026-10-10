@@ -8,7 +8,7 @@ No hardware, internet service, dataset, or trained AI model is needed for the UI
 The Git repository contains a nested Flutter package. In PowerShell:
 
 ```powershell
-cd C:\Users\Samuel\Desktop\agrisenseAppDev\Agrisense\agrisense
+cd C:\Users\Member\Desktop\agrisenseAppDev\Agrisense\agrisense
 flutter pub get
 ```
 
