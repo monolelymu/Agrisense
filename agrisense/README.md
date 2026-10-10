@@ -2,7 +2,7 @@
 
 **AgriSense — Smart Crop Stress Monitoring System**
 
-AgriSense is a Flutter-based application prototype designed to demonstrate crop stress monitoring for **Tomato and Chili** plants.
+AgriSense is a Flutter-based application prototype designed to demonstrate crop stress monitoring for **Tomato, Chili, and Eggplant** plants.
 
 The application provides a simulated environment for monitoring sensor readings, detecting potential plant stress, reviewing alerts, and visualizing historical data.
 
@@ -86,7 +86,7 @@ Follow these steps to explore the application.
 **Step 1: Device setup**
 
 1. Open the **Devices** screen.
-2. Select Tomato or Chili.
+2. Select Tomato, Chili, or Eggplant.
 3. Select **Scan simulated nodes**.
 4. Connect the Sensor Node and Vision Node.
 
@@ -115,7 +115,7 @@ Follow these steps to explore the application.
 
 - Disconnect the Vision Node to simulate an unavailable camera.
 - Record a normal reading before generating another stress alert.
-- Switch between Tomato and Chili to observe separate crop histories and connections.
+- Switch between Tomato, Chili, and Eggplant to observe separate crop histories and connections.
 - Reset the demo to restore the application's sample data after confirmation.
 
 ## 5. Current Project Scope
@@ -124,7 +124,7 @@ Follow these steps to explore the application.
 
 - Dashboard for crop monitoring
 - Simulated sensor and vision node connections
-- Crop selection for Tomato and Chili
+- Crop selection for Tomato, Chili, and Eggplant
 - Mock sensor readings
 - Demo stress score calculation
 - Stress alerts and notifications

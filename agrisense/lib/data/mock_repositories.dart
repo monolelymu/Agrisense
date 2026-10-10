@@ -74,10 +74,16 @@ class MockDiagnosisRepository implements DiagnosisRepository {
       id: '${crop.name}-diagnosis-${now.microsecondsSinceEpoch}',
       crop: crop,
       timestamp: now,
-      label: crop == Crop.tomato
-          ? 'Early blight • sample result'
-          : 'Leaf curl • sample result',
-      confidence: crop == Crop.tomato ? 0.92 : 0.87,
+      label: switch (crop) {
+        Crop.tomato => 'Early blight • sample result',
+        Crop.chili => 'Leaf curl • sample result',
+        Crop.eggplant => 'Leaf Spot • sample result',
+      },
+      confidence: switch (crop) {
+        Crop.tomato => 0.92,
+        Crop.chili => 0.87,
+        Crop.eggplant => 0.89,
+      },
       treatment:
           'Illustrative care information only. Inspect the plant and document changes in its leaves. A qualified grower or plant specialist should confirm the cause before treatment. This demo has not analyzed the image.',
     );

@@ -1,9 +1,16 @@
-enum Crop { tomato, chili }
+enum Crop { tomato, chili, eggplant }
 
 extension CropLabel on Crop {
-  String get label => this == Crop.tomato ? 'Tomato' : 'Chili';
-  String get subtitle =>
-      this == Crop.tomato ? 'Solanum lycopersicum' : 'Capsicum • demo setup';
+  String get label => switch (this) {
+    Crop.tomato => 'Tomato',
+    Crop.chili => 'Chili',
+    Crop.eggplant => 'Eggplant',
+  };
+  String get subtitle => switch (this) {
+    Crop.tomato => 'Solanum lycopersicum',
+    Crop.chili => 'Capsicum • demo setup',
+    Crop.eggplant => 'Solanum melongena',
+  };
 }
 
 enum NodeKind { sensor, vision }

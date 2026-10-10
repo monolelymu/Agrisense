@@ -1,6 +1,6 @@
 # AgriSense
 
-A dark Flutter mock app for **Tomato and Chili**, intended for browser and Android.
+A dark Flutter mock app for **Tomato, Chili, and Eggplant**, intended for browser and Android.
 No hardware, internet service, dataset, or trained AI model is needed for the UI.
 
 ## 1. Open the Flutter package
@@ -24,7 +24,7 @@ Press `r` to reload supported changes, `R` to restart, or `q` to stop.
 
 ## 3. Try the guided demo
 
-1. Open **Devices**, select Tomato or Chili, and **Scan simulated nodes**.
+1. Open **Devices**, select Tomato, Chili, or Eggplant, and **Scan simulated nodes**.
 2. Connect the Sensor Node and Vision Node.
 3. Return to **Dashboard** and select the same crop.
 4. Scroll down and choose **Normal sample**, then **Simulate stress**.

@@ -111,21 +111,17 @@ class CropPicker extends StatelessWidget {
   final Crop value;
   final ValueChanged<Crop> onChanged;
   @override
-  Widget build(BuildContext context) => SegmentedButton<Crop>(
-    segments: const [
-      ButtonSegment(
-        value: Crop.tomato,
-        label: Text('Tomato'),
-        icon: Icon(Icons.eco_outlined),
-      ),
-      ButtonSegment(
-        value: Crop.chili,
-        label: Text('Chili'),
-        icon: Icon(Icons.local_florist_outlined),
-      ),
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final crop in Crop.values)
+        ChoiceChip(
+          label: Text(crop.label),
+          selected: value == crop,
+          onSelected: (_) => onChanged(crop),
+        ),
     ],
-    selected: {value},
-    onSelectionChanged: (v) => onChanged(v.first),
   );
 }
 

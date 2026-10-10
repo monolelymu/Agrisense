@@ -55,7 +55,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    'Two crops. A guided preview of connected growing.',
+                    'Three crops. A guided preview of connected growing.',
                     style: TextStyle(color: Color(0xFFD0DECF), fontSize: 12),
                   ),
                 ],
@@ -72,7 +72,7 @@ class DashboardScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-            const Tag('2 SIMULATED'),
+            Tag('${Crop.values.length} SIMULATED'),
           ],
         ),
         const SizedBox(height: 14),
@@ -90,12 +90,16 @@ class DashboardScreen extends StatelessWidget {
                       Row(
                         children: [
                           Icon(
-                            item == Crop.tomato
-                                ? Icons.eco
-                                : Icons.local_florist,
-                            color: item == Crop.tomato
-                                ? const Color(0xFFF09980)
-                                : accent,
+                            switch (item) {
+                              Crop.tomato => Icons.eco,
+                              Crop.chili => Icons.local_florist,
+                              Crop.eggplant => Icons.grass,
+                            },
+                            color: switch (item) {
+                              Crop.tomato => const Color(0xFFF09980),
+                              Crop.chili => accent,
+                              Crop.eggplant => const Color(0xFFD2B4F5),
+                            },
                           ),
                           const SizedBox(width: 10),
                           Text(

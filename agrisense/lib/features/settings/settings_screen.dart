@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Display temperatures in Fahrenheit'),
                   subtitle: const Text(
-                    'Applies to both crops. Stored readings stay in Celsius.',
+                    'Applies to all crops. Stored readings stay in Celsius.',
                   ),
                   value: fahrenheit,
                   onChanged: (v) => setState(() => fahrenheit = v),
@@ -201,9 +201,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('Reset both demo setups?'),
+                            title: const Text('Reset all demo setups?'),
                             content: const Text(
-                              'This removes saved scans, alerts, readings, and preferences for both crops. Seven days of sample readings will be restored and simulated nodes disconnected.',
+                              'This removes saved scans, alerts, readings, and preferences for all crops. Seven days of sample readings will be restored and simulated nodes disconnected.',
                             ),
                             actions: [
                               TextButton(
@@ -230,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'AgriSense • Mock prototype\nTomato & Chili / Browser & Android\nReal BLE, Wi-Fi, and TFLite are not connected.',
+          'AgriSense • Mock prototype\nTomato, Chili & Eggplant / Browser & Android\nReal BLE, Wi-Fi, and TFLite are not connected.',
           style: TextStyle(color: muted, fontSize: 12),
         ),
       ],

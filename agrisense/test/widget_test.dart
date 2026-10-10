@@ -9,9 +9,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:agrisense/core/app.dart';
+import 'package:agrisense/core/widgets.dart';
+import 'package:agrisense/data/models.dart';
 import 'support.dart';
 
 void main() {
+  testWidgets('three crop choices wrap on a small screen with large text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    Crop? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+            child: CropPicker(
+              value: Crop.tomato,
+              onChanged: (crop) => selected = crop,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Eggplant'));
+    expect(selected, Crop.eggplant);
+    expect(tester.takeException(), isNull);
+  });
   for (final size in [const Size(390, 844), const Size(1440, 1000)]) {
     testWidgets('navigation and demo work at $size', (tester) async {
       tester.view.physicalSize = size;
@@ -27,6 +54,9 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('Devices').last);
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+      await tester.pumpAndSettle();
+      expect(c.selectedCrop, Crop.eggplant);
       await tester.tap(find.text('Scan simulated nodes'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Connect').first);
@@ -41,11 +71,13 @@ void main() {
       await tester.tap(find.text('Simulate stress'));
       await tester.pumpAndSettle();
       expect(c.results.length, 1);
+      expect(c.results.single.crop, Crop.eggplant);
       await tester.tap(find.byTooltip('Alerts'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('View mock diagnosis'));
       await tester.pumpAndSettle();
       expect(find.text('MOCK DIAGNOSIS'), findsOneWidget);
+      expect(find.text('Leaf Spot • sample result'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pageBack();
       await tester.pumpAndSettle();
