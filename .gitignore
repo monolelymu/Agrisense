@@ -1,1 +1,15 @@
 .tools/
+
+# Local dataset review outputs; keep on disk, not in Git.
+/audit_review/
+/audit_review2/
+/tomato_notebook_fix/filter_check.json
+
+# One-off notebook generation helper with local machine paths.
+/build_tomato_notebook_fix.py
+
+# Local ML work and hardware source are kept outside the app repository.
+/Agrisense_dataset_audit.ipynb
+/tomato_notebook_fix/
+/firmware/
+/agrisense/docs/ML_PROGRESS_HANDOFF.md
