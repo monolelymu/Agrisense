@@ -18,17 +18,17 @@
 ## Status
 
 - Starting from dd89a3d (Phase 1), 68 tests previously passed.
-- A domain/storage: complete; preset controls will be connected alongside B UI.
-- B: implemented; 29 targeted tests pass (automatic diagnosis + notifications +
-  alert/preset storage). Full regression and UI checks remain in D.
+- A: complete, including preset controls and backward-compatible storage.
+- B: complete; 29 targeted tests passed (automatic diagnosis + notifications +
+  alert/preset storage), followed by full regression and emulator checks below.
 - C: native build passes offline; five fake-service tests pass. Actual emulator
   service starts on API 36 as connectedDevice, with Open/Stop notification actions.
   Loopback readings continued from count 4 to 8 while minimized/screen-locked;
-  reopening retained the same app process (one data owner). Stop/force-stop checks
-  and actual automatic-model result still pending.
+  reopening retained the same app process (one data owner). Notification Stop,
+  force-stop/reopen and actual automatic-model checks now pass (see below).
 - D: all 86 Flutter regression tests pass; final static analysis reports no
   issues. Updated APK installs and launches on the API 36 read-only emulator.
-  Synthetic loopback boards pair successfully. Sensitive preset UI under test.
+  Synthetic loopback boards pair successfully. Sensitive preset UI verified.
   Sensitive preview correctly showed 34..36 C and 85..95% from baseline 35/90;
   uncalibrated soil remained disabled. Editing revealed a focus-loss bug when the
   baseline label disappeared. Fixed it; new preset_editing_test passes.
@@ -61,9 +61,33 @@ Final `gradlew --offline --no-daemon :app:assembleDebug --quiet` completed with
 exit 0. APK: `build/app/outputs/apk/debug/app-debug.apk`. Existing Java native
 access warnings did not prevent the build. No dependencies downloaded.
 
-Next: resume remaining acceptance with power available: notification Stop action,
-force-stop/reopen behavior, actual automatic TFLite result through the full
-emulator workflow, and physical phone/board screen-lock, Wi-Fi/camera and sustained
-operation. These checks are pending, not claimed complete. No new dependencies or
-firmware changes. Test helpers/logs are ignored in
+## Resumed emulator acceptance (2026-10-21)
+
+- Used the saved APK on API 36, a temporary read-only emulator, and loopback-only
+  fake boards. No production board, firmware or dependency changes.
+- Configured the real app through Devices and Monitoring & Auto Scan. Sensitive
+  fixed limits were 34..36 C and 85..95% from baseline 35 C / 90% RH; soil disabled.
+- Enabled capture, analysis and background operation. Changed fixture readings
+  to 37 C / 96% RH and minimized/locked the emulator. The real installed Tomato
+  TFLite model processed the captured synthetic JPEG and saved an Auto Scan.
+  Synthetic solid-color input scored 16.3%, correctly shown as Uncertain. This
+  verifies the pipeline, not disease accuracy.
+- A second sustained alert after repeat cooldown produced a second linked result.
+  History > Alerts showed both measurements combined into each Diagnosis saved
+  event. Scans displayed the automatic result. Returned fixture to baseline.
+- Expanded the actual ongoing notification and pressed Stop. The notification
+  disappeared, the native monitoring service ended and Devices showed Monitoring
+  off. Simulator readings stopped at 12, captures at 2.
+- Started a new monitoring session, force-stopped the app, then reopened it.
+  Devices retained assignments and showed Monitoring off; no MonitoringService
+  was running. History still showed exactly two saved automatic diagnoses after
+  reopening, confirming persistence without duplicate results.
+- Full suite/build were not rerun: this continuation changed documentation and
+  ignored test fixtures only. The existing 86 passing tests, clean analysis and
+  offline APK build remain applicable. Test processes stopped after checks.
+
+Next: perform physical phone/board screen-lock, Wi-Fi/camera and sustained
+operation checks using PHASE_2_ACCEPTANCE.md. Also verify notification Open and
+reboot behavior on the physical phone. Physical acceptance is pending, not claimed
+complete. No new dependencies or firmware changes. Test helpers/logs are ignored in
 `.tools/phase2_*` and `.tools/phase2-*`; do not commit them or deliverables.

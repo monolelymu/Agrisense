@@ -46,6 +46,6 @@ photos stay on the camera SD card and do not receive app diagnosis automatically
 ## Acceptance status
 
 No firmware, models or dependencies were changed. See PHASE_2_PROGRESS.md for
-automated checks and emulator evidence. Notification action/force-stop checks,
-full automatic TFLite workflow and sustained physical phone/board acceptance
-remain pending; implementation is not yet fully accepted on real hardware.
+automated checks and emulator evidence. Automatic TFLite diagnosis, notification
+Stop and force-stop/reopen checks passed on the API 36 emulator. Sustained physical
+phone/board acceptance remains pending; follow PHASE_2_ACCEPTANCE.md on hardware.
