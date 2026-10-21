@@ -218,6 +218,8 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
+    await Scrollable.ensureVisible(tester.element(save), alignment: 0.5);
+    await tester.pumpAndSettle();
     await tester.runAsync(() async {
       await tester.tap(save);
       await box.flush();

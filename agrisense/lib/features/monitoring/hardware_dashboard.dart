@@ -15,6 +15,7 @@ import 'monitoring_settings_screen.dart';
 import '../help/help_screen.dart';
 import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
+import 'alert_detail_screen.dart';
 
 class HardwareApp extends StatelessWidget {
   const HardwareApp({
@@ -63,6 +64,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   String? error;
   AppIssue? actionIssue;
   bool saving = false;
+  int _scanRevision = -1;
   HardwareController get h => widget.hardware;
   bool get locked => saving || h.busy;
   static const tabs = ['Dashboard', 'Trends', 'Devices', 'History'];
@@ -136,7 +138,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    h.stopPolling();
+    if (!h.backgroundActive) h.stopPolling();
     super.dispose();
   }
 
@@ -148,7 +150,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       error = null;
       actionIssue = null;
     });
-    if (monitoring) h.startPolling(value);
+    if (monitoring)
+      _saveAction(
+        () => h.startMonitoring(value),
+        fallback: AppIssue.background,
+      );
   }
 
   Future<void> _scan() => h.withPollingPaused(() async {
@@ -170,7 +176,21 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           MaterialPageRoute<void>(
             builder: (_) => Scaffold(
               appBar: AppBar(title: Text('${scan.crop.label} result')),
-              body: PageBody(children: [TomatoResultCard(scan: scan)]),
+              body: PageBody(
+                children: [
+                  TomatoResultCard(scan: scan),
+                  if (scan.alertId != null)
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              AlertDetailScreen(hardware: h, id: scan.alertId!),
+                        ),
+                      ),
+                      child: const Text('View originating alert'),
+                    ),
+                ],
+              ),
             ),
           ),
         )
@@ -285,7 +305,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     child: ListTile(
       title: Text('${scan.crop.label} • ${scan.displayLabel}'),
       subtitle: Text(
-        '${scan.uncertain ? 'Uncertain • ' : ''}${(scan.score * 100).toStringAsFixed(1)}% model score\n${dateLabel(scan.timestamp)}',
+        '${scan.source == 'auto' ? 'Auto Scan • ' : ''}${scan.uncertain ? 'Uncertain • ' : ''}${(scan.score * 100).toStringAsFixed(1)}% model score\n${dateLabel(scan.timestamp)}',
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _result(scan),
@@ -742,18 +762,38 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ],
     ],
     if (historyCategory == 1) ...[
+      for (final alert in h.alerts.where((a) => a.crop == crop)) ...[
+        Card(
+          child: ListTile(
+            title: Text(
+              '${dateLabel(alert.timestamp)} · ${alertStateLabel(alert.state)}',
+            ),
+            subtitle: Text(alert.reason),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: locked
+                ? null
+                : () => _openSettings(
+                    AlertDetailScreen(hardware: h, id: alert.id),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
       Text('Warning photos', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
       const Text(
-        'Photos captured after sensor warnings. These snapshots have not been analyzed for disease. Board SD photos stay on the camera.',
+        'Alerts link the trigger, photo and diagnosis. Older warning photos appear below. Board SD photos stay on the camera.',
       ),
       const SizedBox(height: 16),
-      if (!h.alertPhotos.any((p) => p.crop == crop))
+      if (!h.alertPhotos.any((p) => p.crop == crop) &&
+          !h.alerts.any((a) => a.crop == crop))
         const EmptyState(
           'No warning photos',
-          'Enable warning photos in Monitoring & Auto Scan. Alerts without a saved photo are not recorded here yet.',
+          'Enable sensor alerts in Monitoring & Auto Scan to record warnings here.',
         ),
-      for (final photo in h.alertPhotos.reversed.where((p) => p.crop == crop))
+      for (final photo in h.alertPhotos.reversed.where(
+        (p) => p.crop == crop && p.alertId == null,
+      ))
         _alertPhotoTile(photo),
     ],
     if (historyCategory == 2) ...[
@@ -789,6 +829,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: h,
     builder: (context, _) {
+      if (_scanRevision != h.revision) {
+        _loadScans();
+        _scanRevision = h.revision;
+      }
       final results = scans.where((s) => s.crop == crop).toList();
       return Scaffold(
         appBar: AppBar(

@@ -118,6 +118,11 @@ class AppIssue {
     'Action could not be completed',
     'Retry the action. If it continues, restart the app. Your existing saved records are not removed.',
   );
+  static const background = AppIssue(
+    'BG-001',
+    'Background monitoring could not start',
+    'Open AgriSense and start monitoring while the app is visible. Check Android app and notification settings. Keep the app open if background operation is unavailable.',
+  );
   static const all = [
     connection,
     address,
@@ -141,6 +146,7 @@ class AppIssue {
     write,
     busy,
     unknown,
+    background,
   ];
 
   static AppIssue from(Object error, {AppIssue fallback = unknown}) {

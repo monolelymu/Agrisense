@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/hardware_controller.dart';
 import '../../core/widgets.dart';
+import '../../core/app_issue.dart';
+import '../../core/issue_card.dart';
 import '../../data/models.dart';
 import 'automatic_capture_screen.dart';
 import 'notification_settings_screen.dart';
@@ -21,6 +23,24 @@ class MonitoringSettingsScreen extends StatefulWidget {
 class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
   HardwareController get hardware => widget.hardware;
   Crop get crop => widget.crop;
+  bool working = false;
+  AppIssue? issue;
+  Future<void> _run(Future<void> Function() action) async {
+    setState(() {
+      working = true;
+      issue = null;
+    });
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) {
+        setState(() => issue = AppIssue.from(e, fallback: AppIssue.background));
+      }
+    } finally {
+      if (mounted) setState(() => working = false);
+    }
+  }
+
   Future<void> _open(BuildContext context, Widget screen) => Navigator.of(
     context,
   ).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -45,7 +65,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Monitoring runs while the app is active. It pauses on settings screens and resumes when you return.',
+                  'Monitoring pauses on settings screens. Enable background operation below to continue from the Dashboard when minimized or screen-locked.',
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -53,20 +73,19 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                   title: const Text('Monitor sensors every 10 seconds'),
                   value: hardware.polling,
                   onChanged:
-                      hardware.busy ||
+                      working ||
+                          hardware.busy ||
                           (!hardware.polling &&
                               (!hardware.allowLocalHttp ||
                                   hardware.address(crop, 'sensor').isEmpty))
                       ? null
-                      : (value) {
-                          setState(() {
-                            if (value) {
-                              hardware.startPolling(crop);
-                            } else {
-                              hardware.stopPolling();
-                            }
-                          });
-                        },
+                      : (value) => _run(() async {
+                          if (value) {
+                            await hardware.startMonitoring(crop);
+                          } else {
+                            hardware.stopPolling();
+                          }
+                        }),
                 ),
                 if (!hardware.allowLocalHttp ||
                     hardware.address(crop, 'sensor').isEmpty)
@@ -77,7 +96,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 Text(hardware.monitoringStatus),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
-                  onPressed: hardware.busy
+                  onPressed: working || hardware.busy
                       ? null
                       : () => _open(
                           context,
@@ -91,7 +110,33 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Limits are saved on this phone. Warning photos are saved under History → Alerts; they are not analyzed for disease yet.',
+                  'Phone limits control alerts, warning photos and optional automatic analysis. Open History to review each alert and its linked result.',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (working) const LinearProgressIndicator(),
+          if (issue != null) IssueCard(issue: issue!),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Continue in background'),
+                  subtitle: const Text(
+                    'Uses an ongoing Android notification with Open and Stop actions. May increase battery use.',
+                  ),
+                  value: hardware.backgroundEnabled,
+                  onChanged:
+                      working || hardware.busy || !hardware.service.supported
+                      ? null
+                      : (value) =>
+                            _run(() => hardware.setBackgroundEnabled(value)),
+                ),
+                const Text(
+                  'Start monitoring while the app is visible. Force-stop, reboot or process termination ends monitoring; start it again manually. Android may delay checks under power restrictions.',
                 ),
               ],
             ),
@@ -112,7 +157,8 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 const SizedBox(height: 16),
                 OutlinedButton(
                   onPressed:
-                      hardware.busy ||
+                      working ||
+                          hardware.busy ||
                           !hardware.allowLocalHttp ||
                           hardware.address(crop, 'sensor').isEmpty
                       ? null

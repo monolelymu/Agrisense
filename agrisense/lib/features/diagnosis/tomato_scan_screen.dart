@@ -575,7 +575,11 @@ class TomatoResultCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Source: ${scan.source == 'camera' ? 'Camera node' : 'Uploaded photo'}\nModel: ${scan.modelVersion}\n'
+                'Source: ${scan.source == 'auto'
+                    ? 'Auto Scan'
+                    : scan.source == 'camera'
+                    ? 'Camera node'
+                    : 'Uploaded photo'}\nModel: ${scan.modelVersion}\n'
                 'Model scores are not measured accuracy. Uncertain results need a clearer photo or further assessment.',
                 style: const TextStyle(color: muted),
               ),

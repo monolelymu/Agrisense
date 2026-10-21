@@ -8,6 +8,10 @@ import 'sensor_notifications.dart';
 import 'app_issue.dart';
 import '../data/alert_photo.dart';
 import '../features/diagnosis/photo_processing.dart';
+import '../features/diagnosis/tomato_classifier.dart';
+import '../features/diagnosis/tomato_scan.dart';
+import '../data/monitoring_alert.dart';
+import 'monitoring_service.dart';
 
 class HardwareController extends ChangeNotifier {
   HardwareController(
@@ -15,11 +19,27 @@ class HardwareController extends ChangeNotifier {
     HardwareClient? client,
     SensorNotifications? notifications,
     DateTime Function()? clock,
+    TomatoClassifier? classifier,
+    TomatoScanStore? scanStore,
+    MonitoringAlertStore? alertStore,
+    MonitoringServiceBridge? service,
   }) : client = client ?? HardwareClient(),
        notifications = notifications ?? SensorNotifications(),
-       _clock = clock ?? DateTime.now;
+       _clock = clock ?? DateTime.now,
+       classifier = classifier ?? TomatoClassifier(),
+       scanStore = scanStore ?? TomatoScanStore(box),
+       alertStore = alertStore ?? MonitoringAlertStore(box),
+       service = service ?? MonitoringServiceBridge();
   final Box<dynamic> box;
   final HardwareClient client;
+  final TomatoClassifier classifier;
+  final TomatoScanStore scanStore;
+  final MonitoringAlertStore alertStore;
+  final MonitoringServiceBridge service;
+  final List<MonitoringAlert> alerts = [];
+  final Map<String, TomatoScan> _pendingResults = {};
+  int _run = 0;
+  int revision = 0;
   final SensorNotifications notifications;
   final DateTime Function() _clock;
   final Map<Crop, SensorAlertSettings> notificationSettings = {};
@@ -29,6 +49,8 @@ class HardwareController extends ChangeNotifier {
   Crop? _pollingCrop;
   Crop? _requestedPollingCrop;
   bool _foreground = true;
+  bool backgroundActive = false;
+  bool backgroundEnabled = false;
   int _pollingPauses = 0;
   final Map<Crop, Map<String, String>> assignments = {};
   final List<HardwareSample> samples = [];
@@ -43,6 +65,10 @@ class HardwareController extends ChangeNotifier {
   static const _historyKey = 'hardware-readings-v1';
 
   void load() {
+    backgroundEnabled =
+        box.get('background-monitoring-enabled-v1', defaultValue: false) ==
+        true;
+    this.alerts.addAll(alertStore.load());
     for (final item
         in box.get('notification-photos-v1', defaultValue: []) as List) {
       try {
@@ -93,7 +119,8 @@ class HardwareController extends ChangeNotifier {
     final sample = latest(crop);
     return status[crop] == 'Received' &&
         sample != null &&
-        DateTime.now().difference(sample.receivedAt).inSeconds < 35;
+        !_clock().isBefore(sample.receivedAt) &&
+        _clock().difference(sample.receivedAt).inSeconds <= 30;
   }
 
   Future<void> assign(
@@ -299,7 +326,13 @@ class HardwareController extends ChangeNotifier {
           ..addAll(next);
       }
       status[crop] = 'Received';
-      await _notifyReading(crop, reading);
+      try {
+        await _notifyReading(crop, reading);
+      } catch (_) {
+        notificationIssue = AppIssue.write;
+        notificationStatus =
+            'Sensor reading saved, but the alert outcome could not be saved.';
+      }
     } catch (e) {
       status[crop] = 'Unavailable';
       _alertTrackers[crop]?.reset();
@@ -454,9 +487,58 @@ class HardwareController extends ChangeNotifier {
     }
   }
 
-  // Foreground opt-in polling only; no background service or discovery scans.
+  void bindService() => service.listen((event) {
+    if (event == 'stopRequested' ||
+        (event == 'serviceStopped' && backgroundActive)) {
+      backgroundActive = false;
+      stopPolling(stopService: false);
+      if (!_disposed) notifyListeners();
+    } else if (event == 'activityResumed') {
+      setForeground(true);
+    } else if (event == 'activityPaused') {
+      setForeground(false, resetDuration: !backgroundActive);
+    }
+  });
+
+  Future<void> setBackgroundEnabled(bool value) async {
+    _requireIdle();
+    if (!_foreground) throw AppIssue.background;
+    if (value && !service.supported) throw AppIssue.background;
+    await box.put('background-monitoring-enabled-v1', value);
+    backgroundEnabled = value;
+    if (polling && value) {
+      try {
+        await _startService(_requestedPollingCrop!);
+      } catch (_) {
+        stopPolling();
+        rethrow;
+      }
+    } else if (!value) {
+      backgroundActive = false;
+      await service.stop();
+      if (!_foreground) _pausePolling(resetDuration: true);
+    }
+    notifyListeners();
+  }
+
+  Future<void> _startService(Crop crop) async {
+    if (!_foreground || !service.supported) throw AppIssue.background;
+    if (!await service.start(crop.label)) throw AppIssue.background;
+    backgroundActive = true;
+  }
+
+  Future<void> startMonitoring(Crop crop) async {
+    _requireIdle();
+    _requireHttp();
+    if (address(crop, 'sensor').isEmpty) throw AppIssue.assignment;
+    if (backgroundEnabled) await _startService(crop);
+    startPolling(crop);
+    notifyListeners();
+  }
+
+  // One controller owns all requests, whether or not an Activity is attached.
   void startPolling(Crop crop) {
-    stopPolling();
+    stopPolling(stopService: false);
     if (!allowLocalHttp) return;
     _requestedPollingCrop = crop;
     _resumePolling();
@@ -477,7 +559,7 @@ class HardwareController extends ChangeNotifier {
   void _resumePolling() {
     final crop = _requestedPollingCrop;
     if (_disposed ||
-        !_foreground ||
+        (!_foreground && !backgroundActive) ||
         _pollingPauses > 0 ||
         !allowLocalHttp ||
         crop == null ||
@@ -489,9 +571,18 @@ class HardwareController extends ChangeNotifier {
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => refresh(crop));
   }
 
-  void stopPolling() {
+  void stopPolling({bool stopService = true}) {
+    _run++;
     _requestedPollingCrop = null;
     _pausePolling(resetDuration: true);
+    if (stopService && backgroundActive) {
+      backgroundActive = false;
+      unawaited(
+        service.stop().catchError((Object _) {
+          notificationIssue = AppIssue.background;
+        }),
+      );
+    }
   }
 
   /// Settings/diagnosis can pause requests without changing the user's ON switch.
@@ -509,7 +600,7 @@ class HardwareController extends ChangeNotifier {
 
   void setForeground(bool active, {bool resetDuration = false}) {
     _foreground = active;
-    if (active) {
+    if (active || backgroundActive) {
       _resumePolling();
     } else {
       _pausePolling(resetDuration: resetDuration);
@@ -519,15 +610,19 @@ class HardwareController extends ChangeNotifier {
 
   bool get polling => _requestedPollingCrop != null;
   bool get pollingActive =>
-      _timer != null && _foreground && _pollingPauses == 0;
+      _timer != null &&
+      (_foreground || backgroundActive) &&
+      _pollingPauses == 0;
   String get monitoringStatus => !polling
       ? 'Monitoring off'
-      : !_foreground
+      : !_foreground && !backgroundActive
       ? 'Paused while the app is not active; resumes when you return.'
       : _pollingPauses > 0
       ? 'Paused during settings or analysis; resumes automatically.'
       : _timer == null
       ? 'Waiting for a sensor assignment.'
+      : backgroundActive
+      ? 'Monitoring every 10 seconds · background enabled'
       : 'Monitoring every 10 seconds';
 
   Future<void> saveNotificationSettings(
@@ -546,10 +641,12 @@ class HardwareController extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      if (settings.enabled && !await notifications.requestPermission()) {
-        throw const FormatException(
-          'Notifications are blocked. Allow AgriSense notifications in Android settings, then retry.',
-        );
+      final permission =
+          !settings.enabled ||
+          !settings.showNotifications ||
+          await notifications.requestPermission();
+      if (settings.analyzePhoto && !classifier.supports(crop)) {
+        throw AppIssue.unsupported;
       }
       final next = {...notificationSettings, crop: settings};
       await box.put('foreground-notification-rules-v1', {
@@ -557,9 +654,10 @@ class HardwareController extends ChangeNotifier {
       });
       notificationSettings[crop] = settings;
       _alertTrackers.remove(crop);
-      notificationStatus = settings.enabled
-          ? 'Notifications enabled. ${polling ? 'Monitoring resumes automatically.' : 'Turn on sensor monitoring in Devices.'}'
-          : 'Notifications off for ${crop.label}.';
+      notificationIssue = permission ? null : AppIssue.permission;
+      notificationStatus = permission
+          ? 'Monitoring settings saved.'
+          : 'Settings saved. Android notifications blocked; capture and analysis can still run.';
     } finally {
       busy = false;
       if (!_disposed) notifyListeners();
@@ -567,7 +665,8 @@ class HardwareController extends ChangeNotifier {
   });
 
   Future<void> testNotification(Crop crop) async {
-    if (notificationSettings[crop]?.enabled != true) {
+    if (notificationSettings[crop]?.enabled != true ||
+        notificationSettings[crop]?.showNotifications != true) {
       throw const FormatException(
         'Enable and save notifications for this crop first.',
       );
@@ -583,6 +682,35 @@ class HardwareController extends ChangeNotifier {
     }
   }
 
+  AlertPhoto? photoFor(String id) {
+    final matches = alertPhotos.where((p) => p.alertId == id);
+    return matches.isEmpty ? null : matches.last;
+  }
+
+  Future<void> _saveAlert(MonitoringAlert alert) async {
+    await alertStore.save(alert);
+    alerts
+      ..clear()
+      ..addAll(alertStore.load());
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> reconcileAlerts() async {
+    final results = {for (final scan in scanStore.load()) scan.id: scan};
+    for (final alert in List<MonitoringAlert>.of(alerts)) {
+      if (!alert.unfinished &&
+          alert.state != 'save_failed' &&
+          alert.state != 'interrupted') {
+        continue;
+      }
+      await _saveAlert(
+        alert.change(
+          results.containsKey(alert.resultId) ? 'completed' : 'interrupted',
+        ),
+      );
+    }
+  }
+
   Future<void> _notifyReading(Crop crop, HardwareSample sample) async {
     final settings = notificationSettings[crop];
     if (_disposed ||
@@ -591,107 +719,216 @@ class HardwareController extends ChangeNotifier {
         settings?.enabled != true) {
       return;
     }
+    final tracker = _alertTrackers.putIfAbsent(crop, SensorAlertTracker.new);
+    final now = _clock();
+    final ready = tracker.evaluate(sample, settings!, now);
+    if (ready.isEmpty) return;
+    final alert = MonitoringAlert(
+      id: '${crop.name}-${now.microsecondsSinceEpoch}-${alerts.length}',
+      sample: sample,
+      settings: settings,
+      metrics: ready,
+      timestamp: now,
+      camera: address(crop, 'camera'),
+    );
     try {
-      final tracker = _alertTrackers.putIfAbsent(crop, SensorAlertTracker.new);
-      final now = _clock();
-      final ready = tracker.evaluate(sample, settings!, now);
-      if (ready.isEmpty) return;
-      final values = [sample.temperature, sample.humidity, sample.soil];
-      final names = ['Temperature', 'Humidity', 'Soil moisture'];
-      final units = ['°C', '%', '%'];
-      final text = ready
-          .map(
-            (i) =>
-                '${names[i]} ${values[i]!.toStringAsFixed(1)}${units[i]} (range ${settings.rules[i].minimum}–${settings.rules[i].maximum}${units[i]})',
-          )
-          .join('; ');
-      if (_disposed || _pollingCrop != crop) return;
-      final posted = await notifications.show(
-        5000 + crop.index,
-        '${crop.label}: sensor limit exceeded',
-        '$text. Outside range for at least ${settings.duration}s. Check growing conditions.',
-      );
-      if (posted) {
-        notificationIssue = null;
-        tracker.delivered(ready, now);
-        notificationStatus = 'Sent ${crop.label} sensor alert.';
-        if (settings.capturePhoto) await _captureAlertPhoto(crop, sample, text);
-      } else {
-        notificationIssue = AppIssue.permission;
-        tracker.reset();
-        notificationStatus =
-            'Notifications blocked or app not active. Check Android notification settings.';
-      }
-    } catch (e) {
-      _alertTrackers[crop]?.reset();
-      notificationIssue = AppIssue.from(e, fallback: AppIssue.permission);
-      notificationStatus =
-          'Could not post notification. Sensor reading was still saved.';
+      await _saveAlert(alert);
+    } catch (_) {
+      notificationIssue = AppIssue.write;
+      notificationStatus = 'Alert could not be saved; capture was not started.';
+      return;
     }
+    tracker.delivered(
+      ready,
+      now,
+    ); // Acceptance, independent of notification delivery.
+    notificationIssue = null;
+    if (settings.showNotifications) {
+      try {
+        final posted = await notifications.show(
+          5000 + crop.index,
+          '${crop.label}: sensor limit exceeded',
+          alert.reason,
+        );
+        if (!posted) notificationIssue = AppIssue.permission;
+      } catch (e) {
+        notificationIssue = AppIssue.from(e, fallback: AppIssue.permission);
+      }
+    }
+    notificationStatus = '${crop.label} sensor alert saved.';
+    if (!settings.capturePhoto) {
+      await _saveAlert(alert.change('alert_only'));
+      return;
+    }
+    await _processAlert(alert, capture: true, manual: false);
   }
 
-  Future<void> _captureAlertPhoto(
-    Crop crop,
-    HardwareSample sample,
-    String reason,
-  ) async {
-    if (_disposed ||
-        !allowLocalHttp ||
-        !pollingActive ||
-        _pollingCrop != crop) {
-      notificationStatus =
-          'Alert sent. Photo skipped because monitoring was paused.';
-      return;
-    }
-    final camera = address(crop, 'camera');
-    if (camera.isEmpty) {
-      notificationIssue = AppIssue.assignment;
-      notificationStatus =
-          'Alert sent. Photo skipped: no camera assigned to ${crop.label}.';
-      return;
-    }
-    if (alertPhotos.any((p) => p.crop == crop && p.sampleId == sample.id)) {
-      return;
-    }
+  bool _canProcess(MonitoringAlert alert, int run, bool manual) =>
+      !_disposed &&
+      allowLocalHttp &&
+      (_foreground || backgroundActive) &&
+      _run == run &&
+      (manual || _requestedPollingCrop == alert.crop);
+
+  Future<void> _processAlert(
+    MonitoringAlert initial, {
+    required bool capture,
+    required bool manual,
+  }) async {
+    var alert = initial;
+    final run = _run;
+    var stage = capture ? 'capture_failed' : 'analysis_failed';
     try {
-      // refresh() already owns the busy lock; avoid calling the public capture()
-      // method, which intentionally rejects concurrent hardware requests.
-      final jpeg = await compute(alertSnapshot, await client.capture(camera));
-      if (_disposed) return;
-      final photo = AlertPhoto(
-        sampleId: sample.id,
-        crop: crop,
-        timestamp: _clock(),
-        reason: reason,
-        jpeg: jpeg,
-      );
-      final next = [...alertPhotos, photo];
-      // A bounded, separate snapshot history; diagnosis records are untouched.
-      while (next.length > 20 ||
-          next.fold<int>(0, (sum, p) => sum + p.jpeg.length) >
-              30 * 1024 * 1024) {
-        next.removeAt(0);
+      final existing = scanStore.load().where((s) => s.id == alert.resultId);
+      if (existing.isNotEmpty) {
+        await _saveAlert(alert.change('completed'));
+        revision++;
+        return;
       }
-      try {
+      if (!_canProcess(alert, run, manual)) {
+        await _saveAlert(alert.change('interrupted'));
+        return;
+      }
+      Uint8List bytes;
+      if (capture) {
+        if (alert.camera.isEmpty ||
+            address(alert.crop, 'camera') != alert.camera) {
+          throw AppIssue.assignment;
+        }
+        await _saveAlert(alert.change('capturing'));
+        if (!_canProcess(alert, run, manual)) {
+          await _saveAlert(alert.change('interrupted'));
+          return;
+        }
+        bytes = await client.capture(alert.camera);
+        // Validate originals before storage and inference. Do not resize model input here.
+        await compute(previewPhoto, bytes);
+        alert = alert.change('photo_saved', capturedAt: _clock());
+        final photo = AlertPhoto(
+          sampleId: alert.sample.id,
+          crop: alert.crop,
+          timestamp: alert.capturedAt!,
+          reason: alert.reason,
+          jpeg: bytes,
+          alertId: alert.id,
+        );
+        final next = [
+          ...alertPhotos.where((p) => p.alertId != alert.id),
+          photo,
+        ];
+        while (next.length > 20 ||
+            next.fold<int>(0, (n, p) => n + p.jpeg.length) > 30 * 1024 * 1024) {
+          next.removeAt(0);
+        }
+        stage = 'photo_save_failed';
         await box.put(
           'notification-photos-v1',
           next.map((p) => p.toJson()).toList(),
         );
-      } catch (_) {
-        throw AppIssue.write;
+        alertPhotos
+          ..clear()
+          ..addAll(next);
+        await _saveAlert(alert);
+      } else {
+        final photo = photoFor(alert.id);
+        if (photo == null) throw AppIssue.photo;
+        bytes = photo.jpeg;
       }
-      alertPhotos
-        ..clear()
-        ..addAll(next);
-      notificationStatus =
-          'Alert sent. ${crop.label} camera photo saved in History.';
+      if (!alert.settings.analyzePhoto) {
+        await _saveAlert(alert.change('photo_saved'));
+        return;
+      }
+      if (!classifier.supports(alert.crop)) {
+        await _saveAlert(
+          alert.change(
+            'model_unavailable',
+            issueCode: AppIssue.unsupported.code,
+          ),
+        );
+        return;
+      }
+      if (!_canProcess(alert, run, manual)) {
+        await _saveAlert(alert.change('interrupted'));
+        return;
+      }
+      stage = 'analysis_failed';
+      await _saveAlert(alert.change('analyzing'));
+      if (!_canProcess(alert, run, manual)) {
+        await _saveAlert(alert.change('interrupted'));
+        return;
+      }
+      final prediction = await classifier.classifyCrop(alert.crop, bytes);
+      final scan = TomatoScan.fromJson({
+        ...prediction.toJson(),
+        'id': alert.resultId,
+        'timestamp': (alert.capturedAt ?? alert.timestamp).toIso8601String(),
+        'crop': alert.crop.name,
+        'source': 'auto',
+        'alert_id': alert.id,
+        'sensor_context': alert.sample.toJson(),
+      });
+      _pendingResults[alert.id] = scan;
+      while (_pendingResults.length > 20) {
+        _pendingResults.remove(_pendingResults.keys.first);
+      }
+      stage = 'save_failed';
+      await _saveAlert(alert.change('saving'));
+      await scanStore.save(scan);
+      revision++;
+      await _saveAlert(alert.change('completed'));
+      _pendingResults.remove(alert.id);
+      notificationStatus = '${alert.crop.label} automatic scan saved.';
     } catch (e) {
-      notificationIssue = AppIssue.from(e, fallback: AppIssue.camera);
+      final issue = AppIssue.from(
+        e,
+        fallback: switch (stage) {
+          'save_failed' || 'photo_save_failed' => AppIssue.write,
+          'analysis_failed' => AppIssue.model,
+          _ => AppIssue.camera,
+        },
+      );
+      notificationIssue = issue;
       notificationStatus =
-          'Alert sent, but the camera photo could not be captured or saved. Check its IP, Wi-Fi and phone storage.';
-      // Keep the alert acknowledged so camera errors cannot cause repeated alerts.
+          'Alert saved. Open History to review or retry the failed step.';
+      try {
+        await _saveAlert(alert.change(stage, issueCode: issue.code));
+      } catch (_) {
+        notificationIssue = AppIssue.write;
+      }
     }
   }
+
+  bool canRetrySaving(String id) => _pendingResults.containsKey(id);
+
+  Future<void> retryAlert(String id, {required bool capture}) =>
+      withPollingPaused(() async {
+        _requireIdle();
+        _requireHttp();
+        if (!_foreground) throw AppIssue.busy;
+        final alert = alerts.firstWhere((a) => a.id == id);
+        busy = true;
+        notifyListeners();
+        try {
+          final pending = _pendingResults[id];
+          if (pending != null && !capture) {
+            try {
+              await scanStore.save(pending);
+              revision++;
+              await _saveAlert(alert.change('completed'));
+              _pendingResults.remove(id);
+            } catch (_) {
+              await _saveAlert(
+                alert.change('save_failed', issueCode: AppIssue.write.code),
+              );
+            }
+          } else {
+            await _processAlert(alert, capture: capture, manual: true);
+          }
+        } finally {
+          busy = false;
+          if (!_disposed) notifyListeners();
+        }
+      });
 
   Future<void> setHttpAllowed(bool value) async {
     if (busy) throw StateError('Wait for the current request to finish.');

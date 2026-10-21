@@ -262,7 +262,7 @@ void main() {
         await startAndWait();
         now = now.add(const Duration(seconds: 10));
         await h.refresh(Crop.tomato);
-        expect(h.notificationStatus, contains('could not'));
+        expect(h.alerts.single.state, 'capture_failed');
         await h.refresh(Crop.tomato);
         expect(client.captures, 1);
         expect(notifications.messages.length, 1);
@@ -272,7 +272,7 @@ void main() {
       },
     );
     test(
-      'photo switch requires an assigned camera; blocked alerts do not capture',
+      'photo switch requires an assigned camera; blocked notifications still capture',
       () async {
         await expectLater(
           h.saveNotificationSettings(Crop.tomato, photoSettings),
@@ -284,20 +284,17 @@ void main() {
         await startAndWait();
         now = now.add(const Duration(seconds: 10));
         await h.refresh(Crop.tomato);
-        expect(client.captures, 0);
-        expect(h.alertPhotos, isEmpty);
+        expect(client.captures, 1);
+        expect(h.alertPhotos, hasLength(1));
       },
     );
 
     test(
-      'denial does not enable or persist alerts; independent crop settings survive reload',
+      'notification denial preserves alert settings; independent crops survive reload',
       () async {
         notifications.permitted = false;
-        await expectLater(
-          h.saveNotificationSettings(Crop.tomato, settings),
-          throwsFormatException,
-        );
-        expect(h.notificationSettings[Crop.tomato]!.enabled, isFalse);
+        await h.saveNotificationSettings(Crop.tomato, settings);
+        expect(h.notificationSettings[Crop.tomato]!.enabled, isTrue);
         notifications.permitted = true;
         await h.saveNotificationSettings(Crop.tomato, settings);
         final restored = HardwareController(box)..load();
@@ -340,7 +337,7 @@ void main() {
         expect(h.samples.length, 2);
         expect(h.error, isNull);
         expect(h.status[Crop.tomato], 'Received');
-        expect(h.notificationStatus, contains('blocked'));
+        expect(h.notificationIssue?.code, 'PER-001');
       },
     );
     test('in-flight read after polling stops cannot send an alert', () async {

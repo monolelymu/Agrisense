@@ -38,7 +38,7 @@ class HelpScreen extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Phone monitoring reads the selected crop every ten seconds while the app is active. It pauses outside the app and during analysis or settings, and resumes on return. Enable notifications and warning photos in Monitoring & Auto Scan. Warning photos are snapshots; automatic diagnosis is not available yet. Advanced SD capture runs on the boards independently, even with the app closed. Turning off phone monitoring does not stop it; connect and save Off to the sensor.',
+                'Phone monitoring checks the selected crop every ten seconds. Enable warning photos and automatic analysis in Monitoring & Auto Scan. Background operation requires the separate Continue in background switch and an explicit start while the app is visible. Settings and manual analysis pause monitoring. Force-stop, reboot or process termination ends it. Android can delay checks. Advanced SD capture runs independently; stop it by connecting and saving Off to the sensor.',
               ),
             ),
           ],
@@ -60,7 +60,7 @@ class HelpScreen extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'History separates disease scans, warning photos under Alerts, and sensor readings. Select a crop to filter records. Board SD photos are not imported automatically. Records stay on this device; clearing app data or uninstalling removes them.',
+                'History separates disease scans, sensor Alerts with linked photos/results, and readings. Alerts show failures and manual recovery actions. The latest 500 alerts and 20 warning originals (up to 30 MB) are retained. Board SD photos are not imported automatically. Clearing app data or uninstalling removes local records.',
               ),
             ),
           ],
@@ -132,7 +132,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           ),
           (
             '3. Monitor or scan',
-            'Scan a leaf photo, or set sensor limits in Monitoring & Auto Scan. Phone monitoring pauses when the app is not active.',
+            'Scan a leaf photo, or configure sensor alerts and automatic analysis in Monitoring & Auto Scan. Enable background operation separately to continue while minimized.',
           ),
           (
             '4. Review your records',

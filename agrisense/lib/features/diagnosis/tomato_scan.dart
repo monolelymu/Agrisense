@@ -26,10 +26,14 @@ class TomatoScan {
     this.crop = Crop.tomato,
     this.predictions = const [],
     this.source = 'upload',
+    this.alertId,
+    this.sensorContext,
   });
 
   final String id, label, modelVersion;
   final String source;
+  final String? alertId;
+  final Map<String, dynamic>? sensorContext;
   final DateTime timestamp;
   final double score;
   final Uint8List preview;
@@ -50,6 +54,8 @@ class TomatoScan {
     'modelVersion': modelVersion,
     'crop': crop.name,
     'source': source,
+    'alert_id': alertId,
+    'sensor_context': sensorContext,
     'predictions': predictions.map((p) => p.toJson()).toList(),
   };
 
@@ -62,6 +68,10 @@ class TomatoScan {
     modelVersion: json['modelVersion'] as String,
     crop: Crop.values.byName(json['crop'] as String? ?? 'tomato'),
     source: json['source'] as String? ?? 'upload',
+    alertId: json['alert_id'] as String?,
+    sensorContext: json['sensor_context'] == null
+        ? null
+        : Map<String, dynamic>.from(json['sensor_context'] as Map),
     predictions: (json['predictions'] as List? ?? [])
         .map((p) => ScanPrediction.fromJson(p as Map))
         .toList(),

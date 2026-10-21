@@ -31,7 +31,13 @@ class _NotificationSettingsScreenState
   String? message;
   AppIssue? issue;
   final formKey = GlobalKey<FormState>();
-  bool dirty = false;
+  bool dirty = false,
+      showNotifications = true,
+      analyzePhoto = false,
+      repeat = false;
+  bool applyingPreset = false;
+  String preset = 'custom';
+  Map<String, dynamic>? baseline;
   @override
   void initState() {
     super.initState();
@@ -40,6 +46,11 @@ class _NotificationSettingsScreenState
         const SensorAlertSettings();
     enabled = saved.enabled;
     capturePhoto = saved.capturePhoto;
+    showNotifications = saved.showNotifications;
+    analyzePhoto = saved.analyzePhoto;
+    repeat = saved.repeat;
+    preset = saved.preset;
+    baseline = saved.baseline;
     duration.text = '${saved.duration}';
     cooldown.text = '${saved.cooldown}';
     for (var i = 0; i < 3; i++) {
@@ -72,9 +83,8 @@ class _NotificationSettingsScreenState
         setState(
           () => message =
               success ??
-              (widget.hardware.polling
-                  ? 'Saved. Monitoring resumes automatically when you return.'
-                  : 'Saved. Turn on monitoring for sensor alerts.'),
+              widget.hardware.notificationStatus ??
+              'Settings saved.',
         );
       }
     } catch (e) {
@@ -109,6 +119,11 @@ class _NotificationSettingsScreenState
         SensorAlertSettings(
           enabled: enabled,
           capturePhoto: capturePhoto,
+          showNotifications: showNotifications,
+          analyzePhoto: analyzePhoto,
+          repeat: repeat,
+          preset: preset,
+          baseline: baseline,
           duration: int.parse(duration.text.trim()),
           cooldown: int.parse(cooldown.text.trim()),
           rules: rules,
@@ -116,6 +131,43 @@ class _NotificationSettingsScreenState
       );
       dirty = false;
     });
+  }
+
+  void _preset(String name) {
+    try {
+      SensorAlertSettings? proposal;
+      if (name == 'sensitive') {
+        if (!widget.hardware.fresh(widget.crop)) throw AppIssue.stale;
+        proposal = SensorAlertSettings.sensitive(
+          widget.hardware.latest(widget.crop)!,
+          DateTime.now(),
+        );
+      }
+      setState(() {
+        applyingPreset = true;
+        if (proposal != null) {
+          baseline = proposal.baseline;
+          for (var i = 0; i < 3; i++) {
+            selected[i] = proposal.rules[i].enabled;
+            minimum[i].text = '${proposal.rules[i].minimum}';
+            maximum[i].text = '${proposal.rules[i].maximum}';
+          }
+          duration.text = '10';
+          cooldown.text = '30';
+          repeat = true;
+        } else if (name == 'standard') {
+          duration.text = '30';
+          cooldown.text = '300';
+          repeat = false;
+          baseline = null;
+        }
+        preset = name;
+        dirty = true;
+        applyingPreset = false;
+      });
+    } catch (e) {
+      setState(() => issue = AppIssue.from(e, fallback: AppIssue.settings));
+    }
   }
 
   Widget _number(TextEditingController controller, String label) =>
@@ -127,7 +179,7 @@ class _NotificationSettingsScreenState
             return validateSeconds(text, minimum: 10, maximum: 3600);
           }
           if (controller == cooldown) {
-            return validateSeconds(text, minimum: 60, maximum: 86400);
+            return validateSeconds(text, minimum: 30, maximum: 86400);
           }
           final i = minimum.contains(controller)
               ? minimum.indexOf(controller)
@@ -179,6 +231,7 @@ class _NotificationSettingsScreenState
               : (v) => setState(() {
                   selected[i] = v!;
                   dirty = true;
+                  preset = 'custom';
                 }),
         ),
         if (i == 2)
@@ -215,7 +268,7 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('${widget.crop.label} notifications')),
+    appBar: AppBar(title: Text('${widget.crop.label} monitoring rules')),
     body: SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
@@ -223,7 +276,14 @@ class _NotificationSettingsScreenState
           constraints: const BoxConstraints(maxWidth: 640),
           child: Form(
             key: formKey,
-            onChanged: () => setState(() => dirty = true),
+            onChanged: () {
+              if (!applyingPreset) {
+                setState(() {
+                  dirty = true;
+                  preset = 'custom';
+                });
+              }
+            },
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -241,7 +301,7 @@ class _NotificationSettingsScreenState
                   padding: 16,
                   child: SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Enable notifications'),
+                    title: const Text('Enable sensor alerts'),
                     subtitle: const Text('Changes take effect after saving.'),
                     value: enabled,
                     onChanged: busy
@@ -260,13 +320,54 @@ class _NotificationSettingsScreenState
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Take a photo on warning'),
                     subtitle: const Text(
-                      'Use this crop’s camera after a real sensor notification. Save changes to apply.',
+                      'Use this crop’s camera when a sensor alert is recorded. Save changes to apply.',
                     ),
                     value: capturePhoto,
                     onChanged: busy
                         ? null
                         : (v) => setState(() {
                             capturePhoto = v;
+                            if (!v) analyzePhoto = false;
+                            dirty = true;
+                          }),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Panel(
+                  padding: 16,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Show Android notifications'),
+                    value: showNotifications,
+                    subtitle: const Text(
+                      'Capture and analysis still work if notifications are blocked.',
+                    ),
+                    onChanged: busy
+                        ? null
+                        : (v) => setState(() {
+                            showNotifications = v;
+                            dirty = true;
+                          }),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Panel(
+                  padding: 16,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    key: const ValueKey('auto-analyze'),
+                    title: const Text('Analyze warning photos automatically'),
+                    subtitle: Text(
+                      widget.crop == Crop.tomato
+                          ? 'Runs the installed Tomato model on each captured original.'
+                          : 'No disease model installed for this crop.',
+                    ),
+                    value: analyzePhoto,
+                    onChanged: busy || widget.crop != Crop.tomato
+                        ? null
+                        : (v) => setState(() {
+                            analyzePhoto = v;
+                            if (v) capturePhoto = true;
                             dirty = true;
                           }),
                   ),
@@ -280,10 +381,54 @@ class _NotificationSettingsScreenState
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Photos appear in History. The latest 20 snapshots are kept, up to 30 MB total. Test notifications do not take photos.',
+                    'Alerts and linked photos appear in History. The latest 20 originals are kept, up to 30 MB total. Test notifications do not take photos.',
                   ),
                 ],
                 const SizedBox(height: 24),
+                Text(
+                  'Monitoring preset',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final name in const [
+                      'standard',
+                      'sensitive',
+                      'custom',
+                    ])
+                      ChoiceChip(
+                        label: Text(name[0].toUpperCase() + name.substring(1)),
+                        selected: preset == name,
+                        onSelected: busy ? null : (_) => _preset(name),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Sensitive proposes fixed limits from a fresh sample: ±1 °C and ±5 percentage points. Review the limits below, then Save. These are change-detection limits, not disease thresholds.',
+                ),
+                if (baseline != null)
+                  Text('Fixed baseline: ${baseline!['received_at']}'),
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => _action(
+                          () async {
+                            await widget.hardware.refresh(widget.crop);
+                            if (widget.hardware.error != null) {
+                              throw widget.hardware.issue ??
+                                  AppIssue.connection;
+                            }
+                          },
+                          success:
+                              'Fresh sample received. Choose Sensitive to preview its limits.',
+                        ),
+                  child: const Text('Read baseline sample'),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   'Measurements and limits',
                   style: Theme.of(context).textTheme.titleLarge,
@@ -317,12 +462,27 @@ class _NotificationSettingsScreenState
                       _number(cooldown, 'Cooldown (seconds)'),
                       const SizedBox(height: 10),
                       const Text(
-                        'Wait 60–86400 seconds between alerts. Each measurement alerts once until it recovers.',
+                        'Wait 30–86400 seconds between accepted alerts, including failed captures.',
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Repeat while outside limits'),
+                  subtitle: const Text(
+                    'After cooldown, a fresh abnormal sample may trigger again.',
+                  ),
+                  value: repeat,
+                  onChanged: busy
+                      ? null
+                      : (v) => setState(() {
+                          repeat = v;
+                          preset = 'custom';
+                          dirty = true;
+                        }),
+                ),
                 if (busy) const LinearProgressIndicator(),
                 if (dirty)
                   const Padding(
@@ -364,7 +524,7 @@ class _NotificationSettingsScreenState
                   childrenPadding: EdgeInsets.only(bottom: 20),
                   children: [
                     Text(
-                      'Limits are saved on this phone, separately from automatic camera rules. Monitoring pauses outside the app and resumes on return. Missing readings restart the duration. Android settings control sound and banners. Sensor alerts are not disease diagnoses.',
+                      'Phone limits are separate from board SD capture rules. Background monitoring must be enabled separately. Missing readings restart the duration. Android settings control sound and banners. Sensor alerts trigger photos; disease analysis uses the image model.',
                     ),
                   ],
                 ),

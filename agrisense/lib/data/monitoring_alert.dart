@@ -92,9 +92,10 @@ class MonitoringAlertStore {
 
   Future<void> save(MonitoringAlert alert) async {
     await box.put('$prefix${alert.id}', alert.toJson());
-    final records = load();
-    if (records.length > 500) {
-      await box.deleteAll(records.skip(500).map((a) => '$prefix${a.id}'));
+    final records = load().where((a) => a.id != alert.id).toList();
+    if (records.length > 499) {
+      // Retain the accepted event even if the phone clock moved backwards.
+      await box.deleteAll(records.skip(499).map((a) => '$prefix${a.id}'));
     }
   }
 }

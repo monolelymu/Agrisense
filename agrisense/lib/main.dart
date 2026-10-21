@@ -13,6 +13,8 @@ Future<void> main() async {
     await Hive.initFlutter();
     final box = await Hive.openBox<dynamic>('agrisense_v1');
     final hardware = HardwareController(box)..load();
+    await hardware.reconcileAlerts();
+    hardware.bindService();
     runApp(HardwareApp(scans: TomatoScanStore(box), hardware: hardware));
   } catch (error) {
     runApp(
