@@ -2,73 +2,90 @@
 const tomatoReferenceVersion = 'tomato-reference-2026-10-21-v1';
 
 class KnowledgeSource {
-  const KnowledgeSource(this.title, this.url);
+  const KnowledgeSource(this.title, this.url, {this.id = ''});
   final String title, url;
+  final String id;
 }
 
 const growingTemperatureSource = KnowledgeSource(
   'UGA: Commercial Tomato Production Handbook',
   'https://fieldreport.caes.uga.edu/publications/B1312/commercial-tomato-production-handbook/',
+  id: 'TM-01',
 );
 const growingHumiditySource = KnowledgeSource(
   'Controlled-environment tomato research guidance',
   'https://pmc.ncbi.nlm.nih.gov/articles/PMC4235429/',
+  id: 'TM-02',
 );
 const _bacterial = KnowledgeSource(
   'UMN: Bacterial spot of tomato and pepper',
   'https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/bacterial-spot-of-tomato-and-pepper',
+  id: 'TM-03',
 );
 const _early = KnowledgeSource(
   'UMN: Early blight',
   'https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/early-blight-in-tomato-and-potato',
+  id: 'TM-04',
 );
 const _late = KnowledgeSource(
   'UC IPM: Late blight',
   'https://ipm.ucanr.edu/agriculture/tomato/late-blight/',
+  id: 'TM-05',
 );
 const _mold = KnowledgeSource(
   'UMN: Tomato leaf mold',
   'https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/tomato-leaf-mold',
+  id: 'TM-06',
 );
 const _septoria = KnowledgeSource(
   'UMN: Tomato leaf spots',
   'https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/tomato/leavesspots.html',
+  id: 'TM-07',
 );
 const _target = KnowledgeSource(
   'UF/IFAS: Target spot of tomato',
   'https://ask.ifas.ufl.edu/publication/PP351',
+  id: 'TM-08',
 );
 const _powdery = KnowledgeSource(
   'UC IPM: Powdery mildew on tomatoes',
   'https://ipm.ucanr.edu/agriculture/tomato/powdery-mildew-on-field-grown-tomatoes/',
+  id: 'TM-09',
 );
 const _viruses = KnowledgeSource(
   'UMN: Tomato viruses',
   'https://extension.umn.edu/disease-management/tomato-viruses',
+  id: 'TM-10',
 );
 const _nutrients = KnowledgeSource(
   'University of Maryland: Common tomato problems',
   'https://extension.umd.edu/resource/key-common-problems-tomatoes',
+  id: 'TM-11',
 );
 const _miners = KnowledgeSource(
   'UC IPM: Tomato leafminers',
   'https://ipm.ucanr.edu/agriculture/tomato/leafminers/',
+  id: 'TM-12',
 );
 const _mites = KnowledgeSource(
   'UC IPM: Spider mites',
   'https://ipm.ucanr.edu/home-and-landscape/spider-mites/',
+  id: 'TM-13',
 );
 const _whiteflies = KnowledgeSource(
   'UC IPM: Tomato whiteflies',
   'https://ipm.ucanr.edu/agriculture/tomato/whiteflies/',
+  id: 'TM-14',
 );
 const _spotted = KnowledgeSource(
   'UC IPM: Tomato spotted wilt',
   'https://ipm.ucanr.edu/agriculture/tomato/tomato-spotted-wilt/',
+  id: 'TM-15',
 );
 const _curl = KnowledgeSource(
   'UC IPM: Tomato yellow leaf curl',
   'https://ipm.ucanr.edu/agriculture/tomato/tomato-yellow-leaf-curl/',
+  id: 'TM-16',
 );
 
 class TomatoEnvironmentRule {

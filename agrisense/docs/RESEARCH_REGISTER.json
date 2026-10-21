@@ -1,0 +1,483 @@
+{
+  "version": 1,
+  "updated": "2026-10-21",
+  "notes": "Claim register for implemented knowledge entries, not proof of local diagnostic validity. n.d. means date unverified, not known to be undated. No pesticide doses adopted.",
+  "sources": [
+    {
+      "id": "TM-01",
+      "title": "UGA: Commercial Tomato Production Handbook",
+      "authors_or_organization": "University of Georgia Cooperative Extension",
+      "year": "n.d.",
+      "url": "https://fieldreport.caes.uga.edu/publications/B1312/commercial-tomato-production-handbook/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Growing references",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "healthy"
+      ]
+    },
+    {
+      "id": "TM-02",
+      "title": "Controlled-environment tomato research guidance",
+      "authors_or_organization": "Schwarz, D., Thompson, A. J., & Kläring, H.-P.",
+      "year": "2014",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4235429/",
+      "doi": "10.3389/fpls.2014.00625",
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Growing references",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Article title, authors, year and DOI verified in Phase 4.",
+      "labels": []
+    },
+    {
+      "id": "TM-03",
+      "title": "UMN: Bacterial spot of tomato and pepper",
+      "authors_or_organization": "University of Minnesota Extension",
+      "year": "n.d.",
+      "url": "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/bacterial-spot-of-tomato-and-pepper",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "bacterial_spot"
+      ]
+    },
+    {
+      "id": "TM-04",
+      "title": "UMN: Early blight",
+      "authors_or_organization": "University of Minnesota Extension",
+      "year": "n.d.",
+      "url": "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/early-blight-in-tomato-and-potato",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "early_blight"
+      ]
+    },
+    {
+      "id": "TM-05",
+      "title": "UC IPM: Late blight",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/late-blight/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "late_blight"
+      ]
+    },
+    {
+      "id": "TM-06",
+      "title": "UMN: Tomato leaf mold",
+      "authors_or_organization": "University of Minnesota Extension",
+      "year": "n.d.",
+      "url": "https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/tomato-leaf-mold",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "leaf_mold"
+      ]
+    },
+    {
+      "id": "TM-07",
+      "title": "UMN: Tomato leaf spots",
+      "authors_or_organization": "University of Minnesota Extension",
+      "year": "n.d.",
+      "url": "https://apps.extension.umn.edu/garden/diagnose/plant/vegetable/tomato/leavesspots.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "septoria_leaf_spot"
+      ]
+    },
+    {
+      "id": "TM-08",
+      "title": "UF/IFAS: Target spot of tomato",
+      "authors_or_organization": "University of Florida IFAS Extension",
+      "year": "n.d.",
+      "url": "https://ask.ifas.ufl.edu/publication/PP351",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "target_spot"
+      ]
+    },
+    {
+      "id": "TM-09",
+      "title": "UC IPM: Powdery mildew on tomatoes",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/powdery-mildew-on-field-grown-tomatoes/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "powdery_mildew"
+      ]
+    },
+    {
+      "id": "TM-10",
+      "title": "UMN: Tomato viruses",
+      "authors_or_organization": "University of Minnesota Extension",
+      "year": "n.d.",
+      "url": "https://extension.umn.edu/disease-management/tomato-viruses",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "mosaic_virus",
+        "spotted_wilt_virus",
+        "yellow_leaf_curl_virus"
+      ]
+    },
+    {
+      "id": "TM-11",
+      "title": "University of Maryland: Common tomato problems",
+      "authors_or_organization": "University of Maryland Extension",
+      "year": "n.d.",
+      "url": "https://extension.umd.edu/resource/key-common-problems-tomatoes",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "healthy",
+        "magnesium_deficiency",
+        "nitrogen_deficiency",
+        "potassium_deficiency"
+      ]
+    },
+    {
+      "id": "TM-12",
+      "title": "UC IPM: Tomato leafminers",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/leafminers/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "leaf_miner"
+      ]
+    },
+    {
+      "id": "TM-13",
+      "title": "UC IPM: Spider mites",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/home-and-landscape/spider-mites/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "spider_mites"
+      ]
+    },
+    {
+      "id": "TM-14",
+      "title": "UC IPM: Tomato whiteflies",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/whiteflies/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "whitefly"
+      ]
+    },
+    {
+      "id": "TM-15",
+      "title": "UC IPM: Tomato spotted wilt",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/tomato-spotted-wilt/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "spotted_wilt_virus"
+      ]
+    },
+    {
+      "id": "TM-16",
+      "title": "UC IPM: Tomato yellow leaf curl",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/tomato/tomato-yellow-leaf-curl/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato"
+      ],
+      "locator": "Symptoms, favorable conditions and management sections",
+      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "labels": [
+        "yellow_leaf_curl_virus"
+      ]
+    },
+    {
+      "id": "EG-GROW-01",
+      "title": "Virginia Cooperative Extension: Eggplant",
+      "authors_or_organization": "Relf, D., & McDaniel, A. (reviewed and updated by E. Olsen)",
+      "year": "2025",
+      "url": "https://www.pubs.ext.vt.edu/content/pubs_ext_vt_edu/en/SPES/SPES-686/SPES-686.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Environmental preferences; Cultural practices",
+      "claims": "General growth temperature 70–85 F (21.1–29.4 C); drainage and light. No numerical growing RH or soil percentage.",
+      "verification": "Web text inspected 2026-10-21. Publication/update year verified.",
+      "labels": [
+        "healthy",
+        "insect_pest",
+        "wilt"
+      ]
+    },
+    {
+      "id": "EG-ALT-01",
+      "title": "TNAU: Brinjal Alternaria leaf spot",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "2022",
+      "url": "https://agritech.tnau.ac.in/crop_protection/brinjal_diseases_3.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Ringed lesions and leaf/fruit damage; no numerical environmental rule.",
+      "verification": "Web text inspected 2026-10-21. Publication/update year verified.",
+      "labels": [
+        "alternaria_leaf_spot"
+      ]
+    },
+    {
+      "id": "EG-SPOT-01",
+      "title": "TNAU: Brinjal Cercospora leaf spot (one possible cause)",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "2022",
+      "url": "https://agritech.tnau.ac.in/crop_protection/brinjal_diseases_2.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Cercospora as one possible spotted-leaf disease; not the identity of the broad model label.",
+      "verification": "Web text inspected 2026-10-21. Publication/update year verified.",
+      "labels": [
+        "leaf_spot"
+      ]
+    },
+    {
+      "id": "EG-PHOM-01",
+      "title": "TNAU: Brinjal Phomopsis fruit rot",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "n.d.",
+      "url": "https://agritech.tnau.ac.in/crop_protection/brinjal_phdiseases_2.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Leaf/stem/fruit signs and seed, splash, debris spread. 29 C fungal growth and 25 C storage rot are NOT app infection thresholds.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "phomopsis_blight"
+      ]
+    },
+    {
+      "id": "EG-POW-01",
+      "title": "UC IPM: Powdery mildew on vegetables",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/home-and-landscape/powdery-mildew-on-vegetables/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Eggplant host, visual signs and cultural practices; free water not required. No numerical Eggplant rule.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "powdery_mildew"
+      ]
+    },
+    {
+      "id": "EG-DOWN-01",
+      "title": "UC IPM: Downy mildew (general background; Eggplant label unverified)",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/home-and-landscape/downy-mildew/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "General downy mildew signs and avoiding foliage wetting; source does NOT verify the Eggplant training label.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "alternaria_leaf_spot",
+        "downy_mildew",
+        "leaf_spot"
+      ]
+    },
+    {
+      "id": "EG-MOS-01",
+      "title": "UC IPM: Eggplant mosaic diseases caused by potyviruses",
+      "authors_or_organization": "Stapleton, J. J., & Davis, R. M.",
+      "year": "2010",
+      "url": "https://ipm.ucanr.edu/agriculture/eggplant/mosaic-diseases-caused-by-potyviruses/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Mosaic patterns and potyvirus/aphid context; exact virus not identified by class.",
+      "verification": "Web text inspected 2026-10-21. Publication/update year verified.",
+      "labels": [
+        "mosaic_virus"
+      ]
+    },
+    {
+      "id": "EG-WILT-01",
+      "title": "UC IPM: Eggplant Verticillium wilt (one possible cause)",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/eggplant/verticillium-wilt/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Verticillium is one possible wilt cause; not the identity of the model class.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "wilt"
+      ]
+    },
+    {
+      "id": "EG-WILT-02",
+      "title": "TNAU: Brinjal bacterial wilt (one possible cause)",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "n.d.",
+      "url": "https://agritech.tnau.ac.in/crop_protection/brinjal_diseases_1.html",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Bacterial wilt is another possible cause; not the identity of the model class.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "wilt"
+      ]
+    },
+    {
+      "id": "EG-PEST-01",
+      "title": "UC IPM: Eggplant pest management guidelines",
+      "authors_or_organization": "University of California Statewide IPM Program",
+      "year": "n.d.",
+      "url": "https://ipm.ucanr.edu/agriculture/eggplant/",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "eggplant"
+      ],
+      "locator": "Symptoms/Identification, Management, Comments/Epidemiology as applicable",
+      "claims": "Multiple pest groups affect Eggplant; species identification needed.",
+      "verification": "Web text inspected 2026-10-21. Year/individual authors need verification.",
+      "labels": [
+        "healthy",
+        "insect_pest"
+      ]
+    }
+  ]
+}
