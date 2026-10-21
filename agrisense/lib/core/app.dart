@@ -25,8 +25,9 @@ class AgriSenseApp extends StatelessWidget {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.controller, super.key});
+  const AppShell({required this.controller, this.onScanLeaf, super.key});
   final AppController controller;
+  final VoidCallback? onScanLeaf;
   @override
   State<AppShell> createState() => _AppShellState();
 }
@@ -113,6 +114,7 @@ class _AppShellState extends State<AppShell> {
         4 => SettingsScreen(controller: c),
         _ => DashboardScreen(
           controller: c,
+          onScanLeaf: widget.onScanLeaf,
           onDevices: devices,
           onStress: () =>
               detail('Stress score', () => StressScreen(controller: c)),

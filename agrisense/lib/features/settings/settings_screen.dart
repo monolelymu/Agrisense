@@ -230,7 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'AgriSense • Mock prototype\nTomato, Chili & Eggplant / Browser & Android\nReal BLE, Wi-Fi, and TFLite are not connected.',
+          'AgriSense • Hardware demo\nSensor readings and device connections here are simulated.\nReal tomato photo analysis is available from the app home screen.',
           style: TextStyle(color: muted, fontSize: 12),
         ),
       ],

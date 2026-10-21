@@ -10,10 +10,12 @@ class DashboardScreen extends StatelessWidget {
     required this.onDevices,
     required this.onStress,
     required this.onAlerts,
+    this.onScanLeaf,
     super.key,
   });
   final AppController controller;
   final VoidCallback onDevices, onStress, onAlerts;
+  final VoidCallback? onScanLeaf;
   @override
   Widget build(BuildContext context) {
     final c = controller;
@@ -28,6 +30,19 @@ class DashboardScreen extends StatelessWidget {
           'A closer look at your crops.',
           'Your growing conditions, all in one place.',
         ),
+        if (onScanLeaf != null) ...[
+          FilledButton.icon(
+            onPressed: onScanLeaf,
+            icon: const Icon(Icons.add_photo_alternate_outlined),
+            label: const Text('Scan leaf'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Select a photo for real, on-device analysis. Tomato only • Experimental.',
+            style: TextStyle(color: muted),
+          ),
+          const SizedBox(height: 22),
+        ],
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(26),

@@ -57,6 +57,7 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(c.selectedCrop, Crop.eggplant);
+      await tester.ensureVisible(find.text('Scan simulated nodes'));
       await tester.tap(find.text('Scan simulated nodes'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Connect').first);

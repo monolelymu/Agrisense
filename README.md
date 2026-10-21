@@ -1,5 +1,12 @@
 # AgriSense
 
+**Current Android app:** real sensor/camera integration, local Tomato photo
+analysis, monitoring limits and warning photos. Phase 1 adds organized History,
+unified monitoring settings, actionable error codes, and offline Help/tutorial.
+See [the current app guide](agrisense/docs/PHASE_1.md).
+
+The mock-demo instructions below describe the earlier simulated workspace.
+
 A dark Flutter mock app for **Tomato, Chili, and Eggplant**, intended for browser and Android.
 No hardware, internet service, dataset, or trained AI model is needed for the UI.
 

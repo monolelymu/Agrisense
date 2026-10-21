@@ -30,9 +30,23 @@ ThemeData buildTheme() => ThemeData(
     ),
   ),
   inputDecorationTheme: InputDecorationTheme(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+    errorMaxLines: 4,
     filled: true,
     fillColor: background,
     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      minimumSize: const Size(48, 48),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    ),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size(48, 48),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    ),
   ),
   navigationBarTheme: const NavigationBarThemeData(
     backgroundColor: panel,

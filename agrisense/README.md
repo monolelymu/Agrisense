@@ -1,5 +1,9 @@
 # AgriSense
 
+**Current app:** see [Phase 1 app guide](docs/PHASE_1.md) for real hardware
+monitoring, Tomato photo analysis, History filters, Monitoring & Auto Scan,
+error codes and offline Help. The simulated-prototype notes below are historical.
+
 **AgriSense — Smart Crop Stress Monitoring System**
 
 AgriSense is a Flutter-based application prototype designed to demonstrate crop stress monitoring for **Tomato, Chili, and Eggplant** plants.
