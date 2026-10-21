@@ -2,7 +2,7 @@ import '../../data/models.dart';
 
 enum ImagePreparation { rgbBilinearAntialiasZeroToOne }
 
-/// Bundled model contract. Unknown preprocessing fails closed.
+/// Bundled model contract. Provisional preparation requires explicit opt-in here.
 class CropModel {
   const CropModel({
     required this.crop,
@@ -13,6 +13,7 @@ class CropModel {
     required this.classCount,
     this.preparation,
     this.unavailableReason,
+    this.testingNotice,
     this.inputSize = 224,
   });
   final Crop crop;
@@ -20,12 +21,15 @@ class CropModel {
   final int inputSize, classCount;
   final ImagePreparation? preparation;
   final String? unavailableReason;
+  final String? testingNotice;
   // Both exports have float32 NHWC three-channel input and float32 output.
   // The external color/resize contract must be verified separately.
   bool get available => preparation != null && unavailableReason == null;
 }
 
 const tomatoModelVersion = 'tomato-v1-ef87a0106a29';
+const eggplantTestingNotice =
+    'Eggplant testing: photo preparation is provisional. Compare results with known examples; accuracy is not verified.';
 const cropModels = <Crop, CropModel>{
   Crop.tomato: CropModel(
     crop: Crop.tomato,
@@ -40,17 +44,18 @@ const cropModels = <Crop, CropModel>{
     crop: Crop.eggplant,
     modelAsset: 'assets/models/eggplant_model.tflite',
     labelsAsset: 'assets/models/eggplant_labels.json',
-    version: 'eggplant-v1-fe09161efc0c',
+    version: 'eggplant-v1-fe09161efc0c-provisional-rgb-aa01',
     sha256: 'fe09161efc0cbc5bce233ba47979db781d8cd106a47764f4a67a19ad34c0aad2',
     classCount: 9,
-    // The graph implies 0–1 input, but external resize/crop/color is unconfirmed.
-    unavailableReason:
-        'Eggplant model is installed. Photo preparation still needs verification before analysis can be enabled.',
+    // User authorized experimental testing with this provisional preparation.
+    preparation: ImagePreparation.rgbBilinearAntialiasZeroToOne,
+    testingNotice: eggplantTestingNotice,
   ),
 };
 
 bool modelAvailable(Crop crop) => cropModels[crop]?.available ?? false;
 String modelStatus(Crop crop) => modelAvailable(crop)
-    ? '${crop.label} photo analysis available · Experimental.'
+    ? cropModels[crop]!.testingNotice ??
+          '${crop.label} photo analysis available · Experimental.'
     : cropModels[crop]?.unavailableReason ??
           'No disease model installed for ${crop.label}.';

@@ -371,7 +371,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             const SizedBox(height: 8),
             Text(
               classifier.supports(crop)
-                  ? 'Choose a clear leaf photo. Analysis runs on this device.'
+                  ? cropModels[crop]?.testingNotice ??
+                        'Choose a clear leaf photo. Analysis runs on this device.'
                   : modelStatus(crop),
             ),
             const SizedBox(height: 12),
@@ -572,6 +573,11 @@ class TomatoResultCard extends StatelessWidget {
           const Tag('UNCERTAIN', color: warning),
           const SizedBox(height: 8),
           const Text('Try another clear photo to compare.'),
+        ],
+        if (scan.crop == Crop.eggplant &&
+            scan.modelVersion.endsWith('-provisional-rgb-aa01')) ...[
+          const Text(eggplantTestingNotice, style: TextStyle(color: warning)),
+          const SizedBox(height: 12),
         ],
         Text('Model score: ${(scan.score * 100).toStringAsFixed(1)}%'),
         const SizedBox(height: 12),

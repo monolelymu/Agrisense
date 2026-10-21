@@ -101,7 +101,7 @@ void main() {
   );
 
   testWidgets(
-    'automatic analysis is disabled with a verification explanation',
+    'automatic analysis is available with a provisional testing explanation',
     (tester) async {
       late Directory dir;
       late Box<dynamic> box;
@@ -129,9 +129,10 @@ void main() {
         400,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(tester.widget<SwitchListTile>(control).onChanged, isNull);
+      expect(tester.widget<SwitchListTile>(control).onChanged, isNotNull);
+      expect(tester.widget<SwitchListTile>(control).value, isFalse);
       expect(
-        find.textContaining('Photo preparation still needs verification'),
+        find.textContaining('photo preparation is provisional'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);

@@ -121,7 +121,7 @@ void main() {
 
   test('unsupported crops cannot invoke the tomato model', () {
     final classifier = TomatoClassifier();
-    for (final crop in [Crop.eggplant, Crop.chili]) {
+    for (final crop in [Crop.chili]) {
       expect(
         () => classifier.classifyCrop(crop, Uint8List(0)),
         throwsStateError,
@@ -167,7 +167,7 @@ void main() {
       await tester.tap(find.text('Diagnosis').last);
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('Photo preparation still needs verification'),
+        find.textContaining('photo preparation is provisional'),
         findsOneWidget,
       );
       expect(

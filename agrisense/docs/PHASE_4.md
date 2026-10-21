@@ -5,14 +5,16 @@
 - Tomato diagnosis, image preprocessing, top-three scores and model version are
   preserved. Phase 2 monitoring/service logic is unchanged.
 - Eggplant has a growing-condition panel and offline **knowledge & care** browser
-  covering all nine export labels. Its bundled model is **disabled pending exact
-  preprocessing verification**. Manual/upload/automatic inference use the same
-  availability gate. Monitoring and warning-photo capture remain available.
+  covering all nine export labels. Its bundled model is **enabled for experimental
+  testing by explicit user request**, using provisional RGB stretch to 224x224,
+  antialiased bilinear and float32 /255. Manual/upload/automatic paths share this
+  preparation. Training parity and accuracy are unverified; UI and saved result
+  versions identify the provisional preparation. Automatic analysis defaults Off.
 - Chili retains monitoring; no classifier or crop references have been invented.
 - Both crops use the shared result explanation and saved-context display. Legacy
   Tomato records remain readable under the original storage keys and version.
-- New Eggplant camera/automatic results can retain same-crop sensor context once
-  diagnosis is enabled. Uploads never acquire current sensor data. No Eggplant
+- New Eggplant camera/automatic results retain same-crop sensor context where
+  available. Uploads never acquire current sensor data. No Eggplant
   disease exposure rule or sensor-derived probability is adopted.
 
 ## Research and paper references
@@ -57,13 +59,13 @@ resize without explicit antialiasing, and its model lacks the export's outer
 255 rescaling layer. The corrected notebook and supplied graph therefore do not
 prove that the earlier loader was used unchanged.
 
-Before enabling:
+Before treating the testing preparation as verified:
 1. Obtain the matching loader/inference code or a confirmed preprocessing
    specification: RGB/BGR, crop/stretch, resize method/antialias and normalization.
 2. Match the app's preparation to it. Prefer a non-square labeled sample with
    notebook output or prepared pixels for parity; confirm the exact label order.
-3. Set `preparation` and remove `unavailableReason` in the Eggplant catalog entry
-   only after verification; implement a different preparation if actually needed.
+3. Confirm or correct `preparation` in the Eggplant catalog entry, remove its
+   provisional testing notice and update the version only after verification.
 4. Run the real Android inference smoke check, then representative unseen labeled
    Eggplant photos. Valid probabilities verify runtime, not diagnostic accuracy.
 5. Exercise manual/upload/automatic paths and retain the experimental wording.
@@ -83,5 +85,6 @@ about the model's training validity.
 
 See `PHASE_4_PROGRESS.md` for actual commands/results. No accuracy or calibrated
 confidence claim is made. Android Eggplant inference and real phone/board checks
-remain pending while preprocessing is unresolved. No new dependencies, firmware,
+remain pending. Experimental scanning is enabled, with preprocessing still
+provisional. No new dependencies, firmware,
 native services, segmentation or Bayesian ranking are introduced.

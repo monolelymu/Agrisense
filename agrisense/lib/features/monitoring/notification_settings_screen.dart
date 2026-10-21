@@ -360,7 +360,8 @@ class _NotificationSettingsScreenState
                     title: const Text('Analyze warning photos automatically'),
                     subtitle: Text(
                       widget.hardware.classifier.supports(widget.crop)
-                          ? 'Runs the installed ${widget.crop.label} model on each captured original. Experimental.'
+                          ? cropModels[widget.crop]?.testingNotice ??
+                                'Runs the installed ${widget.crop.label} model on each captured original. Experimental.'
                           : modelStatus(widget.crop),
                     ),
                     value: analyzePhoto,

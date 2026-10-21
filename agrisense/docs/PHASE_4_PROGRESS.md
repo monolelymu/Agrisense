@@ -1,5 +1,26 @@
 # Phase 4 progress
 
+## Current testing override (2026-10-21)
+User explicitly requested enabling Eggplant for testing despite unconfirmed
+training preprocessing. This supersedes the earlier activation gate below.
+Enabled provisional RGB stretch to 224x224, antialiased bilinear, float32 /255
+using the existing pipeline. No accuracy/parity claim. Version now includes
+`-provisional-rgb-aa01` so saved testing results remain identifiable. Testing
+notice appears on scanning, automatic settings, Dashboard and saved results.
+Automatic analysis still defaults Off; users can enable it in monitoring settings.
+Exact training preprocessing, Android inference and prediction-quality validation
+remain pending. Focused pipeline, interface, scan and automatic tests: 25 passed.
+Static analysis passed (no issues); offline APK rebuild passed, exit 0,
+`BUILD SUCCESSFUL in 1m 10s`. Checked the packaged kernel includes the provisional
+Eggplant version and the model bytes match the supplied export. Existing Gradle
+deprecation warnings remain. No dependencies installed or push performed.
+
+Exact next action: install the updated debug APK, select Eggplant, choose a clear
+leaf photo and check inference/results/history on Android. Automatic analysis is
+available but defaults Off. Actual Android inference and accuracy are not claimed
+by these focused tests or APK packaging. Obtain matching training preprocessing
+and compare labeled images before treating this preparation as verified.
+
 ## Scope
 Eggplant research, consolidated research register and bibliography, shared model
 metadata/inference, growing context and explanations. Preserve Tomato predictions,
@@ -54,7 +75,7 @@ resize lacks explicit antialiasing and its earlier graph lacks the export's
 outer rescaling layer. This confirms multiple procedure versions exist locally;
 do not assume they are equivalent to the supplied model.
 
-Exact next action: obtain the matching Eggplant loader/preprocessing confirmation
+Prior gated-release next action (superseded by the testing override above): obtain the matching Eggplant loader/preprocessing confirmation
 (color order, crop/stretch, resize/antialias, normalization). Then implement or
 select the matching preparation, remove the availability gate, run actual Android
 inference and representative labeled photos, and verify manual/automatic paths.

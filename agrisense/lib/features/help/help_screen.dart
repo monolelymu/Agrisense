@@ -135,7 +135,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
         for (final step in const [
           (
             '1. Choose a crop',
-            'Tomato has experimental photo analysis. Eggplant has offline knowledge and growing references; its installed model needs photo-preparation verification. Chili supports sensor monitoring while its model is prepared.',
+            'Tomato and Eggplant have experimental photo analysis, offline knowledge and growing references. Eggplant photo preparation is provisional for testing. Chili supports sensor monitoring while its model is prepared.',
           ),
           (
             '2. Connect, if you have boards',

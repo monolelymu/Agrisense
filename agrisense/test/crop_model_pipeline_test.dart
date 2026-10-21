@@ -49,8 +49,12 @@ void main() {
     () {
       expect(cropModels[Crop.chili], isNull);
       expect(modelAvailable(Crop.tomato), isTrue);
-      expect(modelAvailable(Crop.eggplant), isFalse);
-      expect(modelStatus(Crop.eggplant), contains('verification'));
+      expect(modelAvailable(Crop.eggplant), isTrue);
+      expect(modelStatus(Crop.eggplant), contains('provisional'));
+      expect(
+        cropModels[Crop.eggplant]!.version,
+        endsWith('-provisional-rgb-aa01'),
+      );
       expect(cropModels[Crop.tomato]!.version, 'tomato-v1-ef87a0106a29');
       for (final m in cropModels.values) {
         final labels =
@@ -79,10 +83,11 @@ void main() {
   );
 
   test(
-    'unknown preprocessing and absent crops cannot reach inference',
+    'Eggplant testing is available while absent crops cannot reach inference',
     () async {
       final classifier = TomatoClassifier();
-      for (final crop in [Crop.eggplant, Crop.chili]) {
+      expect(classifier.supports(Crop.eggplant), isTrue);
+      for (final crop in [Crop.chili]) {
         expect(classifier.supports(crop), isFalse);
         expect(
           () => classifier.classifyCrop(crop, Uint8List(1)),
