@@ -47,8 +47,10 @@ The teammate recalls deriving the training notebook from an earlier shared
 procedure. The corrected Tomato notebook has RGB decoding, resize and 0–1 input,
 but that recollection does not establish the exact Eggplant export procedure.
 
-Exact next action: finish shared model metadata, crop-aware context and interface;
-validate that unverified Eggplant cannot launch any inference path.
+Exact next action: final full Flutter regression suite once, static analysis and
+one offline debug APK build. Eggplant activation and actual Android inference
+remain pending exact training preprocessing confirmation. Do not remove the gate
+based only on the teammate's recollection of notebook ancestry.
 
 Static inspection was repeated on the bundled Eggplant file: one graph,
 float32 [1,224,224,3] -> [1,9], hash matches supplied export. The Tomato SHA256

@@ -167,7 +167,7 @@ void main() {
       await tester.tap(find.text('Diagnosis').last);
       await tester.pumpAndSettle();
       expect(
-        find.text('Model not available yet for Eggplant.'),
+        find.textContaining('Photo preparation still needs verification'),
         findsOneWidget,
       );
       expect(

@@ -3,6 +3,7 @@ import '../../core/app_controller.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
+import '../diagnosis/model_catalog.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({
@@ -37,9 +38,9 @@ class DashboardScreen extends StatelessWidget {
             label: const Text('Scan leaf'),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Select a photo for real, on-device analysis. Tomato only • Experimental.',
-            style: TextStyle(color: muted),
+          Text(
+            modelStatus(crop),
+            style: const TextStyle(color: muted),
           ),
           const SizedBox(height: 22),
         ],

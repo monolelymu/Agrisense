@@ -6,6 +6,8 @@ import '../../data/hardware_client.dart';
 import 'tomato_assessment.dart';
 import 'tomato_knowledge.dart';
 import 'tomato_scan.dart';
+import 'eggplant_knowledge.dart';
+import '../../data/models.dart';
 
 class ReferenceSources extends StatelessWidget {
   const ReferenceSources({required this.sources, super.key});
@@ -43,7 +45,10 @@ class ReferenceSources extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(source.title, style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                '${source.id.isEmpty ? '' : '[${source.id}] '}${source.title}',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               SelectableText(source.url),
               TextButton.icon(
@@ -74,15 +79,21 @@ class GrowingConditionsView extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '${c.daytime ? 'Day' : 'Night'} reference: ${c.minimumTemperature.toStringAsFixed(0)}–${c.maximumTemperature.toStringAsFixed(0)} °C',
+          '${c.crop == Crop.eggplant
+              ? 'General growing'
+              : c.daytime
+              ? 'Day'
+              : 'Night'} reference: ${c.minimumTemperature.toStringAsFixed(c.crop == Crop.eggplant ? 1 : 0)}–${c.maximumTemperature.toStringAsFixed(c.crop == Crop.eggplant ? 1 : 0)} °C',
         ),
         const SizedBox(height: 12),
         Text(
-          'Humidity: ${value(c.humidity, '% RH')} · ${referencePositionLabel(c.humidityPosition)}',
+          'Humidity: ${value(c.humidity, '% RH')} · ${c.crop == Crop.eggplant ? 'No numerical reference assigned' : referencePositionLabel(c.humidityPosition)}',
         ),
         const SizedBox(height: 8),
-        const Text(
-          '65–75% RH is a protected-growing reference. It is not a universal outdoor requirement.',
+        Text(
+          c.crop == Crop.eggplant
+              ? 'No universal Eggplant humidity range is assigned. Air humidity does not measure leaf wetness.'
+              : '65–75% RH is a protected-growing reference. It is not a universal outdoor requirement.',
         ),
         const SizedBox(height: 12),
         Text(
@@ -91,8 +102,10 @@ class GrowingConditionsView extends StatelessWidget {
               : 'Soil moisture: ${c.soil!.toStringAsFixed(1)}% (device-calibrated). No universal suitable percentage is assigned.',
         ),
         const SizedBox(height: 12),
-        const Text(
-          'For established tomatoes. Assumed daytime: 06:00–18:00, phone local time. References describe the environment, not confirmed plant health.',
+        Text(
+          c.crop == Crop.eggplant
+              ? 'General Eggplant growth reference, without a day/night schedule. References describe the environment, not confirmed plant health.'
+              : 'For established tomatoes. Assumed daytime: 06:00–18:00, phone local time. References describe the environment, not confirmed plant health.',
         ),
         if (c.sampleAt != null) ...[
           const SizedBox(height: 8),
@@ -105,7 +118,13 @@ class GrowingConditionsView extends StatelessWidget {
 
 /// Display-only expiry timer; no network requests, monitoring owner or poller.
 class GrowingConditionsPanel extends StatefulWidget {
-  const GrowingConditionsPanel({required this.sample, this.clock, super.key});
+  const GrowingConditionsPanel({
+    required this.sample,
+    this.clock,
+    this.crop = Crop.tomato,
+    super.key,
+  });
+  final Crop crop;
   final HardwareSample? sample;
   final DateTime Function()? clock;
   @override
@@ -131,7 +150,7 @@ class _GrowingConditionsPanelState extends State<GrowingConditionsPanel> {
     expiry?.cancel();
     final at = now;
     final sample = widget.sample;
-    if (!recentTomatoSample(sample, at)) return;
+    if (!recentCropSample(sample, at, widget.crop)) return;
     final local = at.toLocal();
     final boundary = local.hour < 6
         ? DateTime(local.year, local.month, local.day, 6)
@@ -166,10 +185,16 @@ class _GrowingConditionsPanelState extends State<GrowingConditionsPanel> {
         ),
         const SizedBox(height: 12),
         GrowingConditionsView(
-          conditions: GrowingConditions.assess(widget.sample, now),
+          conditions: GrowingConditions.assess(
+            widget.sample,
+            now,
+            crop: widget.crop,
+          ),
         ),
-        const ReferenceSources(
-          sources: [growingTemperatureSource, growingHumiditySource],
+        ReferenceSources(
+          sources: widget.crop == Crop.eggplant
+              ? [eggplantGrowingSource]
+              : [growingTemperatureSource, growingHumiditySource],
         ),
       ],
     ),
@@ -181,7 +206,9 @@ class TomatoExplanation extends StatelessWidget {
   final TomatoScan scan;
   @override
   Widget build(BuildContext context) {
-    final entry = tomatoKnowledge[scan.label];
+    final entry = (scan.crop == Crop.eggplant
+        ? eggplantKnowledge
+        : tomatoKnowledge)[scan.label];
     final assessment = TomatoAssessment.tryFromJson(scan.assessment);
     if (entry == null) {
       return const Text(
@@ -281,8 +308,12 @@ class TomatoExplanation extends StatelessWidget {
         ReferenceSources(
           sources: [
             ...entry.sources,
-            if (assessment != null) growingTemperatureSource,
-            if (assessment != null) growingHumiditySource,
+            if (assessment != null && scan.crop == Crop.eggplant)
+              eggplantGrowingSource,
+            if (assessment != null && scan.crop == Crop.tomato)
+              growingTemperatureSource,
+            if (assessment != null && scan.crop == Crop.tomato)
+              growingHumiditySource,
           ],
         ),
       ],

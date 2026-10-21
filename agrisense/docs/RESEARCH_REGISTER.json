@@ -15,7 +15,7 @@
         "tomato"
       ],
       "locator": "Growing references",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "Established Tomato day 21–29 C and night 18–21 C (rounded advisory ranges).",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "healthy"
@@ -23,7 +23,7 @@
     },
     {
       "id": "TM-02",
-      "title": "Controlled-environment tomato research guidance",
+      "title": "Guidelines to use tomato in experiments with a controlled environment",
       "authors_or_organization": "Schwarz, D., Thompson, A. J., & Kläring, H.-P.",
       "year": "2014",
       "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4235429/",
@@ -32,8 +32,8 @@
       "crops": [
         "tomato"
       ],
-      "locator": "Growing references",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "locator": "Relative humidity section; Frontiers in Plant Science, 5, Article 625",
+      "claims": "Protected/controlled-growing RH reference 65–75%, not universal outdoor limits.",
       "verification": "Article title, authors, year and DOI verified in Phase 4.",
       "labels": []
     },
@@ -49,7 +49,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "bacterial_spot: Warm conditions around 23.9–30 °C, high humidity and rain or overhead watering favor disease.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "bacterial_spot"
@@ -67,7 +67,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "early_blight: The guide reports an optimum around 27.8–30 °C; wet weather, heavy dew or RH of at least 90% favors spread.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "early_blight"
@@ -85,7 +85,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "late_blight: UC IPM reports infection in about 10 hours when average temperature is 15.6–25.6 °C and RH is above 90%.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "late_blight"
@@ -103,7 +103,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "leaf_mold: For the common tomato leaf mold described by UMN, RH of at least 85% favors severe outbreaks; optimum temperature is about 21.7–23.9 °C.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "leaf_mold"
@@ -121,7 +121,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "septoria_leaf_spot: UMN lists high humidity and temperatures around 20–25 °C as common favorable conditions.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "septoria_leaf_spot"
@@ -139,7 +139,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "target_spot: UF/IFAS reports favorable temperatures around 28.3–32.2 °C, high humidity and 16–44 hours of continuous leaf wetness.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "target_spot"
@@ -157,7 +157,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "powdery_mildew: Mild temperatures and humidity can favor development, but responses depend on the powdery mildew pathogen.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "powdery_mildew"
@@ -175,7 +175,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "mosaic_virus: Environmental readings cannot identify a virus or show whether a plant was exposed. spotted_wilt_virus: Temperature and humidity cannot establish that thrips carry the virus. yellow_leaf_curl_virus: Suitable weather does not establish infection or identify a virus-carrying whitefly.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "mosaic_virus",
@@ -195,7 +195,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "healthy: Suitable environmental readings do not prove that a plant is disease-free. magnesium_deficiency: Temperature, RH and soil moisture do not measure magnesium concentration. nitrogen_deficiency: Moisture readings do not measure nitrogen availability. potassium_deficiency: The installed sensors do not measure potassium concentration or uptake.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "healthy",
@@ -216,7 +216,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "leaf_miner: The installed environmental sensors do not detect larvae or establish pest identity.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "leaf_miner"
@@ -234,7 +234,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "spider_mites: Damage is often worse in hot, dusty conditions and on water-stressed plants.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "spider_mites"
@@ -252,7 +252,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "whitefly: Sensors cannot identify whitefly species, abundance or whether they carry a virus.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "whitefly"
@@ -270,7 +270,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "spotted_wilt_virus: Temperature and humidity cannot establish that thrips carry the virus.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "spotted_wilt_virus"
@@ -288,7 +288,7 @@
         "tomato"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
-      "claims": "See linked entry environment, symptoms, care and limitation fields; not a diagnostic probability.",
+      "claims": "yellow_leaf_curl_virus: Suitable weather does not establish infection or identify a virus-carrying whitefly.",
       "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
       "labels": [
         "yellow_leaf_curl_virus"
@@ -478,6 +478,23 @@
         "healthy",
         "insect_pest"
       ]
+    },
+    {
+      "id": "CTX-01",
+      "title": "A natural way to control tomato and eggplant disease",
+      "authors_or_organization": "DOST-PCAARRD",
+      "year": "n.d.",
+      "url": "https://www.pcaarrd.dost.gov.ph/index.php/quick-information-dispatch-qid-articles/a-natural-way-to-control-tomato-and-eggplant-disease",
+      "doi": null,
+      "accessed": "2026-10-21",
+      "crops": [
+        "tomato",
+        "eggplant"
+      ],
+      "labels": [],
+      "locator": "Local context paragraph in PHASE_3_REFERENCES.md",
+      "claims": "Black leaf mold refers to Pseudocercospora fuligena; do not equate it with Passalora leaf mold.",
+      "verification": "Carried forward from Phase 3; author/date and page content need re-verification; not used for numerical rules."
     }
   ]
 }

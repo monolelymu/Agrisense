@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../diagnosis/model_catalog.dart';
 import '../../core/hardware_controller.dart';
 import '../../core/sensor_notifications.dart';
 import '../../data/automatic_capture.dart';
@@ -358,12 +359,14 @@ class _NotificationSettingsScreenState
                     key: const ValueKey('auto-analyze'),
                     title: const Text('Analyze warning photos automatically'),
                     subtitle: Text(
-                      widget.crop == Crop.tomato
-                          ? 'Runs the installed Tomato model on each captured original.'
-                          : 'No disease model installed for this crop.',
+                      widget.hardware.classifier.supports(widget.crop)
+                          ? 'Runs the installed ${widget.crop.label} model on each captured original. Experimental.'
+                          : modelStatus(widget.crop),
                     ),
                     value: analyzePhoto,
-                    onChanged: busy || widget.crop != Crop.tomato
+                    onChanged:
+                        busy ||
+                            !widget.hardware.classifier.supports(widget.crop)
                         ? null
                         : (v) => setState(() {
                             analyzePhoto = v;

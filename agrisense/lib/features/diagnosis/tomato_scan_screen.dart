@@ -13,6 +13,8 @@ import '../../data/models.dart';
 import 'tomato_classifier.dart';
 import 'tomato_scan.dart';
 import 'tomato_context_widgets.dart';
+import 'model_catalog.dart';
+import 'crop_knowledge_screen.dart';
 
 class TomatoApp extends StatelessWidget {
   const TomatoApp({
@@ -90,9 +92,16 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       if (!mounted) return;
       if (lost.exception != null) throw lost.exception!;
       if (lost.files?.isNotEmpty ?? false) {
-        // Only tomato can launch the picker in this version.
-        setState(() => crop = Crop.tomato);
-        await _analyze(lost.files!.first, Crop.tomato);
+        final pendingCrop = widget.store.box.get('pending-photo-crop-v1');
+        final matches = Crop.values.where((c) => c.name == pendingCrop);
+        if (matches.isEmpty || !classifier.supports(matches.first)) {
+          throw StateError(
+            'The interrupted photo has no verified crop model. Select it again.',
+          );
+        }
+        final recoveredCrop = matches.first;
+        setState(() => crop = recoveredCrop);
+        await _analyze(lost.files!.first, recoveredCrop);
       }
     } catch (_) {
       issue = AppIssue.photo;
@@ -117,6 +126,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       activity = 'Selecting photo…';
     });
     try {
+      await widget.store.box.put('pending-photo-crop-v1', selectedCrop.name);
       final photo = await picker.pickImage(
         source: ImageSource.gallery,
         requestFullMetadata: false,
@@ -362,9 +372,21 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             Text(
               classifier.supports(crop)
                   ? 'Choose a clear leaf photo. Analysis runs on this device.'
-                  : 'Model not available yet for ${crop.label}.',
+                  : modelStatus(crop),
             ),
             const SizedBox(height: 12),
+            if (crop != Crop.chili)
+              TextButton.icon(
+                icon: const Icon(Icons.menu_book_outlined),
+                label: Text('${crop.label} knowledge & care'),
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CropKnowledgeScreen(crop: crop),
+                        ),
+                      ),
+              ),
             FilledButton.icon(
               onPressed: canScan ? _selectPhoto : null,
               icon: const Icon(Icons.add_photo_alternate_outlined),
@@ -574,7 +596,7 @@ class TomatoResultCard extends StatelessWidget {
             'This older scan saved only its leading prediction.',
             style: TextStyle(color: muted),
           ),
-        if (scan.crop == Crop.tomato) TomatoExplanation(scan: scan),
+        if (scan.crop != Crop.chili) TomatoExplanation(scan: scan),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: const Text('Details'),

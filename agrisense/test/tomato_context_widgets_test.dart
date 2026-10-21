@@ -196,39 +196,53 @@ void main() {
     expect(copied, growingTemperatureSource.url);
     expect(find.text('Source link copied.'), findsOneWidget);
   });
-  testWidgets('growing panel is Tomato-only and does not start monitoring', (
-    tester,
-  ) async {
-    late Directory dir;
-    late Box<dynamic> box;
-    await tester.runAsync(() async {
-      dir = await Directory.systemTemp.createTemp('tomato-ui-');
-      Hive.init(dir.path);
-      box = await Hive.openBox<dynamic>('ui');
-    });
-    final h = HardwareController(box)..load();
-    addTearDown(() async {
-      await tester.pumpWidget(const SizedBox());
-      h.dispose();
+  testWidgets(
+    'growing panel supports researched crops without starting monitoring',
+    (tester) async {
+      late Directory dir;
+      late Box<dynamic> box;
       await tester.runAsync(() async {
-        await box.close();
-        await dir.delete(recursive: true);
+        dir = await Directory.systemTemp.createTemp('tomato-ui-');
+        Hive.init(dir.path);
+        box = await Hive.openBox<dynamic>('ui');
       });
-    });
-    await tester.pumpWidget(
-      HardwareApp(
-        hardware: h,
-        scans: TomatoScanStore(box),
-        showTutorial: false,
-      ),
-    );
-    expect(find.byType(GrowingConditionsPanel), findsOneWidget);
-    for (final crop in ['Chili', 'Eggplant']) {
-      await tester.tap(find.text(crop).first);
-      await tester.pumpAndSettle();
-      expect(find.byType(GrowingConditionsPanel), findsNothing);
-    }
-    expect(h.polling, isFalse);
-    expect(tester.takeException(), isNull);
-  });
+      final h = HardwareController(box)..load();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox());
+        h.dispose();
+        await tester.runAsync(() async {
+          await box.close();
+          await dir.delete(recursive: true);
+        });
+      });
+      await tester.pumpWidget(
+        HardwareApp(
+          hardware: h,
+          scans: TomatoScanStore(box),
+          showTutorial: false,
+        ),
+      );
+      expect(find.byType(GrowingConditionsPanel), findsOneWidget);
+      for (final crop in ['Chili', 'Eggplant']) {
+        await tester.tap(find.text(crop).first);
+        await tester.pumpAndSettle();
+        expect(
+          find.byType(GrowingConditionsPanel),
+          crop == 'Chili' ? findsNothing : findsOneWidget,
+        );
+        if (crop == 'Eggplant') {
+          expect(
+            tester
+                .widget<GrowingConditionsPanel>(
+                  find.byType(GrowingConditionsPanel),
+                )
+                .crop,
+            Crop.eggplant,
+          );
+        }
+      }
+      expect(h.polling, isFalse);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

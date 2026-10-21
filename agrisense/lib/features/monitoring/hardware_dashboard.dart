@@ -17,6 +17,8 @@ import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
 import 'alert_detail_screen.dart';
 import '../diagnosis/tomato_context_widgets.dart';
+import '../diagnosis/model_catalog.dart';
+import '../diagnosis/crop_knowledge_screen.dart';
 
 class HardwareApp extends StatelessWidget {
   const HardwareApp({
@@ -467,12 +469,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
         ],
       ),
-      if (crop == Crop.tomato) ...[
+      if (crop != Crop.chili) ...[
         const SizedBox(height: 20),
         GrowingConditionsPanel(
+          crop: crop,
           sample: r != null && r.deviceId == h.assignments[crop]?['sensorId']
               ? r
               : null,
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.menu_book_outlined),
+          label: Text('${crop.label} knowledge & care'),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => CropKnowledgeScreen(crop: crop),
+            ),
+          ),
         ),
       ],
       const SizedBox(height: 24),
@@ -568,9 +580,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       label: const Text('Open capture and analysis'),
     ),
     const SizedBox(height: 12),
-    const Text(
-      'Photo analysis: Tomato available · Chili and Eggplant coming soon.',
-    ),
+    Text(modelStatus(crop)),
   ];
 
   double? _value(HardwareSample r) => switch (metric) {
