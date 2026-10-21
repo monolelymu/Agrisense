@@ -10,8 +10,16 @@ changes. Local checkpoint commits only; no push.
 - A research: complete; 9 Eggplant entries, 26 registered app sources and working
   bibliography. Individual author/year details not verified are explicitly flagged.
   Focused knowledge tests: 4 passed (Eggplant and Tomato).
-- B model pipeline: pending; Eggplant preprocessing verification is blocked.
-- C interface and context: pending.
+- B shared model pipeline/context: implemented and checked; Eggplant activation
+  remains blocked on preprocessing verification. Tomato tensor generation/model
+  bytes/version unchanged. 12 pipeline/navigation tests passed after updating an
+  expected old availability message. Existing assessment/automatic tests passed
+  in the initial grouped run (one navigation-copy expectation failed).
+- C interface: complete; 11 Eggplant/Tomato widget tests passed. Existing
+  Tomato-only panel expectation updated to include Eggplant, and lazy-list
+  scrolling corrected in the new settings test. 9 automatic-diagnosis tests
+  passed including a fake verified Eggplant capability with linked history and
+  duplicate prevention. Production Eggplant inference remains disabled.
 - D checks/APK: pending.
 
 ## Model verification
@@ -41,3 +49,9 @@ but that recollection does not establish the exact Eggplant export procedure.
 
 Exact next action: finish shared model metadata, crop-aware context and interface;
 validate that unverified Eggplant cannot launch any inference path.
+
+Static inspection was repeated on the bundled Eggplant file: one graph,
+float32 [1,224,224,3] -> [1,9], hash matches supplied export. The Tomato SHA256
+remains ef87a0106a2950b4926bf7bb0de4e1eddf1600fd6aac972c8b12358a91b11665.
+Register now includes 26 app sources plus one carried-forward local-context source.
+Checkpoint A: e4617d3. No dependencies installed and no push.

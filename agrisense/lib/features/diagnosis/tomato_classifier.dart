@@ -10,55 +10,73 @@ import 'tomato_scan.dart';
 import 'photo_processing.dart';
 export 'photo_processing.dart' show maxPhotoBytes;
 import '../../data/models.dart';
+import 'model_catalog.dart';
+export 'model_catalog.dart' show tomatoModelVersion;
 
-const tomatoModelVersion = 'tomato-v1-ef87a0106a29';
-
+// Retain the public class name for existing controller injection and test fakes.
 class TomatoClassifier {
-  bool supports(Crop crop) => crop == Crop.tomato;
+  bool supports(Crop crop) => modelAvailable(crop);
 
   Future<TomatoScan> classifyCrop(Crop crop, Uint8List photo) {
     if (!supports(crop)) {
-      throw StateError('Model not available yet for ${crop.label}.');
+      throw StateError('Model not available: ${modelStatus(crop)}');
     }
-    return classify(photo);
+    return crop == Crop.tomato ? classify(photo) : _classifyCrop(crop, photo);
   }
 
-  Future<TomatoScan> classify(Uint8List photo) async {
+  Future<TomatoScan> classify(Uint8List photo) =>
+      _classifyCrop(Crop.tomato, photo);
+
+  Future<TomatoScan> _classifyCrop(Crop crop, Uint8List photo) async {
+    final metadata = cropModels[crop];
+    if (metadata == null || !metadata.available) {
+      throw StateError('Model not available: ${modelStatus(crop)}');
+    }
     if (photo.isEmpty || photo.length > maxPhotoBytes) {
       throw const FormatException('Choose a photo smaller than 15 MB.');
     }
-    final model = await rootBundle.load('assets/models/tomato_model.tflite');
+    final model = await rootBundle.load(metadata.modelAsset);
     final labels =
-        (jsonDecode(
-                  await rootBundle.loadString(
-                    'assets/models/tomato_labels.json',
-                  ),
-                )
-                as List)
+        (jsonDecode(await rootBundle.loadString(metadata.labelsAsset)) as List)
             .cast<String>();
     return compute(_classify, (
       photo,
       model.buffer.asUint8List(model.offsetInBytes, model.lengthInBytes),
       labels,
+      metadata,
     ));
   }
 }
 
-TomatoScan _classify((Uint8List, Uint8List, List<String>) request) {
-  final (bytes, model, labels) = request;
+TomatoScan _classify((Uint8List, Uint8List, List<String>, CropModel) request) {
+  final (bytes, model, labels, metadata) = request;
   final image = decodeLeafPhoto(bytes);
-  final input = preprocessTomato(image);
+  final input = switch (metadata.preparation) {
+    ImagePreparation.rgbBilinearAntialiasZeroToOne => preprocessTomato(
+      image,
+      size: metadata.inputSize,
+    ),
+    null => throw StateError('Model preprocessing is unverified.'),
+  };
   final interpreter = Interpreter.fromBuffer(model);
   try {
     final inputTensor = interpreter.getInputTensor(0);
     final outputTensor = interpreter.getOutputTensor(0);
-    if (!listEquals(inputTensor.shape, [1, 224, 224, 3]) ||
+    if (!listEquals(inputTensor.shape, [
+          1,
+          metadata.inputSize,
+          metadata.inputSize,
+          3,
+        ]) ||
         inputTensor.type != TensorType.float32 ||
         !listEquals(outputTensor.shape, [1, labels.length]) ||
         outputTensor.type != TensorType.float32 ||
-        labels.isEmpty ||
+        labels.length != metadata.classCount ||
+        labels.any((label) => label.trim().isEmpty) ||
         labels.toSet().length != labels.length) {
-      throw StateError('The tomato model and labels are incompatible.');
+      throw StateError(
+        'The ${metadata.crop.label} model and labels are incompatible.',
+      );
     }
     final output = [List<double>.filled(labels.length, 0)];
     interpreter.run(input.buffer, output);
@@ -80,7 +98,8 @@ TomatoScan _classify((Uint8List, Uint8List, List<String>) request) {
       label: labels[best],
       score: scores[best],
       preview: leafPreview(image),
-      modelVersion: tomatoModelVersion,
+      modelVersion: metadata.version,
+      crop: metadata.crop,
       predictions: ranked
           .take(3)
           .map((i) => ScanPrediction(labels[i], scores[i]))
@@ -93,8 +112,7 @@ TomatoScan _classify((Uint8List, Uint8List, List<String>) request) {
 
 /// TensorFlow resize convention: half-pixel centers and a widened triangle
 /// filter when downsampling (bilinear, antialias=true), then RGB / 255.
-Float32List preprocessTomato(img.Image image) {
-  const size = 224;
+Float32List preprocessTomato(img.Image image, {int size = 224}) {
   List<List<(int, double)>> weights(int source) {
     final scale = source / size;
     final support = math.max(1.0, scale);

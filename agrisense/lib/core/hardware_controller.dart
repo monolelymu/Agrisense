@@ -130,18 +130,18 @@ class HardwareController extends ChangeNotifier {
     required DateTime at,
     HardwareSample? trigger,
   }) {
-    if (scan.crop != Crop.tomato || scan.source == 'upload') return scan;
+    if (scan.crop == Crop.chili || scan.source == 'upload') return scan;
     HardwareSample? sample;
     if (scan.source == 'auto') {
       sample = trigger;
     } else if (scan.source == 'camera') {
-      final device = assignments[Crop.tomato]?['sensorId'];
+      final device = assignments[scan.crop]?['sensorId'];
       if (device != null && device.isNotEmpty) {
         final candidates =
             samples
                 .where(
                   (s) =>
-                      s.crop == Crop.tomato &&
+                      s.crop == scan.crop &&
                       s.deviceId == device &&
                       !s.receivedAt.isAfter(at),
                 )
@@ -150,8 +150,9 @@ class HardwareController extends ChangeNotifier {
         if (candidates.isNotEmpty) sample = candidates.first;
       }
     }
-    if (!recentTomatoSample(sample, at)) return scan;
+    if (!recentCropSample(sample, at, scan.crop)) return scan;
     final assessment = TomatoAssessment.assess(
+      crop: scan.crop,
       label: scan.label,
       context: scan.source == 'auto'
           ? 'Alert trigger readings'

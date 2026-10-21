@@ -51,6 +51,10 @@ class FakeCamera extends HardwareClient {
 }
 
 class FakeClassifier extends TomatoClassifier {
+  bool eggEnabled = false;
+  @override
+  bool supports(Crop crop) =>
+      super.supports(crop) || (eggEnabled && crop == Crop.eggplant);
   int calls = 0;
   bool fail = false;
   Uint8List? input;
@@ -66,6 +70,7 @@ class FakeClassifier extends TomatoClassifier {
       score: .55,
       preview: Uint8List(0),
       modelVersion: 'fake-v1',
+      crop: crop,
       predictions: const [ScanPrediction('healthy', .55)],
     );
   }
@@ -143,23 +148,48 @@ void main() {
     await box.close();
     await dir.delete(recursive: true);
   });
-  Future<void> start() async {
+  Future<void> start([Crop crop = Crop.tomato]) async {
     final done = Completer<void>();
     void listen() {
       if (!h.busy && !done.isCompleted) done.complete();
     }
 
     h.addListener(listen);
-    h.startPolling(Crop.tomato);
+    h.startPolling(crop);
     await done.future;
     h.removeListener(listen);
   }
 
-  Future<void> trigger() async {
-    await start();
+  Future<void> trigger([Crop crop = Crop.tomato]) async {
+    await start(crop);
     now = now.add(const Duration(seconds: 10));
-    await h.refresh(Crop.tomato);
+    await h.refresh(crop);
   }
+
+  test(
+    'verified-model capability routes Eggplant alerts to linked Eggplant history',
+    () async {
+      // Workflow fake only. Production remains gated until preprocessing is verified.
+      classifier.eggEnabled = true;
+      h.assignments[Crop.eggplant] = {
+        'sensor': 'http://192.168.1.60',
+        'camera': 'http://192.168.1.61',
+      };
+      await h.saveNotificationSettings(Crop.eggplant, settings);
+      await trigger(Crop.eggplant);
+      expect(classifier.calls, 1);
+      expect(h.alerts.single.crop, Crop.eggplant);
+      expect(h.alerts.single.state, 'completed');
+      final scan = scans.load().single;
+      expect(scan.crop, Crop.eggplant);
+      expect(scan.source, 'auto');
+      expect(scan.alertId, h.alerts.single.id);
+      expect(scan.assessment!['reference_version'], startsWith('eggplant-'));
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(scans.load().length, 1);
+      expect(classifier.calls, 1);
+    },
+  );
 
   test(
     'denied notifications still capture original and save one linked uncertain result',

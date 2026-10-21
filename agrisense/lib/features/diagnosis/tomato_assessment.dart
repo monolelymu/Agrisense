@@ -1,6 +1,7 @@
 import '../../data/hardware_client.dart';
 import '../../data/models.dart';
 import 'tomato_knowledge.dart';
+import 'eggplant_knowledge.dart';
 
 enum ReferencePosition { within, above, below, unavailable }
 
@@ -12,8 +13,11 @@ String referencePositionLabel(ReferencePosition position) => switch (position) {
 };
 
 bool recentTomatoSample(HardwareSample? sample, DateTime at) =>
+    recentCropSample(sample, at, Crop.tomato);
+
+bool recentCropSample(HardwareSample? sample, DateTime at, Crop crop) =>
     sample != null &&
-    sample.crop == Crop.tomato &&
+    sample.crop == crop &&
     !sample.receivedAt.isAfter(at) &&
     at.difference(sample.receivedAt) <= const Duration(seconds: 30);
 
@@ -32,19 +36,37 @@ class GrowingConditions {
     this.temperature,
     this.humidity,
     this.soil,
+    this.crop = Crop.tomato,
   });
   final DateTime at;
+  final Crop crop;
   final DateTime? sampleAt;
   final bool daytime;
   final double minimumTemperature, maximumTemperature;
   final double? temperature, humidity, soil;
   final ReferencePosition temperaturePosition, humidityPosition;
 
-  factory GrowingConditions.assess(HardwareSample? sample, DateTime at) {
+  factory GrowingConditions.assess(
+    HardwareSample? sample,
+    DateTime at, {
+    Crop crop = Crop.tomato,
+  }) {
+    if (crop == Crop.chili) {
+      throw ArgumentError('No Chili growing reference is installed.');
+    }
     final local = at.toLocal();
     final day = local.hour >= 6 && local.hour < 18;
-    final lower = day ? 21.0 : 18.0, upper = day ? 29.0 : 21.0;
-    final fresh = recentTomatoSample(sample, at);
+    final lower = crop == Crop.eggplant
+        ? 21.1
+        : day
+        ? 21.0
+        : 18.0;
+    final upper = crop == Crop.eggplant
+        ? 29.4
+        : day
+        ? 29.0
+        : 21.0;
+    final fresh = recentCropSample(sample, at, crop);
     final t = fresh && _valid(sample!.temperature, -40, 80)
         ? sample.temperature
         : null;
@@ -61,6 +83,7 @@ class GrowingConditions {
         : ReferencePosition.within;
     return GrowingConditions(
       at: at,
+      crop: crop,
       sampleAt: sample?.receivedAt,
       daytime: day,
       minimumTemperature: lower,
@@ -71,11 +94,14 @@ class GrowingConditions {
           ? sample.soil
           : null,
       temperaturePosition: position(t, lower, upper),
-      humidityPosition: position(rh, 65, 75),
+      humidityPosition: crop == Crop.tomato
+          ? position(rh, 65, 75)
+          : ReferencePosition.unavailable,
     );
   }
 
   Map<String, dynamic> toJson() => {
+    'crop': crop.name,
     'at': at.toIso8601String(),
     'sample_at': sampleAt?.toIso8601String(),
     'daytime': daytime,
@@ -88,6 +114,7 @@ class GrowingConditions {
     'humidity_position': humidityPosition.name,
   };
   factory GrowingConditions.fromJson(Map value) => GrowingConditions(
+    crop: Crop.values.byName(value['crop'] as String? ?? 'tomato'),
     at: DateTime.parse(value['at'] as String),
     sampleAt: value['sample_at'] == null
         ? null
@@ -163,14 +190,29 @@ EnvironmentalEvidence assessTomatoEvidence(
   HardwareSample? sample,
   Iterable<HardwareSample> history,
   DateTime at,
+) => assessCropEvidence(Crop.tomato, label, sample, history, at);
+
+EnvironmentalEvidence assessCropEvidence(
+  Crop crop,
+  String label,
+  HardwareSample? sample,
+  Iterable<HardwareSample> history,
+  DateTime at,
 ) {
-  if (!recentTomatoSample(sample, at)) {
+  if (crop == Crop.chili) {
+    return const EnvironmentalEvidence(
+      EvidenceState.notAssessable,
+      'No crop-specific research reference is installed.',
+    );
+  }
+  if (!recentCropSample(sample, at, crop)) {
     return const EnvironmentalEvidence(
       EvidenceState.noContext,
       'No recent sensor readings are linked to this photo.',
     );
   }
-  final rule = tomatoKnowledge[label]?.rule;
+  final rule =
+      (crop == Crop.tomato ? tomatoKnowledge : eggplantKnowledge)[label]?.rule;
   if (rule == null) {
     return const EnvironmentalEvidence(
       EvidenceState.notAssessable,
@@ -290,11 +332,14 @@ class TomatoAssessment {
     required HardwareSample sample,
     required Iterable<HardwareSample> history,
     required DateTime at,
+    Crop crop = Crop.tomato,
   }) => TomatoAssessment(
-    referenceVersion: tomatoReferenceVersion,
+    referenceVersion: crop == Crop.eggplant
+        ? eggplantReferenceVersion
+        : tomatoReferenceVersion,
     context: context,
-    conditions: GrowingConditions.assess(sample, at),
-    evidence: assessTomatoEvidence(label, sample, history, at),
+    conditions: GrowingConditions.assess(sample, at, crop: crop),
+    evidence: assessCropEvidence(crop, label, sample, history, at),
   );
   Map<String, dynamic> toJson() => {
     'version': 1,

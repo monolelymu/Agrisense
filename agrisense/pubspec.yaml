@@ -65,6 +65,8 @@ flutter:
   assets:
     - assets/models/tomato_model.tflite
     - assets/models/tomato_labels.json
+    - assets/models/eggplant_model.tflite
+    - assets/models/eggplant_labels.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
