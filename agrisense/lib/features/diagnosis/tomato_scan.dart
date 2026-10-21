@@ -28,12 +28,14 @@ class TomatoScan {
     this.source = 'upload',
     this.alertId,
     this.sensorContext,
+    this.assessment,
   });
 
   final String id, label, modelVersion;
   final String source;
   final String? alertId;
   final Map<String, dynamic>? sensorContext;
+  final Map<String, dynamic>? assessment;
   final DateTime timestamp;
   final double score;
   final Uint8List preview;
@@ -56,6 +58,7 @@ class TomatoScan {
     'source': source,
     'alert_id': alertId,
     'sensor_context': sensorContext,
+    'assessment': assessment,
     'predictions': predictions.map((p) => p.toJson()).toList(),
   };
 
@@ -72,6 +75,9 @@ class TomatoScan {
     sensorContext: json['sensor_context'] == null
         ? null
         : Map<String, dynamic>.from(json['sensor_context'] as Map),
+    assessment: json['assessment'] is Map
+        ? Map<String, dynamic>.from(json['assessment'] as Map)
+        : null,
     predictions: (json['predictions'] as List? ?? [])
         .map((p) => ScanPrediction.fromJson(p as Map))
         .toList(),

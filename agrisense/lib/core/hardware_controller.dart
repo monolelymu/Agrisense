@@ -12,6 +12,7 @@ import '../features/diagnosis/tomato_classifier.dart';
 import '../features/diagnosis/tomato_scan.dart';
 import '../data/monitoring_alert.dart';
 import 'monitoring_service.dart';
+import '../features/diagnosis/tomato_assessment.dart';
 
 class HardwareController extends ChangeNotifier {
   HardwareController(
@@ -121,6 +122,49 @@ class HardwareController extends ChangeNotifier {
         sample != null &&
         !_clock().isBefore(sample.receivedAt) &&
         _clock().difference(sample.receivedAt).inSeconds <= 30;
+  }
+
+  /// Freeze context at capture/trigger time, never at a later history-view time.
+  TomatoScan attachScanContext(
+    TomatoScan scan, {
+    required DateTime at,
+    HardwareSample? trigger,
+  }) {
+    if (scan.crop != Crop.tomato || scan.source == 'upload') return scan;
+    HardwareSample? sample;
+    if (scan.source == 'auto') {
+      sample = trigger;
+    } else if (scan.source == 'camera') {
+      final device = assignments[Crop.tomato]?['sensorId'];
+      if (device != null && device.isNotEmpty) {
+        final candidates =
+            samples
+                .where(
+                  (s) =>
+                      s.crop == Crop.tomato &&
+                      s.deviceId == device &&
+                      !s.receivedAt.isAfter(at),
+                )
+                .toList()
+              ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+        if (candidates.isNotEmpty) sample = candidates.first;
+      }
+    }
+    if (!recentTomatoSample(sample, at)) return scan;
+    final assessment = TomatoAssessment.assess(
+      label: scan.label,
+      context: scan.source == 'auto'
+          ? 'Alert trigger readings'
+          : 'Readings preceding camera capture',
+      sample: sample!,
+      history: samples,
+      at: at,
+    );
+    return TomatoScan.fromJson({
+      ...scan.toJson(),
+      'sensor_context': sample.toJson(),
+      'assessment': assessment.toJson(),
+    });
   }
 
   Future<void> assign(
@@ -858,15 +902,19 @@ class HardwareController extends ChangeNotifier {
         return;
       }
       final prediction = await classifier.classifyCrop(alert.crop, bytes);
-      final scan = TomatoScan.fromJson({
-        ...prediction.toJson(),
-        'id': alert.resultId,
-        'timestamp': (alert.capturedAt ?? alert.timestamp).toIso8601String(),
-        'crop': alert.crop.name,
-        'source': 'auto',
-        'alert_id': alert.id,
-        'sensor_context': alert.sample.toJson(),
-      });
+      final scan = attachScanContext(
+        TomatoScan.fromJson({
+          ...prediction.toJson(),
+          'id': alert.resultId,
+          'timestamp': (alert.capturedAt ?? alert.timestamp).toIso8601String(),
+          'crop': alert.crop.name,
+          'source': 'auto',
+          'alert_id': alert.id,
+          'sensor_context': alert.sample.toJson(),
+        }),
+        at: alert.timestamp,
+        trigger: alert.sample,
+      );
       _pendingResults[alert.id] = scan;
       while (_pendingResults.length > 20) {
         _pendingResults.remove(_pendingResults.keys.first);

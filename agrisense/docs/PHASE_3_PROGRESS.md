@@ -12,7 +12,8 @@ No dependencies, firmware changes, emulator or simulator. Local commits; no push
 ## Checkpoints
 
 - A reference data: complete; 17 sourced entries and research table saved.
-- B assessment and persistence: pending.
+- B assessment and persistence: complete; focused assessment + auto-diagnosis
+  tests report 19 passed.
 - C Dashboard/shared result UI: pending.
 - D final regression, analysis and one offline APK build: pending.
 
@@ -27,6 +28,10 @@ No dependencies, firmware changes, emulator or simulator. Local commits; no push
 - Automatic context is the trigger sample. Manual camera context uses the latest
   preceding same-crop/current-device reading within 30 seconds. Uploads have none.
 - Exposure requires same crop/device, unique IDs, and no gap over 30 seconds.
+- Late blight uses a time-weighted average temperature over the 10-hour window,
+  with RH continuously above 90%; it does not require every temperature in-band.
+- Source actions copy the HTTPS link; text stays available offline, with no new
+  URL-launch dependency or automatic external requests.
 
 ## Validation policy and recovery
 
@@ -38,5 +43,8 @@ C++ tests or deliverables. Checkpoint A: focused knowledge test reports 2 passed
 (`flutter test --no-pub test/tomato_knowledge_test.dart --reporter expanded`).
 No dependencies installed or network sources contacted during implementation.
 
-Exact next action: implement assessment logic and optional scan snapshots, then
-test freshness, exposure continuity and persistence for checkpoint B.
+Checkpoint B command: `flutter test --no-pub test/tomato_assessment_test.dart
+test/automatic_diagnosis_test.dart --reporter expanded` (19 passed).
+
+Exact next action: implement the Dashboard panel and shared result explanations;
+run focused widget tests for checkpoint C.

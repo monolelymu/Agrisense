@@ -167,13 +167,18 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     });
     try {
       final bytes = await widget.hardware!.capture(selectedCrop);
+      final capturedAt = DateTime.now();
       if (!mounted) return;
       setState(() => activity = 'Analyzing camera photo…');
       final prediction = await classifier.classifyCrop(selectedCrop, bytes);
-      final scan = TomatoScan.fromJson({
-        ...prediction.toJson(),
-        'source': 'camera',
-      });
+      final scan = widget.hardware!.attachScanContext(
+        TomatoScan.fromJson({
+          ...prediction.toJson(),
+          'source': 'camera',
+          'timestamp': capturedAt.toIso8601String(),
+        }),
+        at: capturedAt,
+      );
       if (!mounted) return;
       setState(() {
         result = scan;
