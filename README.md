@@ -3,7 +3,9 @@
 **Current Android app:** real sensor/camera integration, local Tomato photo
 analysis, monitoring limits and warning photos. Phase 1 adds organized History,
 unified monitoring settings, actionable error codes, and offline Help/tutorial.
-See [the current app guide](agrisense/docs/PHASE_1.md).
+Phase 2 adds automatic diagnosis, Sensitive presets and Android background
+monitoring. See [the Phase 2 guide](agrisense/docs/PHASE_2.md) and
+[verification progress](agrisense/docs/PHASE_2_PROGRESS.md).
 
 The mock-demo instructions below describe the earlier simulated workspace.
 

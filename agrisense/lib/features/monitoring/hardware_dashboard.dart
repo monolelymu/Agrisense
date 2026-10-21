@@ -150,11 +150,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       error = null;
       actionIssue = null;
     });
-    if (monitoring)
+    if (monitoring) {
       _saveAction(
         () => h.startMonitoring(value),
         fallback: AppIssue.background,
       );
+    }
   }
 
   Future<void> _scan() => h.withPollingPaused(() async {

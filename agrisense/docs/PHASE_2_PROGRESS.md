@@ -26,8 +26,8 @@
   Loopback readings continued from count 4 to 8 while minimized/screen-locked;
   reopening retained the same app process (one data owner). Stop/force-stop checks
   and actual automatic-model result still pending.
-- D: all 85 Flutter regression tests pass; analysis clean before final docs/guard
-  changes. Updated APK installs and launches on the API 36 read-only emulator.
+- D: all 86 Flutter regression tests pass; final static analysis reports no
+  issues. Updated APK installs and launches on the API 36 read-only emulator.
   Synthetic loopback boards pair successfully. Sensitive preset UI under test.
   Sensitive preview correctly showed 34..36 C and 85..95% from baseline 35/90;
   uncalibrated soil remained disabled. Editing revealed a focus-loss bug when the
@@ -52,8 +52,16 @@ Checkpoint A: 21 tests passed (monitoring_alert_test + sensor_notifications_test
 Migration, baseline clamping/freshness, repeat cooldown and 500-record retention
 are covered. No dependencies installed.
 
-Next: run final analysis/full suite and offline APK build, then save validation
-results in a local commit. Remaining acceptance: notification Stop action,
+Implementation checkpoints: 5bbe820 (A domain/storage), 6877cca (B/C implementation
+and focused verification). Final checks: `flutter analyze --no-pub` clean;
+`flutter test --no-pub --reporter expanded` reports 86 passed. An initial lint for
+missing braces was corrected and analysis rerun successfully. The test emulator
+and loopback fixture are stopped. User guide: PHASE_2.md.
+Final `gradlew --offline --no-daemon :app:assembleDebug --quiet` completed with
+exit 0. APK: `build/app/outputs/apk/debug/app-debug.apk`. Existing Java native
+access warnings did not prevent the build. No dependencies downloaded.
+
+Next: resume remaining acceptance with power available: notification Stop action,
 force-stop/reopen behavior, actual automatic TFLite result through the full
 emulator workflow, and physical phone/board screen-lock, Wi-Fi/camera and sustained
 operation. These checks are pending, not claimed complete. No new dependencies or

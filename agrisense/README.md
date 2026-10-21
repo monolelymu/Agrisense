@@ -1,6 +1,7 @@
 # AgriSense
 
-**Current app:** see [Phase 1 app guide](docs/PHASE_1.md) for real hardware
+**Current app:** see [Phase 2 app guide](docs/PHASE_2.md) for automatic diagnosis,
+Sensitive presets and Android background monitoring, and [Phase 1](docs/PHASE_1.md) for real hardware
 monitoring, Tomato photo analysis, History filters, Monitoring & Auto Scan,
 error codes and offline Help. The simulated-prototype notes below are historical.
 
