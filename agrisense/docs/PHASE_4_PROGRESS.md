@@ -20,7 +20,10 @@ changes. Local checkpoint commits only; no push.
   scrolling corrected in the new settings test. 9 automatic-diagnosis tests
   passed including a fake verified Eggplant capability with linked history and
   duplicate prevention. Production Eggplant inference remains disabled.
-- D checks/APK: pending.
+- D verification: full Flutter suite passed once, **117 tests**, exit 0 (38 s
+  test time); `flutter analyze --no-pub` reports no issues, exit 0. Offline debug
+  APK built successfully (54 s Gradle build, exit 0). Actual Android Eggplant
+  inference remains pending; Phase 4 activation/acceptance is not complete.
 
 ## Model verification
 Supplied `eggplant modes.zip` contains a 9-class float32 TFLite model with input
@@ -46,14 +49,44 @@ remain pending. Do not stage unrelated C++ test or deliverables.
 The teammate recalls deriving the training notebook from an earlier shared
 procedure. The corrected Tomato notebook has RGB decoding, resize and 0–1 input,
 but that recollection does not establish the exact Eggplant export procedure.
+Also inspected `tools/agrisense_training.py` without executing it: its default
+resize lacks explicit antialiasing and its earlier graph lacks the export's
+outer rescaling layer. This confirms multiple procedure versions exist locally;
+do not assume they are equivalent to the supplied model.
 
-Exact next action: final full Flutter regression suite once, static analysis and
-one offline debug APK build. Eggplant activation and actual Android inference
-remain pending exact training preprocessing confirmation. Do not remove the gate
-based only on the teammate's recollection of notebook ancestry.
+Exact next action: obtain the matching Eggplant loader/preprocessing confirmation
+(color order, crop/stretch, resize/antialias, normalization). Then implement or
+select the matching preparation, remove the availability gate, run actual Android
+inference and representative labeled photos, and verify manual/automatic paths.
+Do not remove the gate based only on recollection of notebook ancestry. The APK
+can already be installed to review Eggplant knowledge and growing references.
 
 Static inspection was repeated on the bundled Eggplant file: one graph,
 float32 [1,224,224,3] -> [1,9], hash matches supplied export. The Tomato SHA256
 remains ef87a0106a2950b4926bf7bb0de4e1eddf1600fd6aac972c8b12358a91b11665.
 Register now includes 26 app sources plus one carried-forward local-context source.
 Checkpoint A: e4617d3. No dependencies installed and no push.
+
+Checkpoint B: d81c04e; C: feb64a9. Full regression command:
+`flutter --suppress-analytics --no-version-check test --no-pub --reporter expanded`.
+Output retained locally in `.tools/phase4-tests.log` (ignored, not part of paper).
+Static analysis: `flutter --suppress-analytics --no-version-check analyze --no-pub`.
+`git diff --check` passes. Only unrelated pre-existing C++ test and deliverables
+remain untracked. Preparing build with `gradlew --offline --no-daemon
+:app:assembleDebug --quiet`; no dependency installation authorized or needed.
+
+Build recovery: the initial quiet/redirected runner produced an empty log and no
+fresh APK. It was stopped; no running build Java process was found. One retry with
+`gradlew --offline --no-daemon :app:assembleDebug --console=plain` completed:
+`BUILD SUCCESSFUL in 54s`, 151 tasks (23 executed, 128 up-to-date), exit 0.
+Existing Kotlin/AGP deprecation and SDK XML-version warnings did not fail the
+build; no dependency or native configuration changes were made to suppress them.
+APK: `build/app/outputs/apk/debug/app-debug.apk`. Both packaged model files and
+label counts were checked against source assets; Tomato has 17 classes, Eggplant
+9. No emulator, board simulator or physical phone was started. Runtime/accuracy
+acceptance is explicitly pending, not inferred from unit tests or packaging.
+
+All source changes are saved locally. Research sites were contacted through web
+search/read tools only (TNAU, UC IPM, Virginia Cooperative Extension, PMC; public
+extension searches). No private model/data was uploaded. No dependencies installed,
+firmware changes, new services, remote push or unexpected background processes.

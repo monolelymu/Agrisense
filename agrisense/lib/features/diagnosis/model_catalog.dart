@@ -20,7 +20,8 @@ class CropModel {
   final int inputSize, classCount;
   final ImagePreparation? preparation;
   final String? unavailableReason;
-  // Both current exports use float32 NHWC RGB input and float32 softmax output.
+  // Both exports have float32 NHWC three-channel input and float32 output.
+  // The external color/resize contract must be verified separately.
   bool get available => preparation != null && unavailableReason == null;
 }
 

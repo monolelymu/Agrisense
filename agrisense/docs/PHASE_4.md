@@ -52,6 +52,10 @@ Model SHA256:
 The teammate recalls using an earlier shared training procedure. The available
 corrected notebook is Tomato-specific; recollection and matching architecture
 alone cannot verify which image loader produced this Eggplant export.
+The earlier `tools/agrisense_training.py` uses RGB decoding and default TensorFlow
+resize without explicit antialiasing, and its model lacks the export's outer
+255 rescaling layer. The corrected notebook and supplied graph therefore do not
+prove that the earlier loader was used unchanged.
 
 Before enabling:
 1. Obtain the matching loader/inference code or a confirmed preprocessing
