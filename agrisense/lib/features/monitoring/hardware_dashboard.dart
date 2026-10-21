@@ -16,6 +16,7 @@ import '../help/help_screen.dart';
 import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
 import 'alert_detail_screen.dart';
+import '../diagnosis/tomato_context_widgets.dart';
 
 class HardwareApp extends StatelessWidget {
   const HardwareApp({
@@ -466,6 +467,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
         ],
       ),
+      if (crop == Crop.tomato) ...[
+        const SizedBox(height: 20),
+        GrowingConditionsPanel(
+          sample: r != null && r.deviceId == h.assignments[crop]?['sensorId']
+              ? r
+              : null,
+        ),
+      ],
       const SizedBox(height: 24),
       Text('Latest diagnosis', style: Theme.of(context).textTheme.titleLarge),
       if (results.isEmpty)

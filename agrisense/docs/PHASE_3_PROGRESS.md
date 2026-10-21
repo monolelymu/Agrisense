@@ -14,7 +14,7 @@ No dependencies, firmware changes, emulator or simulator. Local commits; no push
 - A reference data: complete; 17 sourced entries and research table saved.
 - B assessment and persistence: complete; focused assessment + auto-diagnosis
   tests report 19 passed.
-- C Dashboard/shared result UI: pending.
+- C Dashboard/shared result UI: complete; 7 focused widget tests passed.
 - D final regression, analysis and one offline APK build: pending.
 
 ## Decisions
@@ -46,5 +46,13 @@ No dependencies installed or network sources contacted during implementation.
 Checkpoint B command: `flutter test --no-pub test/tomato_assessment_test.dart
 test/automatic_diagnosis_test.dart --reporter expanded` (19 passed).
 
-Exact next action: implement the Dashboard panel and shared result explanations;
-run focused widget tests for checkpoint C.
+Checkpoint C: `flutter test --no-pub test/tomato_context_widgets_test.dart
+--reporter expanded` (7 passed). Initial grouped UI/scan test run stalled on the
+new Dashboard test's temporary Hive setup inside fake time. Stopped that run,
+moved the setup/cleanup into `tester.runAsync`, and reran focused widgets; passed.
+Layout at 320 px with enlarged text, source copying, saved context, expiry and
+Tomato-only behavior are verified without an emulator.
+
+Implementation checkpoints: 1abd7e4 (A), 9b6468c (B).
+Exact next action: final static analysis and the full Flutter regression suite
+once; then one offline debug APK build. Progress saved before lengthy build.

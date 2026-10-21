@@ -220,8 +220,9 @@ EnvironmentalEvidence assessTomatoEvidence(
       if (reading.deviceId != sample.deviceId) break;
       if (!ids.add(reading.id)) continue;
       if (!_valid(reading.temperature, -40, 80) ||
-          !_humidityMatches(reading, rule))
+          !_humidityMatches(reading, rule)) {
         break;
+      }
       if (newer != null) {
         final interval = newer.receivedAt.difference(reading.receivedAt);
         if (interval > const Duration(seconds: 30)) break;

@@ -12,6 +12,7 @@ import '../../core/issue_card.dart';
 import '../../data/models.dart';
 import 'tomato_classifier.dart';
 import 'tomato_scan.dart';
+import 'tomato_context_widgets.dart';
 
 class TomatoApp extends StatelessWidget {
   const TomatoApp({
@@ -573,6 +574,7 @@ class TomatoResultCard extends StatelessWidget {
             'This older scan saved only its leading prediction.',
             style: TextStyle(color: muted),
           ),
+        if (scan.crop == Crop.tomato) TomatoExplanation(scan: scan),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: const Text('Details'),

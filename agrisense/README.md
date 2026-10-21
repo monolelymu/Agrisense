@@ -4,6 +4,8 @@
 Sensitive presets and Android background monitoring, and [Phase 1](docs/PHASE_1.md) for real hardware
 monitoring, Tomato photo analysis, History filters, Monitoring & Auto Scan,
 error codes and offline Help. The simulated-prototype notes below are historical.
+See [Phase 3](docs/PHASE_3.md) for Tomato growing references, all 17 class
+explanations, sources and saved sensor context.
 
 **AgriSense — Smart Crop Stress Monitoring System**
 

@@ -6,6 +6,7 @@ unified monitoring settings, actionable error codes, and offline Help/tutorial.
 Phase 2 adds automatic diagnosis, Sensitive presets and Android background
 monitoring. See [the Phase 2 guide](agrisense/docs/PHASE_2.md) and
 [verification progress](agrisense/docs/PHASE_2_PROGRESS.md).
+Phase 3 adds [Tomato growing conditions and offline scan explanations](agrisense/docs/PHASE_3.md).
 
 The mock-demo instructions below describe the earlier simulated workspace.
 

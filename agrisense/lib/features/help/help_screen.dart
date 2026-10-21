@@ -65,6 +65,17 @@ class HelpScreen extends StatelessWidget {
             ),
           ],
         ),
+        const ExpansionTile(
+          title: Text('Tomato growing conditions and scan explanations'),
+          children: [
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Growing references describe the environment, not confirmed plant health. Daytime is assumed to be 06:00–18:00 on this phone. Humidity guidance is qualified for protected growing; soil moisture needs calibration. Readings expire after 30 seconds. Tomato results explain all 17 labels and show saved sensor evidence when available. Uploads and older scans do not acquire current readings. Sources can be copied, and sensor context never changes the image model score.',
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 24),
         Text('Error codes', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
