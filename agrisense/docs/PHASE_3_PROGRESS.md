@@ -15,7 +15,8 @@ No dependencies, firmware changes, emulator or simulator. Local commits; no push
 - B assessment and persistence: complete; focused assessment + auto-diagnosis
   tests report 19 passed.
 - C Dashboard/shared result UI: complete; 7 focused widget tests passed.
-- D final regression, analysis and one offline APK build: pending.
+- D complete: all 106 Flutter tests passed; static analysis clean; final offline
+  debug APK build passed (exit 0).
 
 ## Decisions
 
@@ -53,6 +54,22 @@ moved the setup/cleanup into `tester.runAsync`, and reran focused widgets; passe
 Layout at 320 px with enlarged text, source copying, saved context, expiry and
 Tomato-only behavior are verified without an emulator.
 
-Implementation checkpoints: 1abd7e4 (A), 9b6468c (B).
-Exact next action: final static analysis and the full Flutter regression suite
-once; then one offline debug APK build. Progress saved before lengthy build.
+Implementation checkpoints: 1abd7e4 (A), 9b6468c (B), 8b94371 (C).
+Final analysis initially flagged one redundant test import; removed it and reran
+analysis successfully. The full suite then ran once: `flutter test --no-pub
+--reporter expanded` reports 106 passed (about 13 s test time). No emulator used.
+Tomato model SHA256 remains
+`EF87A0106A2950B4926BF7BB0DE4E1EDDF1600FD6AAC972C8B12358A91B11665`.
+`git diff --check` passes. No dependencies, model or firmware changes.
+
+Final build: `gradlew --offline --no-daemon :app:assembleDebug --quiet` passed,
+exit 0. APK: `build/app/outputs/apk/debug/app-debug.apk`. Existing Java native-access
+warnings did not prevent the build. One APK build; no emulator/simulator started.
+No dependencies installed, native service changes, remote push or new services.
+
+Exact next action: install the APK on the physical phone and follow PHASE_3.md
+alongside PHASE_2_ACCEPTANCE.md. Verify representative sensor placement, calibration,
+local growing references, Dashboard expiry and saved automatic/manual context.
+Physical phone/board and local horticultural acceptance remain pending. Later
+Chili/Eggplant work needs model integration, class-specific references and crop
+validation; their current monitoring features are unchanged.
