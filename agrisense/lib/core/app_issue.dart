@@ -86,7 +86,7 @@ class AppIssue {
   static const limits = AppIssue(
     'SET-002',
     'Check monitoring limits',
-    'Enter numbers with minimum below maximum. Temperature: -40 to 80 °C; humidity and soil: 0–100%. Duration: 10–3600 seconds; cooldown: 60–86400 seconds.',
+    'Enter numbers with minimum below maximum. Temperature: -40 to 80 °C; humidity and soil: 0–100%. Duration: 10–3600 seconds. Phone alert cooldown: 30–86400 seconds; advanced board SD capture cooldown: 60–86400 seconds.',
   );
   static const busy = AppIssue(
     'APP-001',

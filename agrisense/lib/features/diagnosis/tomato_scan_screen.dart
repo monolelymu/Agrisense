@@ -15,6 +15,7 @@ import 'tomato_scan.dart';
 import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
 import 'crop_knowledge_screen.dart';
+import '../help/help_screen.dart';
 
 class TomatoApp extends StatelessWidget {
   const TomatoApp({
@@ -323,6 +324,30 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AgriSense'),
+        actions: [
+          IconButton(
+            tooltip: 'Help & troubleshooting',
+            onPressed: busy
+                ? null
+                : () async {
+                    Future<void> openHelp() async {
+                      await Navigator.of(context).push<void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HelpScreen(crop: crop),
+                        ),
+                      );
+                    }
+
+                    final hardware = widget.hardware;
+                    if (hardware == null) {
+                      await openHelp();
+                    } else {
+                      await hardware.withPollingPaused(openHelp);
+                    }
+                  },
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
         leading: IconButton(
           tooltip: 'Back to main dashboard',
           icon: const Icon(Icons.arrow_back),

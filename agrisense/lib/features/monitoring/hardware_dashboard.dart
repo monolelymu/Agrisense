@@ -117,7 +117,30 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     );
   });
 
-  Future<void> _help() => _openSettings(HelpScreen(onReplay: _tutorial));
+  Future<void> _help() => h.withPollingPaused(() async {
+    final destination = await Navigator.of(context).push<HelpDestination>(
+      MaterialPageRoute<HelpDestination>(
+        builder: (_) =>
+            HelpScreen(crop: crop, onReplay: _tutorial, showShortcuts: true),
+      ),
+    );
+    if (!mounted) return;
+    switch (destination) {
+      case HelpDestination.scan:
+        await _scan();
+      case HelpDestination.devices:
+        setState(() => page = 2);
+      case HelpDestination.monitoring:
+        await _openSettings(MonitoringSettingsScreen(hardware: h, crop: crop));
+      case HelpDestination.alerts:
+        setState(() {
+          page = 3;
+          historyCategory = 1;
+        });
+      case null:
+        break;
+    }
+  });
 
   void _loadScans() {
     try {
