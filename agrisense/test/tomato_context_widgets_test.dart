@@ -97,6 +97,9 @@ void main() {
         screen(TomatoResultCard(scan: scan()), scale: 1.3),
       );
       expect(find.text('Model score: 80.0%'), findsOneWidget);
+      await tester.ensureVisible(find.text('Explanation & care'));
+      await tester.tap(find.text('Explanation & care'));
+      await tester.pumpAndSettle();
       final symptoms = find.text('Symptoms & next steps');
       await tester.ensureVisible(symptoms);
       await tester.pumpAndSettle();

@@ -315,6 +315,74 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     ),
   );
 
+  Widget _photoActions() => Panel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Analyzing as ${crop.label}',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        const Text('Choose the crop that matches your leaf.'),
+        const SizedBox(height: 8),
+        Text(
+          classifier.supports(crop)
+              ? cropModels[crop]?.testingNotice ??
+                    'Choose a clear leaf photo. Analysis runs on this device.'
+              : modelStatus(crop),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: canScan ? _selectPhoto : null,
+          icon: const Icon(Icons.add_photo_alternate_outlined),
+          label: const Text('Scan leaf'),
+        ),
+        if (widget.hardware != null) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed:
+                canScan &&
+                    widget.hardware!.allowLocalHttp &&
+                    widget.hardware!.address(crop, 'camera').isNotEmpty
+                ? _capture
+                : null,
+            icon: const Icon(Icons.camera_alt_outlined),
+            label: const Text('Capture and analyze'),
+          ),
+          if (widget.hardware!.address(crop, 'camera').isEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Assign this crop’s camera in Devices to capture a photo.',
+            ),
+          ],
+          if (!widget.hardware!.allowLocalHttp) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Local hardware access is off. Enable it in Devices to use the camera.',
+            ),
+          ],
+        ],
+        if (!supported)
+          const Text('Photo analysis is available in the Android app.'),
+        if (crop != Crop.chili) ...[
+          const SizedBox(height: 8),
+          TextButton.icon(
+            icon: const Icon(Icons.menu_book_outlined),
+            label: Text('${crop.label} knowledge & care'),
+            onPressed: busy
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => CropKnowledgeScreen(crop: crop),
+                    ),
+                  ),
+          ),
+        ],
+      ],
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final scans = cropHistory;
@@ -389,58 +457,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             const SizedBox(height: 16),
           ],
           if (page == 0 || page == 1) ...[
-            Text(
-              'Scan a ${crop.label.toLowerCase()} leaf',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              classifier.supports(crop)
-                  ? cropModels[crop]?.testingNotice ??
-                        'Choose a clear leaf photo. Analysis runs on this device.'
-                  : modelStatus(crop),
-            ),
-            const SizedBox(height: 12),
-            if (crop != Crop.chili)
-              TextButton.icon(
-                icon: const Icon(Icons.menu_book_outlined),
-                label: Text('${crop.label} knowledge & care'),
-                onPressed: busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => CropKnowledgeScreen(crop: crop),
-                        ),
-                      ),
-              ),
-            FilledButton.icon(
-              onPressed: canScan ? _selectPhoto : null,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: const Text('Scan leaf'),
-            ),
-            if (widget.hardware != null) ...[
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed:
-                    canScan &&
-                        widget.hardware!.allowLocalHttp &&
-                        widget.hardware!.address(crop, 'camera').isNotEmpty
-                    ? _capture
-                    : null,
-                icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Capture and analyze'),
-              ),
-              if (widget.hardware!.address(crop, 'camera').isEmpty)
-                const Text(
-                  'Assign this crop’s camera in Devices to capture a photo.',
-                ),
-              if (!widget.hardware!.allowLocalHttp)
-                const Text(
-                  'Local hardware HTTP is off. Enable it in Devices to use the camera.',
-                ),
-            ],
-            if (!supported)
-              const Text('Photo analysis is available in the Android app.'),
+            _photoActions(),
             const SizedBox(height: 24),
           ],
           if (page == 0) ...[
@@ -488,7 +505,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
                     ? 'Not saved yet.'
                     : 'Saved on this device.',
               ),
-              if (result?.id == shown.id && !saved)
+              if (result?.id == shown.id && !saved && error == null)
                 TextButton(
                   onPressed: busy ? null : _retrySave,
                   child: const Text('Retry saving'),
@@ -594,6 +611,11 @@ class TomatoResultCard extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
+        Text(
+          'Model score: ${(scan.score * 100).toStringAsFixed(1)}%',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
         if (scan.uncertain) ...[
           const Tag('UNCERTAIN', color: warning),
           const SizedBox(height: 8),
@@ -604,22 +626,47 @@ class TomatoResultCard extends StatelessWidget {
           const Text(eggplantTestingNotice, style: TextStyle(color: warning)),
           const SizedBox(height: 12),
         ],
-        Text('Model score: ${(scan.score * 100).toStringAsFixed(1)}%'),
-        const SizedBox(height: 12),
         const Text(
           'Experimental prediction—not a confirmed diagnosis.',
           style: TextStyle(color: muted),
         ),
         Text(dateLabel(scan.timestamp), style: const TextStyle(color: muted)),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         Text('Top predictions', style: Theme.of(context).textTheme.titleMedium),
         for (var i = 0; i < scan.rankedPredictions.length; i++)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Text('${i + 1}'),
-            title: Text(scan.rankedPredictions[i].displayLabel),
-            trailing: Text(
-              '${(scan.rankedPredictions[i].score * 100).toStringAsFixed(1)}%',
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final name = Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(width: 24, child: Text('${i + 1}')),
+                    Expanded(
+                      child: Text(scan.rankedPredictions[i].displayLabel),
+                    ),
+                  ],
+                );
+                final score = Text(
+                  '${(scan.rankedPredictions[i].score * 100).toStringAsFixed(1)}%',
+                  style: const TextStyle(color: muted),
+                );
+                if (constraints.maxWidth < 400 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.25) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [name, const SizedBox(height: 8), score],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: name),
+                    const SizedBox(width: 16),
+                    score,
+                  ],
+                );
+              },
             ),
           ),
         if (scan.rankedPredictions.length < 3)
@@ -627,7 +674,12 @@ class TomatoResultCard extends StatelessWidget {
             'This older scan saved only its leading prediction.',
             style: TextStyle(color: muted),
           ),
-        if (scan.crop != Crop.chili) TomatoExplanation(scan: scan),
+        if (scan.crop != Crop.chili)
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Explanation & care'),
+            children: [TomatoExplanation(scan: scan)],
+          ),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: const Text('Details'),

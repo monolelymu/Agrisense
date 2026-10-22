@@ -12,33 +12,47 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 24),
-    child: Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 24,
-      runSpacing: 12,
-      children: [
-        Column(
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final titleBlock = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: Theme.of(context).textTheme.headlineLarge),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(subtitle, style: const TextStyle(color: muted)),
           ],
-        ),
-        ?trailing,
-      ],
+        );
+        if (trailing == null) return titleBlock;
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [titleBlock, const SizedBox(height: 16), trailing!],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: titleBlock),
+            const SizedBox(width: 24),
+            trailing!,
+          ],
+        );
+      },
     ),
   );
 }
 
 class Panel extends StatelessWidget {
-  const Panel({required this.child, super.key, this.padding = 22});
+  const Panel({required this.child, super.key, this.padding});
   final Widget child;
-  final double padding;
+  final double? padding;
   @override
   Widget build(BuildContext context) => Card(
-    child: Padding(padding: EdgeInsets.all(padding), child: child),
+    child: Padding(
+      padding: EdgeInsets.all(
+        padding ?? (MediaQuery.sizeOf(context).width < 600 ? 16 : 22),
+      ),
+      child: child,
+    ),
   );
 }
 
@@ -48,7 +62,7 @@ class Tag extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
       color: color.withValues(alpha: .10),
       borderRadius: BorderRadius.circular(8),
@@ -58,7 +72,7 @@ class Tag extends StatelessWidget {
       text,
       style: TextStyle(
         color: color,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: .4,
       ),
@@ -97,7 +111,7 @@ class EmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(color: muted),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           ?action,
           const SizedBox(height: 12),
         ],
@@ -131,15 +145,33 @@ class PageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 18 : 32),
+    padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 32),
     child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1180),
         child: SafeArea(
           top: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              textTheme: Theme.of(context).textTheme.copyWith(
+                headlineLarge: Theme.of(context).textTheme.headlineLarge
+                    ?.copyWith(
+                      fontSize: MediaQuery.sizeOf(context).width < 600
+                          ? 28
+                          : 36,
+                    ),
+                headlineMedium: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(
+                      fontSize: MediaQuery.sizeOf(context).width < 600
+                          ? 24
+                          : 28,
+                    ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
           ),
         ),
       ),
@@ -154,14 +186,16 @@ class MetricGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final columns = (constraints.maxWidth / minWidth).floor().clamp(
-        1,
-        children.length,
-      );
-      final width = (constraints.maxWidth - (columns - 1) * 14) / columns;
+      final columns =
+          (constraints.maxWidth /
+                  (minWidth *
+                      MediaQuery.textScalerOf(context).scale(1).clamp(1, 1.5)))
+              .floor()
+              .clamp(1, children.length);
+      final width = (constraints.maxWidth - (columns - 1) * 16) / columns;
       return Wrap(
-        spacing: 14,
-        runSpacing: 14,
+        spacing: 16,
+        runSpacing: 16,
         children: [
           for (final child in children) SizedBox(width: width, child: child),
         ],

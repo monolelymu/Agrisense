@@ -90,6 +90,9 @@ void main() {
       });
       await tester.pumpWidget(page(TomatoResultCard(scan: scan)));
       expect(find.text('Model score: 71.0%'), findsOneWidget);
+      await tester.ensureVisible(find.text('Explanation & care'));
+      await tester.tap(find.text('Explanation & care'));
+      await tester.pumpAndSettle();
       expect(
         find.textContaining('Wilting may reflect water stress'),
         findsOneWidget,

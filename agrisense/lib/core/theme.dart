@@ -48,6 +48,12 @@ ThemeData buildTheme() => ThemeData(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
     ),
   ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+  ),
+  iconButtonTheme: IconButtonThemeData(
+    style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+  ),
   navigationBarTheme: const NavigationBarThemeData(
     backgroundColor: panel,
     indicatorColor: Color(0xFF365139),
@@ -55,12 +61,12 @@ ThemeData buildTheme() => ThemeData(
   dividerTheme: const DividerThemeData(color: Color(0xFF304035)),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
-      fontSize: 36,
+      fontSize: 28,
       fontWeight: FontWeight.w700,
-      letterSpacing: -1.2,
+      letterSpacing: -.6,
     ),
     headlineMedium: TextStyle(
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: FontWeight.w600,
       letterSpacing: -0.6,
     ),
