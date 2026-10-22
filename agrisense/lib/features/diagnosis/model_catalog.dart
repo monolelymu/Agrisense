@@ -27,7 +27,7 @@ class CropModel {
   bool get available => preparation != null && unavailableReason == null;
 }
 
-const tomatoModelVersion = 'tomato-v1-ef87a0106a29';
+const tomatoModelVersion = 'tomato-b0-4e75ac1379db';
 const eggplantTestingNotice =
     'Eggplant testing: photo preparation is provisional. Compare results with known examples; accuracy is not verified.';
 const cropModels = <Crop, CropModel>{
@@ -36,7 +36,7 @@ const cropModels = <Crop, CropModel>{
     modelAsset: 'assets/models/tomato_model.tflite',
     labelsAsset: 'assets/models/tomato_labels.json',
     version: tomatoModelVersion,
-    sha256: 'ef87a0106a2950b4926bf7bb0de4e1eddf1600fd6aac972c8b12358a91b11665',
+    sha256: '4e75ac1379db8e3c90808b4a875ddc2a94b1ae045907aff404c44b1c7c27bdc7',
     classCount: 17,
     preparation: ImagePreparation.rgbBilinearAntialiasZeroToOne,
   ),

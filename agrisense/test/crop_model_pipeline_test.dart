@@ -55,7 +55,7 @@ void main() {
         cropModels[Crop.eggplant]!.version,
         endsWith('-provisional-rgb-aa01'),
       );
-      expect(cropModels[Crop.tomato]!.version, 'tomato-v1-ef87a0106a29');
+      expect(cropModels[Crop.tomato]!.version, 'tomato-b0-4e75ac1379db');
       for (final m in cropModels.values) {
         final labels =
             jsonDecode(File(m.labelsAsset).readAsStringSync()) as List;

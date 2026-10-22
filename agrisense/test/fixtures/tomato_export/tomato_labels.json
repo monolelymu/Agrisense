@@ -1,0 +1,19 @@
+[
+  "bacterial_spot",
+  "early_blight",
+  "healthy",
+  "late_blight",
+  "leaf_miner",
+  "leaf_mold",
+  "magnesium_deficiency",
+  "mosaic_virus",
+  "nitrogen_deficiency",
+  "potassium_deficiency",
+  "powdery_mildew",
+  "septoria_leaf_spot",
+  "spider_mites",
+  "spotted_wilt_virus",
+  "target_spot",
+  "whitefly",
+  "yellow_leaf_curl_virus"
+]
