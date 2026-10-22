@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:image/image.dart' as img;
 import 'package:agrisense/core/hardware_controller.dart';
+import 'package:agrisense/core/app_issue.dart';
 import 'package:agrisense/core/sensor_notifications.dart';
 import 'package:agrisense/data/automatic_capture.dart';
 import 'package:agrisense/data/hardware_client.dart';
@@ -52,9 +53,12 @@ class FakeCamera extends HardwareClient {
 
 class FakeClassifier extends TomatoClassifier {
   bool eggEnabled = false;
+  bool enabled = true;
+  Completer<void>? gate;
   @override
   bool supports(Crop crop) =>
-      super.supports(crop) || (eggEnabled && crop == Crop.eggplant);
+      enabled &&
+      (super.supports(crop) || (eggEnabled && crop == Crop.eggplant));
   int calls = 0;
   bool fail = false;
   Uint8List? input;
@@ -62,6 +66,7 @@ class FakeClassifier extends TomatoClassifier {
   Future<TomatoScan> classifyCrop(Crop crop, Uint8List photo) async {
     calls++;
     input = photo;
+    if (gate != null) await gate!.future;
     if (fail) throw StateError('model failed');
     return TomatoScan(
       id: 'ignored',
@@ -230,25 +235,138 @@ void main() {
       expect(classifier.calls, 1);
     },
   );
-  test('analysis retry uses retained original without recapture', () async {
-    classifier.fail = true;
-    await trigger();
-    expect(h.alerts.single.state, 'analysis_failed');
-    classifier.fail = false;
-    await h.retryAlert(h.alerts.single.id, capture: false);
-    expect(camera.captures, 1);
-    expect(classifier.calls, 2);
-    expect(scans.load().length, 1);
-  });
-  test('saving retry reuses prediction without running model again', () async {
-    scans.fail = true;
-    await trigger();
-    expect(h.alerts.single.state, 'save_failed');
-    scans.fail = false;
-    await h.retryAlert(h.alerts.single.id, capture: false);
-    expect(classifier.calls, 1);
-    expect(scans.load().single.id, h.alerts.single.resultId);
-  });
+  test(
+    'offline analysis retry uses retained original without hardware or recapture',
+    () async {
+      classifier.fail = true;
+      await trigger();
+      expect(h.alerts.single.state, 'analysis_failed');
+      await h.setHttpAllowed(false);
+      h.assignments.clear();
+      final reads = camera.reads;
+      classifier.fail = false;
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(camera.captures, 1);
+      expect(classifier.calls, 2);
+      expect(scans.load().length, 1);
+      expect(camera.reads, reads);
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(classifier.calls, 2);
+      expect(scans.load().length, 1);
+    },
+  );
+  test(
+    'offline saving retry reuses prediction without hardware or inference',
+    () async {
+      scans.fail = true;
+      await trigger();
+      expect(h.alerts.single.state, 'save_failed');
+      await h.setHttpAllowed(false);
+      h.assignments.clear();
+      final reads = camera.reads;
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(h.alerts.single.state, 'save_failed');
+      expect(h.canRetrySaving(h.alerts.single.id), isTrue);
+      scans.fail = false;
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(classifier.calls, 1);
+      expect(camera.captures, 1);
+      expect(camera.reads, reads);
+      expect(scans.load().single.id, h.alerts.single.resultId);
+      await h.retryAlert(h.alerts.single.id, capture: false);
+      expect(scans.load().length, 1);
+      expect(classifier.calls, 1);
+      expect(h.canRetrySaving(h.alerts.single.id), isFalse);
+    },
+  );
+  test(
+    'capture retries still require hardware access and matching assignment',
+    () async {
+      camera.fail = true;
+      await trigger();
+      final id = h.alerts.single.id;
+      await h.setHttpAllowed(false);
+      camera.fail = false;
+      await expectLater(h.retryAlert(id, capture: true), throwsFormatException);
+      expect(camera.captures, 1);
+      h.allowLocalHttp = true;
+      h.assignments[Crop.tomato]!.remove('camera');
+      await h.retryAlert(id, capture: true);
+      expect(camera.captures, 1);
+      expect(h.alerts.single.issueCode, AppIssue.assignment.code);
+      expect(scans.load(), isEmpty);
+    },
+  );
+  test(
+    'offline analysis cannot recover a missing original or unavailable model',
+    () async {
+      classifier.fail = true;
+      await trigger();
+      final id = h.alerts.single.id;
+      await h.setHttpAllowed(false);
+      classifier.fail = false;
+      classifier.enabled = false;
+      await h.retryAlert(id, capture: false);
+      expect(h.alerts.single.state, 'model_unavailable');
+      expect(h.alerts.single.issueCode, AppIssue.unsupported.code);
+      expect(classifier.calls, 1);
+      classifier.enabled = true;
+      h.alertPhotos.clear();
+      await h.retryAlert(id, capture: false);
+      expect(h.alerts.single.issueCode, AppIssue.photo.code);
+      expect(scans.load(), isEmpty);
+      expect(camera.captures, 1);
+      expect(classifier.calls, 1);
+    },
+  );
+  test(
+    'local recovery remains foreground-only and prevents overlapping retries',
+    () async {
+      classifier.fail = true;
+      await trigger();
+      final id = h.alerts.single.id;
+      await h.setHttpAllowed(false);
+      h.setForeground(false);
+      await expectLater(
+        h.retryAlert(id, capture: false),
+        throwsA(AppIssue.busy),
+      );
+      expect(classifier.calls, 1);
+      h.setForeground(true);
+      classifier.fail = false;
+      classifier.gate = Completer<void>();
+      final retry = h.retryAlert(id, capture: false);
+      while (classifier.calls < 2) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      await expectLater(
+        h.retryAlert(id, capture: false),
+        throwsFormatException,
+      );
+      classifier.gate!.complete();
+      await retry;
+      expect(scans.load().length, 1);
+      expect(camera.captures, 1);
+      expect(classifier.calls, 2);
+    },
+  );
+  test(
+    'automatic capture still stops analysis when hardware access is disabled',
+    () async {
+      await start();
+      camera.gate = Completer<void>();
+      now = now.add(const Duration(seconds: 10));
+      final work = h.refresh(Crop.tomato);
+      while (camera.captures == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      h.allowLocalHttp = false;
+      camera.gate!.complete();
+      await work;
+      expect(classifier.calls, 0);
+      expect(h.alerts.single.state, 'interrupted');
+    },
+  );
   test('alert storage failure prevents camera operation', () async {
     alerts.fail = true;
     await trigger();

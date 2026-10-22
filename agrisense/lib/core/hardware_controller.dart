@@ -808,9 +808,14 @@ class HardwareController extends ChangeNotifier {
     await _processAlert(alert, capture: true, manual: false);
   }
 
-  bool _canProcess(MonitoringAlert alert, int run, bool manual) =>
+  bool _canProcess(
+    MonitoringAlert alert,
+    int run,
+    bool manual, {
+    required bool capture,
+  }) =>
       !_disposed &&
-      allowLocalHttp &&
+      (allowLocalHttp || (manual && !capture)) &&
       (_foreground || backgroundActive) &&
       _run == run &&
       (manual || _requestedPollingCrop == alert.crop);
@@ -830,7 +835,7 @@ class HardwareController extends ChangeNotifier {
         revision++;
         return;
       }
-      if (!_canProcess(alert, run, manual)) {
+      if (!_canProcess(alert, run, manual, capture: capture)) {
         await _saveAlert(alert.change('interrupted'));
         return;
       }
@@ -841,7 +846,7 @@ class HardwareController extends ChangeNotifier {
           throw AppIssue.assignment;
         }
         await _saveAlert(alert.change('capturing'));
-        if (!_canProcess(alert, run, manual)) {
+        if (!_canProcess(alert, run, manual, capture: capture)) {
           await _saveAlert(alert.change('interrupted'));
           return;
         }
@@ -892,13 +897,13 @@ class HardwareController extends ChangeNotifier {
         );
         return;
       }
-      if (!_canProcess(alert, run, manual)) {
+      if (!_canProcess(alert, run, manual, capture: capture)) {
         await _saveAlert(alert.change('interrupted'));
         return;
       }
       stage = 'analysis_failed';
       await _saveAlert(alert.change('analyzing'));
-      if (!_canProcess(alert, run, manual)) {
+      if (!_canProcess(alert, run, manual, capture: capture)) {
         await _saveAlert(alert.change('interrupted'));
         return;
       }
@@ -952,7 +957,7 @@ class HardwareController extends ChangeNotifier {
   Future<void> retryAlert(String id, {required bool capture}) =>
       withPollingPaused(() async {
         _requireIdle();
-        _requireHttp();
+        if (capture) _requireHttp();
         if (!_foreground) throw AppIssue.busy;
         final alert = alerts.firstWhere((a) => a.id == id);
         busy = true;

@@ -1,16 +1,22 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:image/image.dart' as img;
 import 'package:agrisense/core/app_issue.dart';
 import 'package:agrisense/core/hardware_controller.dart';
+import 'package:agrisense/core/sensor_notifications.dart';
 import 'package:agrisense/core/theme.dart';
 import 'package:agrisense/data/hardware_client.dart';
+import 'package:agrisense/data/alert_photo.dart';
+import 'package:agrisense/data/monitoring_alert.dart';
 import 'package:agrisense/features/diagnosis/model_catalog.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan_screen.dart';
 import 'package:agrisense/features/help/help_screen.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
+import 'package:agrisense/features/monitoring/alert_detail_screen.dart';
 import 'package:agrisense/features/monitoring/monitoring_settings_screen.dart';
 import 'package:agrisense/data/models.dart';
 
@@ -204,4 +210,72 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  for (final retained in [false, true]) {
+    testWidgets(
+      retained
+          ? 'alert explains an unavailable model without offering analysis'
+          : 'alert explains an expired original without offering analysis',
+      (tester) async {
+        final crop = retained ? Crop.chili : Crop.tomato;
+        final now = DateTime(2026);
+        final alert = MonitoringAlert(
+          id: 'recovery',
+          sample: HardwareSample(
+            id: 'reading',
+            crop: crop,
+            receivedAt: now,
+            temperature: 25,
+            humidity: 50,
+            soil: null,
+            soilRaw: 1,
+            gasRaw: 1,
+            soilCalibrated: false,
+          ),
+          settings: const SensorAlertSettings(
+            capturePhoto: true,
+            analyzePhoto: true,
+          ),
+          metrics: [0],
+          timestamp: now,
+          camera: '',
+          capturedAt: now,
+          state: 'analysis_failed',
+        );
+        hardware.alerts.add(alert);
+        if (retained) {
+          hardware.alertPhotos.add(
+            AlertPhoto(
+              sampleId: 'reading',
+              crop: crop,
+              timestamp: now,
+              reason: 'test',
+              jpeg: Uint8List.fromList(
+                img.encodeJpg(img.Image(width: 2, height: 2)),
+              ),
+              alertId: alert.id,
+            ),
+          );
+        }
+        await tester.pumpWidget(
+          MaterialApp(
+            home: AlertDetailScreen(hardware: hardware, id: alert.id),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Retry analysis'), findsNothing);
+        expect(
+          find.textContaining(
+            retained
+                ? 'This crop has no available analysis model.'
+                : 'Retry analysis is unavailable because the original photo',
+          ),
+          findsOneWidget,
+        );
+        if (!retained) expect(find.text('Capture a new photo'), findsOneWidget);
+        expect(client.calls, 0);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
+  }
 }

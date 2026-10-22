@@ -109,21 +109,41 @@ class _AlertDetailScreenState extends State<AlertDetailScreen> {
             if (result != null) ...[
               const SizedBox(height: 20),
               TomatoResultCard(scan: result),
-            ] else if (!h.busy && !alert.unfinished) ...[
+            ],
+            if (!h.busy &&
+                !alert.unfinished &&
+                (result == null || h.canRetrySaving(alert.id))) ...[
               const SizedBox(height: 20),
               if (h.canRetrySaving(alert.id))
                 FilledButton(
                   onPressed: () => _retry(false),
                   child: const Text('Retry saving'),
                 )
-              else if (photo != null &&
+              else if (result == null &&
+                  photo != null &&
                   alert.settings.analyzePhoto &&
                   h.classifier.supports(alert.crop))
                 FilledButton(
                   onPressed: () => _retry(false),
                   child: const Text('Retry analysis'),
                 ),
-              if (alert.settings.capturePhoto &&
+              if (result == null &&
+                  photo == null &&
+                  alert.capturedAt != null &&
+                  !h.canRetrySaving(alert.id))
+                const Text(
+                  'Retry analysis is unavailable because the original photo has expired or could not be loaded. Capture or upload a new photo to make a new prediction.',
+                ),
+              if (result == null &&
+                  photo != null &&
+                  alert.settings.analyzePhoto &&
+                  !h.classifier.supports(alert.crop) &&
+                  !h.canRetrySaving(alert.id))
+                const Text(
+                  'This crop has no available analysis model. The saved photo and alert remain available; sensor monitoring works independently.',
+                ),
+              if (result == null &&
+                  alert.settings.capturePhoto &&
                   (photo == null || alert.state == 'capture_failed'))
                 OutlinedButton(
                   onPressed: () => _retry(true),
