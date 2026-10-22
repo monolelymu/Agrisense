@@ -115,7 +115,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           if (working) const LinearProgressIndicator(),
           if (issue != null) IssueCard(issue: issue!),
           Panel(
@@ -138,10 +138,16 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 const Text(
                   'Start monitoring while the app is visible. Force-stop, reboot or process termination ends monitoring; start it again manually. Android may delay checks under power restrictions.',
                 ),
+                if (!hardware.service.supported) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Background monitoring requires a supported Android device.',
+                  ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Panel(
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
@@ -171,6 +177,13 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                         ),
                   child: const Text('Manage board SD capture'),
                 ),
+                if (!hardware.allowLocalHttp ||
+                    hardware.address(crop, 'sensor').isEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Enable local hardware access and assign a sensor in Devices to manage board capture.',
+                  ),
+                ],
               ],
             ),
           ),

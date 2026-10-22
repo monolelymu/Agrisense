@@ -330,6 +330,16 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   Widget _scanTile(TomatoScan scan) => Card(
     child: ListTile(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          scan.preview,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Icon(Icons.eco_outlined),
+        ),
+      ),
       title: Text('${scan.crop.label} • ${scan.displayLabel}'),
       subtitle: Text(
         '${scan.source == 'auto' ? 'Auto Scan • ' : ''}${scan.uncertain ? 'Uncertain • ' : ''}${(scan.score * 100).toStringAsFixed(1)}% model score\n${dateLabel(scan.timestamp)}',
@@ -348,6 +358,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           width: 56,
           height: 56,
           fit: BoxFit.cover,
+          errorBuilder: (_, _, _) =>
+              const Icon(Icons.image_not_supported_outlined),
         ),
         title: Text('${photo.crop.label} • ${dateLabel(photo.timestamp)}'),
         subtitle: const Text('Sensor warning photo'),
@@ -408,28 +420,42 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         label: const Text('Scan leaf'),
       ),
       const SizedBox(height: 20),
-      MetricGrid(
-        minWidth: 250,
-        children: [
-          for (final item in Crop.values)
-            Card(
-              child: ListTile(
-                onTap: locked ? null : () => _crop(item),
-                leading: const Icon(Icons.eco_outlined),
-                title: Text(item.label),
-                subtitle: Text(
-                  h.latest(item) == null
-                      ? 'No sensor readings'
-                      : 'Saved sensor readings',
-                ),
-                trailing: crop == item
-                    ? const Icon(Icons.check_circle, color: accent)
-                    : null,
-              ),
+      Panel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Connection & monitoring',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-        ],
+            const SizedBox(height: 12),
+            Text(
+              h.address(crop, 'sensor').isEmpty
+                  ? 'Sensor: not assigned'
+                  : 'Sensor: assigned to ${crop.label}',
+            ),
+            const SizedBox(height: 8),
+            Text(
+              h.address(crop, 'camera').isEmpty
+                  ? 'Camera: not assigned'
+                  : 'Camera: assigned to ${crop.label}',
+            ),
+            const SizedBox(height: 8),
+            Text(h.monitoringStatus),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: locked
+                  ? null
+                  : () => _openSettings(
+                      MonitoringSettingsScreen(hardware: h, crop: crop),
+                    ),
+              icon: const Icon(Icons.tune),
+              label: const Text('Monitoring & Auto Scan'),
+            ),
+          ],
+        ),
       ),
-      const SizedBox(height: 18),
+      const SizedBox(height: 24),
       Text(
         '${crop.label} overview',
         style: Theme.of(context).textTheme.titleLarge,
@@ -442,13 +468,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         )
       else ...[
         Tag(h.fresh(crop) ? 'RECENT SENSOR READING' : 'SAVED SENSOR READING'),
+        const SizedBox(height: 8),
         Text('Received ${dateLabel(r.receivedAt)}'),
+        if (!h.fresh(crop))
+          const Text(
+            'Historical reading. Read sensors again for current conditions.',
+          ),
         const SizedBox(height: 12),
         MetricGrid(
           children: [
             _metric(
               'Soil moisture',
-              r.soil == null ? '—' : '${r.soil!.toStringAsFixed(0)}%',
+              !r.soilCalibrated
+                  ? 'Not calibrated'
+                  : r.soil == null
+                  ? 'Unavailable'
+                  : '${r.soil!.toStringAsFixed(0)}%',
               r.soilCalibrated
                   ? 'Calibrated by device'
                   : 'Uncalibrated • raw ${r.soilRaw}',
@@ -456,13 +491,15 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             _metric(
               'Temperature',
               r.temperature == null
-                  ? '—'
+                  ? 'Unavailable'
                   : '${r.temperature!.toStringAsFixed(1)}°C',
               'Air temperature',
             ),
             _metric(
               'Humidity',
-              r.humidity == null ? '—' : '${r.humidity!.toStringAsFixed(0)}%',
+              r.humidity == null
+                  ? 'Unavailable'
+                  : '${r.humidity!.toStringAsFixed(0)}%',
               'Relative humidity',
             ),
             _metric(
@@ -475,9 +512,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         if (r.temperature == null || r.humidity == null)
           const Text('Temperature/humidity sensor reported a failed reading.'),
       ],
-      const SizedBox(height: 12),
+      const SizedBox(height: 16),
       Wrap(
         spacing: 12,
+        runSpacing: 8,
         children: [
           OutlinedButton(
             onPressed:
@@ -555,7 +593,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     const Text(
       'Select the crop above, then edit its sensor or camera. Assigning an existing board moves it from its previous crop. The sensor confirms and remembers its crop; saved history stays unchanged.',
     ),
+    const SizedBox(height: 16),
+    Text('Connection tests', style: Theme.of(context).textTheme.titleLarge),
     const SizedBox(height: 12),
+    if (!h.allowLocalHttp)
+      const Text('Enable local hardware access above to test your devices.'),
+    if (h.address(crop, 'sensor').isEmpty)
+      const Text('Assign a sensor above to enable its connection test.'),
     OutlinedButton(
       onPressed:
           locked || !h.allowLocalHttp || h.address(crop, 'sensor').isEmpty
@@ -588,6 +632,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       label: const Text('Monitoring & Auto Scan'),
     ),
     const SizedBox(height: 12),
+    if (h.address(crop, 'camera').isEmpty)
+      const Text('Assign a camera above to enable its connection test.'),
     OutlinedButton.icon(
       onPressed:
           locked || !h.allowLocalHttp || h.address(crop, 'camera').isEmpty
@@ -600,7 +646,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     OutlinedButton.icon(
       onPressed: locked ? null : _scan,
       icon: const Icon(Icons.camera_alt_outlined),
-      label: const Text('Open capture and analysis'),
+      label: const Text('Scan leaf'),
     ),
     const SizedBox(height: 12),
     Text(modelStatus(crop)),
@@ -647,7 +693,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     return [
       const SectionTitle(
         'Growing patterns',
-        'Actual saved readings. No generated samples.',
+        'Review your saved sensor readings over time.',
       ),
       Wrap(
         spacing: 8,
@@ -669,7 +715,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (readings.isEmpty)
         const EmptyState(
           'No readings for this metric',
-          'Read your sensor in Devices. Soil percentages require firmware calibration.',
+          'Read your sensor in Devices. Soil percentages require device calibration.',
         )
       else
         Panel(
@@ -805,13 +851,17 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ],
     ],
     if (historyCategory == 1) ...[
+      Text('Sensor alerts', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 8),
+      const Text(
+        'Each alert links its trigger, photo and diagnosis when available. Failures remain visible here.',
+      ),
+      const SizedBox(height: 16),
       for (final alert in h.alerts.where((a) => a.crop == crop)) ...[
         Card(
           child: ListTile(
-            title: Text(
-              '${dateLabel(alert.timestamp)} · ${alertStateLabel(alert.state)}',
-            ),
-            subtitle: Text(alert.reason),
+            title: Text(alertStateLabel(alert.state)),
+            subtitle: Text('${dateLabel(alert.timestamp)}\n${alert.reason}'),
             trailing: const Icon(Icons.chevron_right),
             onTap: locked
                 ? null
@@ -822,18 +872,23 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ),
         const SizedBox(height: 12),
       ],
-      Text('Warning photos', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 8),
-      const Text(
-        'Alerts link the trigger, photo and diagnosis. Older warning photos appear below. Board SD photos stay on the camera.',
-      ),
-      const SizedBox(height: 16),
-      if (!h.alertPhotos.any((p) => p.crop == crop) &&
+      if (!h.alertPhotos.any((p) => p.crop == crop && p.alertId == null) &&
           !h.alerts.any((a) => a.crop == crop))
         const EmptyState(
-          'No warning photos',
+          'No alerts saved',
           'Enable sensor alerts in Monitoring & Auto Scan to record warnings here.',
         ),
+      if (h.alertPhotos.any((p) => p.crop == crop && p.alertId == null)) ...[
+        Text(
+          'Older warning photos',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'These older photos have no linked alert record. Board SD photos stay on the camera.',
+        ),
+        const SizedBox(height: 16),
+      ],
       for (final photo in h.alertPhotos.reversed.where(
         (p) => p.crop == crop && p.alertId == null,
       ))
@@ -905,7 +960,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
               child: CropPicker(value: crop, onChanged: _crop),
             ),
             const SizedBox(height: 20),
-            if (locked) const LinearProgressIndicator(),
+            if (locked) ...[
+              const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              const Text('Completing your request…'),
+              const SizedBox(height: 16),
+            ],
             if (error != null || h.error != null)
               IssueCard(
                 issue: error != null

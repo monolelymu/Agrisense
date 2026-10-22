@@ -38,8 +38,15 @@ class HelpScreen extends StatelessWidget {
       children: [
         const Text('Help is available offline.'),
         const SizedBox(height: 12),
-        if (crop != null) Text('Selected crop: ${crop!.label}'),
-        Text(_availability(crop)),
+        if (crop != null) ...[
+          Text(
+            'Selected crop: ${crop!.label}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+        ],
+        Panel(child: Text(_availability(crop))),
+        const SizedBox(height: 16),
         if (issue != null) ...[
           const SizedBox(height: 12),
           _error(issue!, expanded: true),

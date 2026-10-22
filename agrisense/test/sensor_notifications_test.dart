@@ -438,8 +438,15 @@ void main() {
           150,
           scrollable: find.byType(Scrollable).first,
         );
+        // A partially visible tall tile can have its center outside the viewport.
+        // Center the actual control and verify the tap changes its value.
+        await Scrollable.ensureVisible(tester.element(checkbox), alignment: .5);
+        await tester.pumpAndSettle();
+        expect(checkbox.hitTestable(), findsOneWidget);
+        final previous = tester.widget<CheckboxListTile>(checkbox).value;
         await tester.tap(checkbox);
         await tester.pumpAndSettle();
+        expect(tester.widget<CheckboxListTile>(checkbox).value, !previous!);
         expect(tester.takeException(), isNull);
       }
       final duration = find.byKey(

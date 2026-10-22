@@ -304,7 +304,17 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
 
   Widget _scanTile(TomatoScan scan) => Card(
     child: ListTile(
-      leading: const Icon(Icons.eco_outlined, color: accent),
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          scan.preview,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) =>
+              const Icon(Icons.eco_outlined, color: accent),
+        ),
+      ),
       title: Text(scan.displayLabel),
       subtitle: Text(
         '${scan.crop.label} • ${dateLabel(scan.timestamp)}\n'

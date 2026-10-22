@@ -39,6 +39,11 @@ class _NotificationSettingsScreenState
   bool applyingPreset = false;
   String preset = 'custom';
   Map<String, dynamic>? baseline;
+  String get baselineTime {
+    final at = DateTime.tryParse('${baseline?['received_at']}');
+    return at == null ? 'Saved reading' : dateLabel(at.toLocal());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -286,7 +291,7 @@ class _NotificationSettingsScreenState
               }
             },
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 Text(
@@ -414,8 +419,7 @@ class _NotificationSettingsScreenState
                 const Text(
                   'Sensitive proposes fixed limits from a fresh sample: ±1 °C and ±5 percentage points. Review the limits below, then Save. These are change-detection limits, not disease thresholds.',
                 ),
-                if (baseline != null)
-                  Text('Fixed baseline: ${baseline!['received_at']}'),
+                if (baseline != null) Text('Fixed baseline: $baselineTime'),
                 TextButton(
                   onPressed: busy
                       ? null
@@ -458,13 +462,13 @@ class _NotificationSettingsScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _number(duration, 'Duration (seconds)'),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       const Text(
                         'Reading must stay outside its limits for 10–3600 seconds.',
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
                       _number(cooldown, 'Cooldown (seconds)'),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       const Text(
                         'Wait 30–86400 seconds between accepted alerts, including failed captures.',
                       ),
