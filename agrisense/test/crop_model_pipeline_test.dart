@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:agrisense/core/hardware_controller.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/features/diagnosis/model_catalog.dart';
+import 'package:agrisense/features/diagnosis/chili_knowledge.dart';
 import 'package:agrisense/features/diagnosis/tomato_classifier.dart';
 import 'package:agrisense/features/diagnosis/tomato_assessment.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
@@ -44,17 +45,56 @@ TomatoScan prediction({String source = 'camera'}) => TomatoScan(
 );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('Chili assets are bundled and match the ordered care entries', () async {
+    final model = cropModels[Crop.chili]!;
+    final labels = jsonDecode(await rootBundle.loadString(model.labelsAsset));
+    expect(labels, [
+      'bacterial_spot',
+      'cercospora_leaf_spot',
+      'leaf_curl',
+      'healthy',
+      'nutrient_deficiency',
+      'powdery_mildew',
+    ]);
+    expect(labels, chiliKnowledge.keys.toList());
+    expect(model.crop, Crop.chili);
+    expect(model.inputSize, 224);
+    expect(model.classCount, 6);
+    expect(model.version, 'chili-b0-a312bad7109e');
+    expect(
+      model.sha256,
+      'a312bad7109e100c57807afe07bb6dd9b78389772fea698c98a5cc1ca6f14fb0',
+    );
+    final bytes = await rootBundle.load(model.modelAsset);
+    expect(
+      ascii.decode(bytes.buffer.asUint8List(bytes.offsetInBytes + 4, 4)),
+      'TFL3',
+    );
+    for (final crop in Crop.values) {
+      expect(
+        modelStatus(crop),
+        isNot(
+          matches(
+            RegExp(
+              'experimental|provisional|testing|demo',
+              caseSensitive: false,
+            ),
+          ),
+        ),
+      );
+    }
+  });
+
   test(
     'model metadata matches ordered label files and bundled model identity',
     () {
-      expect(cropModels[Crop.chili], isNull);
+      expect(modelAvailable(Crop.chili), isTrue);
       expect(modelAvailable(Crop.tomato), isTrue);
       expect(modelAvailable(Crop.eggplant), isTrue);
-      expect(modelStatus(Crop.eggplant), contains('provisional'));
-      expect(
-        cropModels[Crop.eggplant]!.version,
-        endsWith('-provisional-rgb-aa01'),
-      );
+      expect(modelStatus(Crop.eggplant), contains('photo analysis'));
+      expect(cropModels[Crop.eggplant]!.version, 'eggplant-b0-f715c3c81603');
       expect(cropModels[Crop.tomato]!.version, 'tomato-b0-4e75ac1379db');
       for (final m in cropModels.values) {
         final labels =
@@ -82,20 +122,17 @@ void main() {
     },
   );
 
-  test(
-    'Eggplant testing is available while absent crops cannot reach inference',
-    () async {
-      final classifier = TomatoClassifier();
-      expect(classifier.supports(Crop.eggplant), isTrue);
-      for (final crop in [Crop.chili]) {
-        expect(classifier.supports(crop), isFalse);
-        expect(
-          () => classifier.classifyCrop(crop, Uint8List(1)),
-          throwsStateError,
-        );
-      }
-    },
-  );
+  test('all bundled crops support inference and reject empty photos', () async {
+    final classifier = TomatoClassifier();
+    expect(classifier.supports(Crop.eggplant), isTrue);
+    for (final crop in Crop.values) {
+      expect(classifier.supports(crop), isTrue);
+      await expectLater(
+        classifier.classifyCrop(crop, Uint8List(0)),
+        throwsFormatException,
+      );
+    }
+  });
 
   test(
     'Eggplant uses its own general reference with fresh same-crop readings',

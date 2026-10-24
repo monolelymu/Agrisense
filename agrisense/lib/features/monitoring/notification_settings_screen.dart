@@ -366,7 +366,7 @@ class _NotificationSettingsScreenState
                     subtitle: Text(
                       widget.hardware.classifier.supports(widget.crop)
                           ? cropModels[widget.crop]?.testingNotice ??
-                                'Runs the installed ${widget.crop.label} model on each captured original. Experimental.'
+                                'Analyzes each captured photo with the ${widget.crop.label} model on this device.'
                           : modelStatus(widget.crop),
                     ),
                     value: analyzePhoto,

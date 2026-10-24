@@ -103,6 +103,36 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Details shows the saved model version for old and new Chili scans',
+    (tester) async {
+      for (final version in [
+        'chili-v1-85541377961d-provisional-rgb-aa01',
+        'chili-b0-a312bad7109e',
+      ]) {
+        final scan = TomatoScan.fromJson({
+          ...sample().toJson(),
+          'crop': 'chili',
+          'label': 'healthy',
+          'modelVersion': version,
+        });
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(child: TomatoResultCard(scan: scan)),
+            ),
+          ),
+        );
+        await tester.ensureVisible(find.text('Details'));
+        await tester.tap(find.text('Details'));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Model: $version'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
+
   test('top three predictions survive serialization', () {
     final json = sample().toJson();
     json['predictions'] = [
@@ -119,14 +149,12 @@ void main() {
     expect(restored.rankedPredictions.map((p) => p.score), [.8, .15, .05]);
   });
 
-  test('unsupported crops cannot invoke the tomato model', () {
+  test('Chili rejects empty photos before loading its model', () async {
     final classifier = TomatoClassifier();
-    for (final crop in [Crop.chili]) {
-      expect(
-        () => classifier.classifyCrop(crop, Uint8List(0)),
-        throwsStateError,
-      );
-    }
+    await expectLater(
+      classifier.classifyCrop(Crop.chili, Uint8List(0)),
+      throwsFormatException,
+    );
   });
 
   testWidgets(
@@ -167,7 +195,7 @@ void main() {
       await tester.tap(find.text('Diagnosis').last);
       await tester.pumpAndSettle();
       expect(
-        find.textContaining('photo preparation is provisional'),
+        find.textContaining('Eggplant photo analysis runs on this device.'),
         findsOneWidget,
       );
       expect(

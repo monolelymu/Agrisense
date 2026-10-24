@@ -63,6 +63,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   int page = 0;
   int historyCategory = 0;
   String metric = 'Temperature';
+  int trendDays = 1;
+  String historyQuery = '';
+  final historySearch = TextEditingController();
+  DateTimeRange? historyDates;
+  bool oldestFirst = false;
+  int historyLimit = 50;
+  String scanFilter = 'All results';
   List<TomatoScan> scans = [];
   String? error;
   AppIssue? actionIssue;
@@ -120,12 +127,19 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   Future<void> _help() => h.withPollingPaused(() async {
     final destination = await Navigator.of(context).push<HelpDestination>(
       MaterialPageRoute<HelpDestination>(
-        builder: (_) =>
-            HelpScreen(crop: crop, onReplay: _tutorial, showShortcuts: true),
+        builder: (helpContext) => HelpScreen(
+          crop: crop,
+          onReplay: () =>
+              Navigator.of(helpContext).pop(HelpDestination.tutorial),
+          showShortcuts: true,
+        ),
       ),
     );
     if (!mounted) return;
     switch (destination) {
+      case HelpDestination.tutorial:
+        setState(() => page = 0);
+        await _tutorial();
       case HelpDestination.scan:
         await _scan();
       case HelpDestination.devices:
@@ -163,6 +177,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   @override
   void dispose() {
+    historySearch.dispose();
     WidgetsBinding.instance.removeObserver(this);
     if (!h.backgroundActive) h.stopPolling();
     super.dispose();
@@ -244,7 +259,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     );
     if (answer == null || !mounted) return;
     final success = await _saveAction(() {
-      if (answer.$1.trim().isEmpty) return h.assign(selected, kind, '');
+      if (answer.$1.trim().isEmpty) return h.clearSavedAddress(selected, kind);
       return kind == 'sensor'
           ? h.configureSensor(selected, answer.$1, answer.$2)
           : h.moveCamera(selected, answer.$1);
@@ -254,7 +269,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         SnackBar(
           content: Text(
             answer.$1.trim().isEmpty
-                ? 'Assignment removed. Saved history is unchanged.'
+                ? 'Saved IP cleared from this phone. History and pairing are kept. Board automatic capture is not stopped.'
                 : '${selected.label} $kind assigned. Saved history is unchanged.',
           ),
         ),
@@ -420,39 +435,51 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         label: const Text('Scan leaf'),
       ),
       const SizedBox(height: 20),
-      Panel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Connection & monitoring',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              h.address(crop, 'sensor').isEmpty
-                  ? 'Sensor: not assigned'
-                  : 'Sensor: assigned to ${crop.label}',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              h.address(crop, 'camera').isEmpty
-                  ? 'Camera: not assigned'
-                  : 'Camera: assigned to ${crop.label}',
-            ),
-            const SizedBox(height: 8),
-            Text(h.monitoringStatus),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: locked
-                  ? null
-                  : () => _openSettings(
-                      MonitoringSettingsScreen(hardware: h, crop: crop),
-                    ),
-              icon: const Icon(Icons.tune),
-              label: const Text('Monitoring & Auto Scan'),
-            ),
-          ],
+      SizedBox(
+        width: double.infinity,
+        child: Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Connection & monitoring',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              _connectionRow(
+                Icons.sensors,
+                'Sensor',
+                h.address(crop, 'sensor').isNotEmpty,
+              ),
+              const SizedBox(height: 8),
+              _connectionRow(
+                Icons.camera_alt_outlined,
+                'Camera',
+                h.address(crop, 'camera').isNotEmpty,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    h.polling ? Icons.sync : Icons.pause_circle_outline,
+                    color: h.polling ? accent : muted,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(h.monitoringStatus)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: locked
+                    ? null
+                    : () => _openSettings(
+                        MonitoringSettingsScreen(hardware: h, crop: crop),
+                      ),
+                icon: const Icon(Icons.tune),
+                label: const Text('Monitoring & Auto Scan'),
+              ),
+            ],
+          ),
         ),
       ),
       const SizedBox(height: 24),
@@ -530,7 +557,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
         ],
       ),
-      if (crop != Crop.chili) ...[
+      ...[
         const SizedBox(height: 20),
         GrowingConditionsPanel(
           crop: crop,
@@ -652,6 +679,49 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     Text(modelStatus(crop)),
   ];
 
+  Widget _connectionRow(IconData icon, String name, bool assigned) => Row(
+    children: [
+      Icon(icon, color: assigned ? accent : muted),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Text(
+          '$name: ${assigned ? 'assigned to ${crop.label}' : 'not assigned'}',
+        ),
+      ),
+      Icon(
+        assigned ? Icons.link : Icons.link_off,
+        color: assigned ? accent : muted,
+        size: 18,
+      ),
+    ],
+  );
+
+  Future<void> _resetTrends() async {
+    final selected = crop;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset ${selected.label} graph?'),
+        content: const Text(
+          'Start all sensor graphs fresh from now. Older readings stay in History. You can restore them to the graph at any time.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reset view'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await _saveAction(() => h.resetTrendView(selected));
+    }
+  }
+
   double? _value(HardwareSample r) => switch (metric) {
     'Humidity' => r.humidity,
     'Soil moisture' => r.soil,
@@ -667,13 +737,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     return base * 10;
   }
 
-  String _elapsed(double minutes) => minutes >= 1440
-      ? '${(minutes / 1440).toStringAsFixed(1)}d'
-      : minutes >= 60
-      ? '${(minutes / 60).toStringAsFixed(1)}h'
-      : '${minutes.toStringAsFixed(minutes < 1 && minutes != 0 ? 1 : 0)}m';
   List<Widget> _trends() {
-    final readings = h.readings(crop).where((r) => _value(r) != null).toList();
+    final now = DateTime.now();
+    final reset = h.trendStart(crop);
+    final cutoff = now.subtract(Duration(days: trendDays));
+    final readings =
+        h
+            .readings(crop)
+            .where(
+              (r) =>
+                  _value(r)?.isFinite == true &&
+                  !r.receivedAt.isAfter(now) &&
+                  (trendDays == 0 || !r.receivedAt.isBefore(cutoff)) &&
+                  (reset == null || !r.receivedAt.isBefore(reset)),
+            )
+            .toList()
+          ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
     final start = readings.isEmpty ? DateTime.now() : readings.first.receivedAt;
     final span = readings.isEmpty
         ? 1.0
@@ -697,6 +776,24 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ),
       Wrap(
         spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final entry in const {
+            1: '24 hours',
+            7: '7 days',
+            30: '30 days',
+            0: 'All time',
+          }.entries)
+            ChoiceChip(
+              label: Text(entry.value),
+              selected: trendDays == entry.key,
+              onSelected: (_) => setState(() => trendDays = entry.key),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 8,
         children: [
           for (final name in [
             'Temperature',
@@ -712,6 +809,29 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ],
       ),
       const SizedBox(height: 20),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          OutlinedButton.icon(
+            onPressed: locked ? null : _resetTrends,
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Reset view'),
+          ),
+          if (reset != null)
+            TextButton(
+              onPressed: locked
+                  ? null
+                  : () => _saveAction(() => h.restoreTrendView(crop)),
+              child: const Text('Restore older readings'),
+            ),
+        ],
+      ),
+      if (reset != null)
+        Text(
+          'Graph restarted ${dateLabel(reset)}. Older records remain in History.',
+        ),
+      const SizedBox(height: 12),
       if (readings.isEmpty)
         const EmptyState(
           'No readings for this metric',
@@ -733,8 +853,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
               const SizedBox(height: 8),
               Text('${readings.length} samples • from ${dateLabel(start)}'),
               const SizedBox(height: 8),
-              const Text(
-                'Horizontal axis: minutes since the first saved sample.',
+              Text(
+                'Latest ${values.last.toStringAsFixed(1)} · Average ${(values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1)}\n'
+                'Low ${low.toStringAsFixed(1)} · High ${high.toStringAsFixed(1)}',
+              ),
+              Text(
+                'Last reading ${dateLabel(readings.last.receivedAt)}',
+                style: const TextStyle(color: muted),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -750,6 +875,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                       horizontalInterval: yStep,
                     ),
                     borderData: FlBorderData(show: false),
+                    lineTouchData: LineTouchData(
+                      touchTooltipData: LineTouchTooltipData(
+                        getTooltipItems: (spots) => spots
+                            .map(
+                              (spot) => LineTooltipItem(
+                                '${dateLabel(start.add(Duration(milliseconds: (spot.x * 60000).round())))}\n${spot.y.toStringAsFixed(1)} ${metric == 'Temperature'
+                                    ? '°C'
+                                    : metric == 'Gas raw'
+                                    ? 'ADC'
+                                    : '%'}',
+                                const TextStyle(color: accent),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
                     titlesData: FlTitlesData(
                       topTitles: const AxisTitles(
                         sideTitles: SideTitles(showTitles: false),
@@ -782,7 +923,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                           getTitlesWidget: (value, meta) => Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: Text(
-                              _elapsed(value),
+                              dateLabel(
+                                start.add(
+                                  Duration(
+                                    milliseconds: (value * 60000).round(),
+                                  ),
+                                ),
+                              ).replaceFirst(' ', '\n'),
                               style: const TextStyle(
                                 color: muted,
                                 fontSize: 11,
@@ -796,14 +943,23 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                       LineChartBarData(
                         color: accent,
                         isCurved: false,
-                        dotData: FlDotData(show: readings.length < 20),
+                        dotData: const FlDotData(show: true),
                         spots: [
-                          for (final r in readings)
+                          for (var i = 0; i < readings.length; i++) ...[
+                            if (i > 0 &&
+                                readings[i].receivedAt
+                                        .difference(readings[i - 1].receivedAt)
+                                        .inMinutes >
+                                    30)
+                              FlSpot.nullSpot,
                             FlSpot(
-                              r.receivedAt.difference(start).inMilliseconds /
+                              readings[i].receivedAt
+                                      .difference(start)
+                                      .inMilliseconds /
                                   60000,
-                              _value(r)!,
+                              _value(readings[i])!,
                             ),
+                          ],
                         ],
                       ),
                     ],
@@ -815,113 +971,312 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ),
       const SizedBox(height: 12),
       const Text(
-        'Missing measurements are omitted. Up to 5,000 recent readings per crop are retained locally.',
+        'Tap a point for its value and time. Gaps over 30 minutes are left disconnected. Gas is an uncalibrated raw reading. Up to 5,000 readings per crop are saved.',
       ),
     ];
   }
 
-  List<Widget> _history(List<TomatoScan> results) => [
-    Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (var i = 0; i < 3; i++)
-          ChoiceChip(
-            label: Text(const ['Scans', 'Alerts', 'Readings'][i]),
-            selected: historyCategory == i,
-            onSelected: (_) => setState(() => historyCategory = i),
-          ),
-      ],
-    ),
-    const SizedBox(height: 20),
-    if (historyCategory == 0) ...[
-      Text(
-        '${results.length} saved scans',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      const SizedBox(height: 12),
-      if (results.isEmpty)
-        const EmptyState(
-          'No saved scans',
-          'Scan a leaf to save a result for this crop.',
-        ),
-      for (final result in results) ...[
-        _scanTile(result),
-        const SizedBox(height: 12),
-      ],
-    ],
-    if (historyCategory == 1) ...[
-      Text('Sensor alerts', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 8),
-      const Text(
-        'Each alert links its trigger, photo and diagnosis when available. Failures remain visible here.',
+  bool _matchesHistory(DateTime at, String text) {
+    final dates = historyDates;
+    return (dates == null ||
+            (!at.isBefore(dates.start) &&
+                at.isBefore(dates.end.add(const Duration(days: 1))))) &&
+        '$text ${dateLabel(at)} ${at.toIso8601String()}'.toLowerCase().contains(
+          historyQuery.trim().toLowerCase(),
+        );
+  }
+
+  Future<void> _chooseHistoryDates() async {
+    final dates = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: historyDates,
+    );
+    if (dates != null && mounted) {
+      setState(() {
+        historyDates = dates;
+        historyLimit = 50;
+      });
+    }
+  }
+
+  List<Widget> _history(List<TomatoScan> results) {
+    final filteredScans =
+        results
+            .where(
+              (s) =>
+                  _matchesHistory(
+                    s.timestamp,
+                    '${s.id} ${s.displayLabel} ${s.source} ${s.uncertain ? 'uncertain' : ''}',
+                  ) &&
+                  (scanFilter == 'All results' ||
+                      (scanFilter == 'Uncertain'
+                          ? s.uncertain
+                          : scanFilter == 'Healthy'
+                          ? s.label == 'healthy'
+                          : s.label != 'healthy')),
+            )
+            .toList()
+          ..sort(
+            (a, b) => oldestFirst
+                ? a.timestamp.compareTo(b.timestamp)
+                : b.timestamp.compareTo(a.timestamp),
+          );
+    final filteredAlerts =
+        h.alerts
+            .where(
+              (a) =>
+                  a.crop == crop &&
+                  _matchesHistory(
+                    a.timestamp,
+                    '${a.id} ${a.reason} ${alertStateLabel(a.state)}',
+                  ),
+            )
+            .toList()
+          ..sort(
+            (a, b) => oldestFirst
+                ? a.timestamp.compareTo(b.timestamp)
+                : b.timestamp.compareTo(a.timestamp),
+          );
+    final filteredPhotos =
+        h.alertPhotos
+            .where(
+              (p) =>
+                  p.crop == crop &&
+                  p.alertId == null &&
+                  _matchesHistory(p.timestamp, p.reason),
+            )
+            .toList()
+          ..sort(
+            (a, b) => oldestFirst
+                ? a.timestamp.compareTo(b.timestamp)
+                : b.timestamp.compareTo(a.timestamp),
+          );
+    final filteredReadings =
+        h
+            .readings(crop)
+            .where(
+              (r) => _matchesHistory(
+                r.receivedAt,
+                '${r.id} ${r.deviceId} temperature ${r.temperature} humidity ${r.humidity} soil ${r.soil} gas ${r.gasRaw}',
+              ),
+            )
+            .toList()
+          ..sort(
+            (a, b) => oldestFirst
+                ? a.receivedAt.compareTo(b.receivedAt)
+                : b.receivedAt.compareTo(a.receivedAt),
+          );
+    final count = historyCategory == 0
+        ? filteredScans.length
+        : historyCategory == 1
+        ? filteredAlerts.length + filteredPhotos.length
+        : filteredReadings.length;
+    return [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < 3; i++)
+            ChoiceChip(
+              label: Text(const ['Scans', 'Alerts', 'Readings'][i]),
+              selected: historyCategory == i,
+              onSelected: (_) => setState(() {
+                historyCategory = i;
+                historyLimit = 50;
+              }),
+            ),
+        ],
       ),
       const SizedBox(height: 16),
-      for (final alert in h.alerts.where((a) => a.crop == crop)) ...[
-        Card(
-          child: ListTile(
-            title: Text(alertStateLabel(alert.state)),
-            subtitle: Text('${dateLabel(alert.timestamp)}\n${alert.reason}'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: locked
-                ? null
-                : () => _openSettings(
-                    AlertDetailScreen(hardware: h, id: alert.id),
-                  ),
-          ),
+      TextField(
+        controller: historySearch,
+        decoration: InputDecoration(
+          labelText: 'Search records',
+          hintText: 'Disease, date, record ID or sensor value',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: historyQuery.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() {
+                    historySearch.clear();
+                    historyQuery = '';
+                    historyLimit = 50;
+                  }),
+                ),
         ),
-        const SizedBox(height: 12),
-      ],
-      if (!h.alertPhotos.any((p) => p.crop == crop && p.alertId == null) &&
-          !h.alerts.any((a) => a.crop == crop))
-        const EmptyState(
-          'No alerts saved',
-          'Enable sensor alerts in Monitoring & Auto Scan to record warnings here.',
-        ),
-      if (h.alertPhotos.any((p) => p.crop == crop && p.alertId == null)) ...[
-        Text(
-          'Older warning photos',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'These older photos have no linked alert record. Board SD photos stay on the camera.',
-        ),
-        const SizedBox(height: 16),
-      ],
-      for (final photo in h.alertPhotos.reversed.where(
-        (p) => p.crop == crop && p.alertId == null,
-      ))
-        _alertPhotoTile(photo),
-    ],
-    if (historyCategory == 2) ...[
-      Text(
-        'Recent sensor readings',
-        style: Theme.of(context).textTheme.titleLarge,
+        onChanged: (value) => setState(() {
+          historyQuery = value;
+          historyLimit = 50;
+        }),
       ),
       const SizedBox(height: 12),
-      if (h.readings(crop).isEmpty)
-        const EmptyState(
-          'No sensor readings saved.',
-          'Assign a sensor in Devices and read a sample.',
-        ),
-      for (final r in h.readings(crop).reversed.take(100)) ...[
-        Card(
-          child: ListTile(
-            title: Text(dateLabel(r.receivedAt)),
-            subtitle: Text(
-              'Temperature ${r.temperature ?? '—'} °C · Humidity ${r.humidity ?? '—'}%\n'
-              'Soil ${r.soil == null ? 'unavailable' : '${r.soil}%'} · Gas ${r.gasRaw} raw',
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          OutlinedButton.icon(
+            onPressed: _chooseHistoryDates,
+            icon: const Icon(Icons.date_range),
+            label: Text(
+              historyDates == null
+                  ? 'Date range'
+                  : '${dateLabel(historyDates!.start).split(' ').first} – ${dateLabel(historyDates!.end).split(' ').first}',
             ),
           ),
+          TextButton.icon(
+            onPressed: () => setState(() {
+              oldestFirst = !oldestFirst;
+              historyLimit = 50;
+            }),
+            icon: const Icon(Icons.sort),
+            label: Text(oldestFirst ? 'Oldest first' : 'Newest first'),
+          ),
+          if (historyDates != null ||
+              historyQuery.isNotEmpty ||
+              scanFilter != 'All results')
+            TextButton(
+              onPressed: () => setState(() {
+                historyDates = null;
+                historyQuery = '';
+                historySearch.clear();
+                scanFilter = 'All results';
+                historyLimit = 50;
+              }),
+              child: const Text('Clear filters'),
+            ),
+        ],
+      ),
+      if (historyCategory == 0)
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final filter in [
+              'All results',
+              'Healthy',
+              'Other results',
+              'Uncertain',
+            ])
+              ChoiceChip(
+                label: Text(filter),
+                selected: scanFilter == filter,
+                onSelected: (_) => setState(() {
+                  scanFilter = filter;
+                  historyLimit = 50;
+                }),
+              ),
+          ],
+        ),
+      const SizedBox(height: 20),
+      if (count == 0 &&
+          (historyQuery.isNotEmpty ||
+              historyDates != null ||
+              (historyCategory == 0 && scanFilter != 'All results')))
+        const EmptyState(
+          'No matching records',
+          'Try another search or clear the filters.',
+        ),
+      if (historyCategory == 0) ...[
+        Text(
+          '${filteredScans.length} saved scans',
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 12),
+        if (results.isEmpty && historyQuery.isEmpty && historyDates == null)
+          const EmptyState(
+            'No saved scans',
+            'Scan a leaf to save a result for this crop.',
+          ),
+        for (final result in filteredScans.take(historyLimit)) ...[
+          _scanTile(result),
+          const SizedBox(height: 12),
+        ],
       ],
-      const Text(
-        'Latest 100 readings shown. Trends uses all retained readings.',
-      ),
-    ],
-  ];
+      if (historyCategory == 1) ...[
+        Text('Sensor alerts', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        const Text(
+          'Each alert links its trigger, photo and diagnosis when available. Failures remain visible here.',
+        ),
+        const SizedBox(height: 16),
+        for (final alert in filteredAlerts.take(historyLimit)) ...[
+          Card(
+            child: ListTile(
+              title: Text(alertStateLabel(alert.state)),
+              subtitle: Text('${dateLabel(alert.timestamp)}\n${alert.reason}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: locked
+                  ? null
+                  : () => _openSettings(
+                      AlertDetailScreen(hardware: h, id: alert.id),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (!h.alertPhotos.any((p) => p.crop == crop && p.alertId == null) &&
+            !h.alerts.any((a) => a.crop == crop))
+          const EmptyState(
+            'No alerts saved',
+            'Enable sensor alerts in Monitoring & Auto Scan to record warnings here.',
+          ),
+        if (filteredPhotos.isNotEmpty) ...[
+          Text(
+            'Older warning photos',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'These older photos have no linked alert record. Board SD photos stay on the camera.',
+          ),
+          const SizedBox(height: 16),
+        ],
+        for (final photo in filteredPhotos.take(
+          math.max(0, historyLimit - filteredAlerts.length),
+        ))
+          _alertPhotoTile(photo),
+      ],
+      if (historyCategory == 2) ...[
+        Text(
+          'Recent sensor readings',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        if (h.readings(crop).isEmpty)
+          const EmptyState(
+            'No sensor readings saved.',
+            'Assign a sensor in Devices and read a sample.',
+          ),
+        for (final r in filteredReadings.take(historyLimit)) ...[
+          Card(
+            child: ListTile(
+              title: Text(dateLabel(r.receivedAt)),
+              subtitle: Text(
+                'Temperature ${r.temperature ?? '—'} °C · Humidity ${r.humidity ?? '—'}%\n'
+                'Soil ${r.soil == null ? 'unavailable' : '${r.soil}%'} · Gas ${r.gasRaw} raw',
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+      if (count > 0)
+        Text(
+          'Showing ${math.min(count, historyLimit)} of $count matching records',
+          style: const TextStyle(color: muted),
+        ),
+      if (count > historyLimit)
+        TextButton.icon(
+          onPressed: () => setState(() => historyLimit += 50),
+          icon: const Icon(Icons.expand_more),
+          label: const Text('Show 50 more'),
+        ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -934,7 +1289,17 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       final results = scans.where((s) => s.crop == crop).toList();
       return Scaffold(
         appBar: AppBar(
-          title: const Text('AgriSense'),
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('AgriSense'),
+              Text(
+                'No More GuessPlant',
+                style: TextStyle(fontSize: 12, color: muted),
+              ),
+            ],
+          ),
           actions: [
             IconButton(
               tooltip: 'Help & troubleshooting',
@@ -1098,7 +1463,7 @@ class _NodeAssignmentDialogState extends State<_NodeAssignmentDialog> {
                 ),
               ),
               const Text(
-                'First setup: paste the code from Serial Monitor. Leave blank to reuse the saved code for this IP.',
+                'First setup: paste the code from Serial Monitor. For the same sensor at a new IP, leave blank to reuse its saved code after device verification.',
               ),
               if (!widget.httpEnabled)
                 const Text(
@@ -1106,18 +1471,29 @@ class _NodeAssignmentDialogState extends State<_NodeAssignmentDialog> {
                   style: TextStyle(color: warning),
                 ),
             ],
+            if (widget.kind == 'camera')
+              const Text(
+                'If the sensor IP also changed, update the sensor assignment first. The app must confirm board automatic capture is off before changing the camera.',
+              ),
             const SizedBox(height: 12),
             Text(
               'This assigns the board to ${widget.crop.label}, replacing its previous crop assignment. Move the physical board to the correct plant too.',
             ),
             const Text(
-              'Leave the IP blank to remove the app assignment. This does not erase readings or reset the board.',
+              'Clear saved IP, or leave the IP blank, to forget only this phone’s address. History and pairing are kept. This works offline and does not stop automatic capture already running on the board.',
             ),
           ],
         ),
       ),
     ),
     actions: [
+      if (widget.initialAddress.isNotEmpty)
+        TextButton.icon(
+          key: const ValueKey('clear-saved-ip'),
+          icon: const Icon(Icons.link_off),
+          label: const Text('Clear saved IP'),
+          onPressed: () => Navigator.pop(context, ('', '')),
+        ),
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: const Text('Cancel'),

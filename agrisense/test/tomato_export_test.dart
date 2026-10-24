@@ -19,7 +19,7 @@ void main() {
       '4e75ac1379db8e3c90808b4a875ddc2a94b1ae045907aff404c44b1c7c27bdc7',
     );
     expect(model.classCount, 17);
-    expect(modelAvailable(Crop.chili), isFalse);
+    expect(modelAvailable(Crop.chili), isTrue);
     expect(modelAvailable(Crop.eggplant), isTrue);
     final labels = jsonDecode(File(model.labelsAsset).readAsStringSync());
     final exportedLabels = jsonDecode(

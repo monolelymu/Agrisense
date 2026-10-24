@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-21",
+  "updated": "2026-10-22",
   "notes": "Claim register for implemented knowledge entries, not proof of local diagnostic validity. n.d. means date unverified, not known to be undated. No pesticide doses adopted.",
   "sources": [
     {
@@ -46,11 +46,12 @@
       "doi": null,
       "accessed": "2026-10-21",
       "crops": [
-        "tomato"
+        "tomato",
+        "chili"
       ],
       "locator": "Symptoms, favorable conditions and management sections",
       "claims": "bacterial_spot: Warm conditions around 23.9–30 °C, high humidity and rain or overhead watering favor disease.",
-      "verification": "Bibliographic author/year and precise section need verification; carried forward from Phase 3.",
+      "verification": "Symptoms and pepper applicability rechecked 2026-10-22; individual author/year remain unverified. Existing Tomato rule retained; no numerical Chili rule adopted.",
       "labels": [
         "bacterial_spot"
       ]
@@ -478,6 +479,76 @@
         "healthy",
         "insect_pest"
       ]
+    },
+    {
+      "id": "CH-GROW-01",
+      "title": "Potatoes, Peppers and Eggplant",
+      "authors_or_organization": "Diane Relf and Alan McDaniel; reviewed by Edward Olsen, Virginia Cooperative Extension",
+      "year": "2026",
+      "url": "https://www.pubs.ext.vt.edu/426/426-413/426-413.html",
+      "doi": null,
+      "accessed": "2026-10-22",
+      "crops": ["chili"],
+      "labels": ["healthy", "nutrient_deficiency"],
+      "locator": "Peppers: Environmental Preferences, Culture and Cultural Practices; authors/publication date",
+      "claims": "Pepper growing reference 70–75 F (rounded 21.1–23.9 C), no day/night schedule; drainage, moisture and test-informed fertilizer care. General care only, not confirmation of deficiency. No plant-growing RH or soil percentage adopted; storage humidity is not a growing reference.",
+      "verification": "Page inspected 2026-10-22: authors and March 10, 2026 publication date verified; text says first published 2015, revised February 2026. The 70–85 F section is Eggplant, not peppers. Regional advice, not locally validated limits. Soil/tissue testing is an inspection recommendation, not a sensor diagnosis."
+    },
+    {
+      "id": "CH-BACT-01",
+      "title": "Peppers: Bacterial Spot",
+      "authors_or_organization": "S. T. Koike, R. M. Davis and K. V. Subbarao; UC Statewide IPM Program",
+      "year": "2009",
+      "url": "https://ipm.ucanr.edu/agriculture/peppers/bacterial-spot/",
+      "doi": null,
+      "accessed": "2026-10-22",
+      "crops": ["chili"],
+      "labels": ["bacterial_spot"],
+      "locator": "Symptoms and Signs; Comments on the Disease; Management",
+      "claims": "Leaf, stem and fruit spotting; infected seed/transplants and moist foliage contribute to disease. Use healthy planting material and reduce wet-foliage handling/splash. No numerical sensor rule adopted.",
+      "verification": "Page content, credited authors and Text Updated 12/09 inspected 2026-10-22. Year denotes text update. Symptoms do not establish the organism in a photographed plant."
+    },
+    {
+      "id": "CH-CERC-01",
+      "title": "Chilli: Cercospora leaf spot",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "2023",
+      "url": "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_5.html",
+      "doi": null,
+      "accessed": "2026-10-22",
+      "crops": ["chili"],
+      "labels": ["cercospora_leaf_spot"],
+      "locator": "Cercospora leaf spot: Symptoms; Updated on Jun, 2023",
+      "claims": "Spots with pale centers and darker borders, merging lesions and premature leaf drop. No numerical environmental rule. App hygiene advice is a general precaution, not a source-specific treatment.",
+      "verification": "Symptoms and displayed June 2023 update verified 2026-10-22. Individual authors not listed. Source pesticide treatments/doses not adopted."
+    },
+    {
+      "id": "CH-CURL-01",
+      "title": "Chilli: Viral diseases, Leaf curl",
+      "authors_or_organization": "Tamil Nadu Agricultural University",
+      "year": "2023",
+      "url": "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_7.html",
+      "doi": null,
+      "accessed": "2026-10-22",
+      "crops": ["chili"],
+      "labels": ["leaf_curl"],
+      "locator": "Viral diseases: Leaf curl; Management of viral diseases; Updated on Jun, 2023",
+      "claims": "Distorted curled leaves and reduced growth; whitefly transmission in the described viral example; healthy planting material and protecting seedlings. Broad app label does not establish a virus or vector. Sensors cannot detect vectors/infection.",
+      "verification": "Leaf-curl symptoms, whitefly statement and June 2023 update verified 2026-10-22. Individual authors not listed. Thrips inspection does not imply transmission of this virus. Chemical treatments/doses and burning instructions not adopted."
+    },
+    {
+      "id": "CH-POW-01",
+      "title": "Peppers: Powdery Mildew",
+      "authors_or_organization": "S. T. Koike, R. M. Davis and K. V. Subbarao; UC Statewide IPM Program",
+      "year": "2010",
+      "url": "https://ipm.ucanr.edu/agriculture/peppers/powdery-mildew/",
+      "doi": null,
+      "accessed": "2026-10-22",
+      "crops": ["chili"],
+      "labels": ["powdery_mildew"],
+      "locator": "Symptoms and Signs; Comments on the Disease; Management",
+      "claims": "Leveillula taurica on peppers; powdery growth often underneath leaves, upper discoloration and leaf drop exposing fruit to sunburn. Monitor regularly; sanitation alone may be insufficient. No universal sensor cutoff adopted.",
+      "verification": "Pepper-specific symptoms, management, credited authors and Text Updated 05/10 inspected 2026-10-22. Year denotes text update; treatment table has a separate 06/16 update. Does not establish species from an image; no pesticide doses adopted."
     },
     {
       "id": "CTX-01",

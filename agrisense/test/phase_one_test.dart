@@ -115,7 +115,8 @@ void main() {
         await box.flush();
       });
       await tester.pumpAndSettle();
-      expect(find.text('Help & troubleshooting'), findsOneWidget);
+      expect(find.text('Help & troubleshooting'), findsNothing);
+      expect(find.text('A closer look at your crops.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       await tester.pumpWidget(

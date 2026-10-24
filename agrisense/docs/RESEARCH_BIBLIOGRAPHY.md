@@ -1,5 +1,28 @@
 # Research bibliography and claim register
 
+Chili additions verified/accessed 2026-10-22:
+
+- **[CH-GROW-01]** Relf, D., & McDaniel, A. (2026; reviewed by E. Olsen). *Potatoes, Peppers and Eggplant*. Virginia Cooperative Extension. https://www.pubs.ext.vt.edu/426/426-413/426-413.html
+  - Crop/labels: chili; healthy, nutrient_deficiency; growing reference.
+  - Locator: Peppers — Environmental Preferences, Culture and Cultural Practices. Pepper temperature is 70–75 F (21.1–23.9 C), without a day/night schedule; the wider 70–85 F range belongs to Eggplant. Regional advisory only; no growing RH or soil percentage assigned. General care does not diagnose a nutrient deficiency; soil/tissue testing is recommended for investigation.
+  - Authors and March 10, 2026 publication date verified; first published 2015, revised February 2026. No fertilizer dosages adopted.
+
+- **[CH-BACT-01]** Koike, S. T., Davis, R. M., & Subbarao, K. V. (2009 text update). *Peppers: Bacterial Spot*. UC Statewide IPM Program. https://ipm.ucanr.edu/agriculture/peppers/bacterial-spot/
+  - Crop/labels: chili; bacterial_spot.
+  - Locator: Symptoms and Signs; Comments on the Disease; Management. Leaf/stem/fruit spotting, infected seed/transplants, humid and wet foliage; healthy planting material and reduced splash. No numerical Chili rule adopted. Credited authors and Text Updated 12/09 verified.
+
+- **[CH-CERC-01]** Tamil Nadu Agricultural University. (2023 displayed update). *Chilli: Cercospora leaf spot*. https://agritech.tnau.ac.in/crop_protection/chilli_diseases_5.html
+  - Crop/labels: chili; cercospora_leaf_spot.
+  - Locator: Symptoms. Pale-centered, dark-bordered spots, merging lesions and premature leaf drop verified; individual authors not listed. App hygiene is a general precaution, not a treatment established by this page. No numerical sensor rule or pesticide dosage adopted.
+
+- **[CH-CURL-01]** Tamil Nadu Agricultural University. (2023 displayed update). *Chilli: Viral diseases, Leaf curl*. https://agritech.tnau.ac.in/crop_protection/chilli_diseases_7.html
+  - Crop/labels: chili; leaf_curl.
+  - Locator: Leaf curl; Management of viral diseases. Curled/distorted leaves, stunting, whitefly transmission in the described example, healthy planting material and seedling protection verified; individual authors not listed. Broad label does not identify a virus; inspecting thrips does not imply they transmit this virus. Sensors cannot detect vectors or confirm infection. No chemicals/doses or burning instructions adopted.
+
+- **[CH-POW-01]** Koike, S. T., Davis, R. M., & Subbarao, K. V. (2010 text update). *Peppers: Powdery Mildew*. UC Statewide IPM Program. https://ipm.ucanr.edu/agriculture/peppers/powdery-mildew/
+  - Crop/labels: chili; powdery_mildew.
+  - Locator: Symptoms and Signs; Comments on the Disease; Management. Leveillula taurica, underside powdery growth, upper discoloration, leaf loss and fruit sunburn risk verified. Regular monitoring; sanitation alone may be insufficient. No universal sensor cutoff or pesticide doses adopted. Credited authors and Text Updated 05/10 verified; treatment table separately updated 06/16.
+
 APA-style working bibliography. Verify flagged details before submission. Stable IDs match app sources. Detailed claims and locators: `RESEARCH_REGISTER.json`. Access date: 2026-10-21. n.d. means the publication date has not yet been verified.
 
 - **[TM-01]** University of Georgia Cooperative Extension (n.d.). *UGA: Commercial Tomato Production Handbook*. https://fieldreport.caes.uga.edu/publications/B1312/commercial-tomato-production-handbook/
@@ -13,9 +36,9 @@ APA-style working bibliography. Verify flagged details before submission. Stable
   - Locator: Relative humidity section; Frontiers in Plant Science, 5, Article 625. Article title, authors, year and DOI verified in Phase 4.
 
 - **[TM-03]** University of Minnesota Extension (n.d.). *UMN: Bacterial spot of tomato and pepper*. https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/bacterial-spot-of-tomato-and-pepper
-  - Crop/labels: tomato; bacterial_spot.
+  - Crop/labels: tomato, chili; bacterial_spot.
   - Claims: bacterial_spot: Warm conditions around 23.9–30 °C, high humidity and rain or overhead watering favor disease.
-  - Locator: Symptoms, favorable conditions and management sections. Bibliographic author/year and precise section need verification; carried forward from Phase 3.
+  - Locator: How to tell bacterial spot apart from other issues; Biology; cultural controls. Pepper applicability rechecked 2026-10-22; individual author/year remain unverified. Existing Tomato rule retained; no Chili numerical rule adopted.
 
 - **[TM-04]** University of Minnesota Extension (n.d.). *UMN: Early blight*. https://extension.umn.edu/agriculture/specialty-crops/vegetable-farming/disease-management/early-blight-in-tomato-and-potato
   - Crop/labels: tomato; early_blight.

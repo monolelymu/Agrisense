@@ -7,6 +7,7 @@ import 'tomato_assessment.dart';
 import 'tomato_knowledge.dart';
 import 'tomato_scan.dart';
 import 'eggplant_knowledge.dart';
+import 'chili_knowledge.dart';
 import '../../data/models.dart';
 
 class ReferenceSources extends StatelessWidget {
@@ -79,20 +80,20 @@ class GrowingConditionsView extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          '${c.crop == Crop.eggplant
+          '${c.crop != Crop.tomato
               ? 'General growing'
               : c.daytime
               ? 'Day'
-              : 'Night'} reference: ${c.minimumTemperature.toStringAsFixed(c.crop == Crop.eggplant ? 1 : 0)}–${c.maximumTemperature.toStringAsFixed(c.crop == Crop.eggplant ? 1 : 0)} °C',
+              : 'Night'} reference: ${c.minimumTemperature.toStringAsFixed(c.crop != Crop.tomato ? 1 : 0)}–${c.maximumTemperature.toStringAsFixed(c.crop != Crop.tomato ? 1 : 0)} °C',
         ),
         const SizedBox(height: 12),
         Text(
-          'Humidity: ${value(c.humidity, '% RH')} · ${c.crop == Crop.eggplant ? 'No numerical reference assigned' : referencePositionLabel(c.humidityPosition)}',
+          'Humidity: ${value(c.humidity, '% RH')} · ${c.crop != Crop.tomato ? 'No numerical reference assigned' : referencePositionLabel(c.humidityPosition)}',
         ),
         const SizedBox(height: 8),
         Text(
-          c.crop == Crop.eggplant
-              ? 'No universal Eggplant humidity range is assigned. Air humidity does not measure leaf wetness.'
+          c.crop != Crop.tomato
+              ? 'No universal ${c.crop.label} humidity range is assigned. Air humidity does not measure leaf wetness.'
               : '65–75% RH is a protected-growing reference. It is not a universal outdoor requirement.',
         ),
         const SizedBox(height: 12),
@@ -103,10 +104,14 @@ class GrowingConditionsView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          c.crop == Crop.eggplant
-              ? 'General Eggplant growth reference, without a day/night schedule. References describe the environment, not confirmed plant health.'
+          c.crop != Crop.tomato
+              ? 'General ${c.crop.label} growth reference, without a day/night schedule. References describe the environment, not confirmed plant health.'
               : 'For established tomatoes. Assumed daytime: 06:00–18:00, phone local time. References describe the environment, not confirmed plant health.',
         ),
+        if (c.crop == Crop.chili)
+          const Text(
+            'This regional pepper reference is advisory; cultivar and local growing conditions may differ.',
+          ),
         if (c.sampleAt != null) ...[
           const SizedBox(height: 8),
           Text('Reading received ${dateLabel(c.sampleAt!.toLocal())}'),
@@ -192,9 +197,11 @@ class _GrowingConditionsPanelState extends State<GrowingConditionsPanel> {
           ),
         ),
         ReferenceSources(
-          sources: widget.crop == Crop.eggplant
-              ? [eggplantGrowingSource]
-              : [growingTemperatureSource, growingHumiditySource],
+          sources: switch (widget.crop) {
+            Crop.tomato => [growingTemperatureSource, growingHumiditySource],
+            Crop.eggplant => [eggplantGrowingSource],
+            Crop.chili => [chiliGrowingSource],
+          },
         ),
       ],
     ),
@@ -206,9 +213,12 @@ class TomatoExplanation extends StatelessWidget {
   final TomatoScan scan;
   @override
   Widget build(BuildContext context) {
-    final entry = (scan.crop == Crop.eggplant
-        ? eggplantKnowledge
-        : tomatoKnowledge)[scan.label];
+    final knowledge = switch (scan.crop) {
+      Crop.tomato => tomatoKnowledge,
+      Crop.eggplant => eggplantKnowledge,
+      Crop.chili => chiliKnowledge,
+    };
+    final entry = knowledge[scan.label];
     final assessment = TomatoAssessment.tryFromJson(scan.assessment);
     if (entry == null) {
       return const Text(
@@ -310,6 +320,10 @@ class TomatoExplanation extends StatelessWidget {
             ...entry.sources,
             if (assessment != null && scan.crop == Crop.eggplant)
               eggplantGrowingSource,
+            if (assessment != null &&
+                scan.crop == Crop.chili &&
+                !entry.sources.contains(chiliGrowingSource))
+              chiliGrowingSource,
             if (assessment != null && scan.crop == Crop.tomato)
               growingTemperatureSource,
             if (assessment != null && scan.crop == Crop.tomato)

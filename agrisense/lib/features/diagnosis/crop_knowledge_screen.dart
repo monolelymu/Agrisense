@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import 'eggplant_knowledge.dart';
+import 'chili_knowledge.dart';
 import 'tomato_knowledge.dart';
 import 'tomato_context_widgets.dart';
 
@@ -15,7 +16,7 @@ class CropKnowledgeScreen extends StatelessWidget {
     final entries = switch (crop) {
       Crop.tomato => tomatoKnowledge,
       Crop.eggplant => eggplantKnowledge,
-      Crop.chili => <String, TomatoKnowledge>{},
+      Crop.chili => chiliKnowledge,
     };
     return Scaffold(
       appBar: AppBar(title: Text('${crop.label} knowledge & care')),

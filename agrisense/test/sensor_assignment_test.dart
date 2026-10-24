@@ -21,6 +21,14 @@ class AssignmentUiController extends HardwareController {
   }
   Crop? requestedCrop;
   String? requestedAddress, requestedCode;
+  final clearedKinds = <String>[];
+  @override
+  Future<void> clearSavedAddress(Crop crop, String kind) async {
+    requestedCrop = crop;
+    clearedKinds.add(kind);
+    assignments[crop]?.remove(kind);
+  }
+
   @override
   Future<void> configureSensor(Crop crop, String input, String code) async {
     requestedCrop = crop;
@@ -92,6 +100,70 @@ class SensorStub extends HardwareClient {
   }
 }
 
+class AddressChangeStub extends SensorStub {
+  String reachable = 'http://192.168.1.50';
+  final contacted = <String>[];
+  int automationWrites = 0;
+  bool rejectStop = false, wrongAutomationIdentity = false;
+  AutomaticCapture automation = const AutomaticCapture(
+    deviceId: testId,
+    crop: Crop.tomato,
+    enabled: false,
+  );
+
+  void checkAddress(String address) {
+    contacted.add(address);
+    if (address != reachable) throw const SocketException('Old IP is offline');
+  }
+
+  @override
+  Future<SensorConfiguration> configuration(String address) {
+    checkAddress(address);
+    return super.configuration(address);
+  }
+
+  @override
+  Future<SensorConfiguration> setCrop(
+    String address,
+    Crop next,
+    String deviceId,
+    String code,
+  ) {
+    checkAddress(address);
+    return super.setCrop(address, next, deviceId, code);
+  }
+
+  @override
+  Future<AutomaticCapture?> automaticConfiguration(
+    String address,
+    String code,
+  ) async {
+    checkAddress(address);
+    if (code != testCode) {
+      throw const FormatException('Pairing code was rejected.');
+    }
+    return wrongAutomationIdentity
+        ? const AutomaticCapture(deviceId: '112233445566', crop: Crop.tomato)
+        : automation;
+  }
+
+  @override
+  Future<AutomaticCapture> setAutomatic(
+    String address,
+    String sensorCode,
+    AutomaticCapture requested, {
+    String cameraCode = '',
+  }) async {
+    checkAddress(address);
+    if (sensorCode != testCode) {
+      throw const FormatException('Pairing code was rejected.');
+    }
+    automationWrites++;
+    if (!rejectStop) automation = requested;
+    return automation;
+  }
+}
+
 void main() {
   late Directory directory;
   late Box<dynamic> box;
@@ -109,6 +181,248 @@ void main() {
     await box.close();
     await directory.delete(recursive: true);
   });
+
+  test(
+    'same sensor can recover its changed IP before changing camera IP',
+    () async {
+      final moved = AddressChangeStub();
+      final recovery = HardwareController(box, client: moved)..load();
+      addTearDown(recovery.dispose);
+      await recovery.setHttpAllowed(true);
+      await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+      moved.automation = const AutomaticCapture(
+        deviceId: testId,
+        crop: Crop.tomato,
+        enabled: true,
+      );
+      moved.reachable = 'http://192.168.1.60';
+      moved.contacted.clear();
+      await recovery.configureSensor(Crop.tomato, '192.168.1.60', '');
+      expect(moved.contacted, everyElement('http://192.168.1.60'));
+      expect(moved.automationWrites, 1);
+      expect(moved.automation.enabled, isFalse);
+      expect(recovery.address(Crop.tomato, 'sensor'), moved.reachable);
+      expect(recovery.assignments[Crop.tomato]?['sensorId'], testId);
+      await recovery.moveCamera(Crop.tomato, '192.168.1.61');
+      expect(recovery.address(Crop.tomato, 'camera'), 'http://192.168.1.61');
+      final restored = HardwareController(box, client: moved)..load();
+      addTearDown(restored.dispose);
+      expect(restored.address(Crop.tomato, 'sensor'), moved.reachable);
+      expect(restored.address(Crop.tomato, 'camera'), 'http://192.168.1.61');
+    },
+  );
+
+  test('new IP cannot reuse a saved code for another sensor', () async {
+    final moved = AddressChangeStub();
+    final recovery = HardwareController(box, client: moved)..load();
+    addTearDown(recovery.dispose);
+    await recovery.setHttpAllowed(true);
+    await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+    moved.reachable = 'http://192.168.1.60';
+    moved.id = '112233445566';
+    final writesBefore = moved.calls;
+    await expectLater(
+      recovery.configureSensor(Crop.tomato, '192.168.1.60', ''),
+      throwsFormatException,
+    );
+    expect(moved.calls, writesBefore + 1); // Identity read only; no code sent.
+    expect(moved.automationWrites, 0);
+    expect(recovery.address(Crop.tomato, 'sensor'), 'http://192.168.1.50');
+  });
+
+  test(
+    'recovery rejects wrong automation identity and unconfirmed stop',
+    () async {
+      final moved = AddressChangeStub();
+      final recovery = HardwareController(box, client: moved)..load();
+      addTearDown(recovery.dispose);
+      await recovery.setHttpAllowed(true);
+      await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+      moved.reachable = 'http://192.168.1.60';
+      moved.wrongAutomationIdentity = true;
+      await expectLater(
+        recovery.configureSensor(Crop.tomato, '192.168.1.60', ''),
+        throwsFormatException,
+      );
+      expect(moved.automationWrites, 0);
+      moved.wrongAutomationIdentity = false;
+      moved.rejectStop = true;
+      moved.automation = const AutomaticCapture(
+        deviceId: testId,
+        crop: Crop.tomato,
+        enabled: true,
+      );
+      await expectLater(
+        recovery.configureSensor(Crop.tomato, '192.168.1.60', ''),
+        throwsFormatException,
+      );
+      expect(recovery.address(Crop.tomato, 'sensor'), 'http://192.168.1.50');
+      expect(moved.automation.enabled, isTrue);
+      expect(recovery.busy, isFalse);
+    },
+  );
+
+  test(
+    'replacement and camera moves retain the old-board stop requirement',
+    () async {
+      final moved = AddressChangeStub();
+      final recovery = HardwareController(box, client: moved)..load();
+      addTearDown(recovery.dispose);
+      await recovery.setHttpAllowed(true);
+      await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+      moved.reachable = 'http://192.168.1.60';
+      await expectLater(
+        recovery.moveCamera(Crop.tomato, '192.168.1.61'),
+        throwsA(isA<SocketException>()),
+      );
+      moved.id = '112233445566';
+      await expectLater(
+        recovery.configureSensor(Crop.tomato, '192.168.1.60', testCode),
+        throwsFormatException,
+      );
+      expect(recovery.address(Crop.tomato, 'sensor'), 'http://192.168.1.50');
+      expect(recovery.address(Crop.tomato, 'camera'), isEmpty);
+    },
+  );
+
+  test(
+    'clear saved IP works offline, preserves pairing/history and stays cleared',
+    () async {
+      final moved = AddressChangeStub();
+      final recovery = HardwareController(box, client: moved)..load();
+      addTearDown(recovery.dispose);
+      await recovery.setHttpAllowed(true);
+      await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+      await recovery.refresh(Crop.tomato);
+      await recovery.moveCamera(Crop.tomato, '192.168.1.51');
+      recovery.assignments[Crop.chili] = {'camera': 'http://192.168.1.99'};
+      await TomatoScanStore(box).save(
+        TomatoScan(
+          id: 'kept-scan',
+          timestamp: DateTime(2026, 10, 23),
+          label: 'healthy',
+          score: .8,
+          preview: Uint8List(0),
+          modelVersion: 'test-model',
+        ),
+      );
+      final historyBefore = box.toMap()..remove('hardware-nodes-v1');
+      moved.reachable = 'http://192.168.1.60';
+      moved.contacted.clear();
+      recovery.allowLocalHttp = false;
+      for (final kind in ['sensor', 'camera']) {
+        await recovery.clearSavedAddress(Crop.tomato, kind);
+        expect(recovery.address(Crop.tomato, kind), isEmpty);
+        expect(recovery.assignments[Crop.tomato]!.containsKey(kind), isFalse);
+      }
+      expect(moved.contacted, isEmpty);
+      expect(moved.automationWrites, 0);
+      expect(recovery.assignments[Crop.tomato]?['sensorId'], testId);
+      expect(recovery.assignments[Crop.tomato]?['pairingCode'], testCode);
+      expect(recovery.address(Crop.chili, 'camera'), 'http://192.168.1.99');
+      expect(box.toMap()..remove('hardware-nodes-v1'), historyBefore);
+      final restored = HardwareController(box, client: moved)..load();
+      addTearDown(restored.dispose);
+      expect(restored.address(Crop.tomato, 'sensor'), isEmpty);
+      expect(restored.address(Crop.tomato, 'camera'), isEmpty);
+      expect(restored.readings(Crop.tomato).length, 1);
+      expect(TomatoScanStore(box).load().single.id, 'kept-scan');
+      await restored.setHttpAllowed(true);
+      await restored.moveCamera(Crop.tomato, '192.168.1.61');
+      expect(restored.address(Crop.tomato, 'camera'), 'http://192.168.1.61');
+      expect(moved.contacted, isEmpty);
+      await restored.configureSensor(Crop.tomato, '192.168.1.60', '');
+      expect(restored.address(Crop.tomato, 'sensor'), 'http://192.168.1.60');
+    },
+  );
+
+  test(
+    'explicitly clearing the old IP permits pairing a replacement with its own code',
+    () async {
+      final moved = AddressChangeStub();
+      final recovery = HardwareController(box, client: moved)..load();
+      addTearDown(recovery.dispose);
+      await recovery.setHttpAllowed(true);
+      await recovery.configureSensor(Crop.tomato, '192.168.1.50', testCode);
+      await recovery.clearSavedAddress(Crop.tomato, 'sensor');
+      moved.reachable = 'http://192.168.1.60';
+      moved.id = '112233445566';
+      moved.contacted.clear();
+      await expectLater(
+        recovery.configureSensor(Crop.tomato, '192.168.1.60', ''),
+        throwsFormatException,
+      );
+      await recovery.configureSensor(Crop.tomato, '192.168.1.60', testCode);
+      expect(recovery.address(Crop.tomato, 'sensor'), moved.reachable);
+      expect(recovery.assignments[Crop.tomato]?['sensorId'], moved.id);
+      expect(moved.contacted, everyElement(moved.reachable));
+    },
+  );
+
+  test('failed clear storage write preserves the saved address', () async {
+    h.assignments[Crop.tomato] = {'camera': 'http://192.168.1.51'};
+    await box.close();
+    await expectLater(
+      h.clearSavedAddress(Crop.tomato, 'camera'),
+      throwsA(anything),
+    );
+    expect(h.address(Crop.tomato, 'camera'), 'http://192.168.1.51');
+  });
+
+  testWidgets(
+    'Devices can clear either IP without board contact or valid form input',
+    (tester) async {
+      final controller = AssignmentUiController(box)..load();
+      controller.allowLocalHttp = false;
+      addTearDown(controller.dispose);
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      controller.assignments[Crop.tomato] = {
+        'sensor': 'http://192.168.1.50',
+        'camera': 'http://192.168.1.51',
+        'sensorId': testId,
+        'pairingCode': testCode,
+      };
+      await tester.pumpWidget(
+        HardwareApp(
+          hardware: controller,
+          scans: TomatoScanStore(box),
+          showTutorial: false,
+        ),
+      );
+      await tester.tap(find.text('Devices').last);
+      await tester.pumpAndSettle();
+      for (final kind in ['Sensor', 'Camera']) {
+        final node = find.text('$kind node');
+        await tester.ensureVisible(node);
+        await tester.tap(node);
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining(
+            'This works offline and does not stop automatic capture',
+          ),
+          findsOneWidget,
+        );
+        await tester.enterText(find.byType(TextField).first, 'invalid-address');
+        if (kind == 'Sensor') {
+          await tester.enterText(find.byType(TextField).at(1), 'invalid-code');
+        }
+        final clear = find.byKey(const ValueKey('clear-saved-ip'));
+        await tester.ensureVisible(clear);
+        await tester.tap(clear);
+        await tester.pumpAndSettle();
+        expect(controller.address(Crop.tomato, kind.toLowerCase()), isEmpty);
+      }
+      expect(client.calls, 0);
+      expect(controller.clearedKinds, ['sensor', 'camera']);
+      expect(controller.requestedAddress, isNull);
+      expect(controller.assignments[Crop.tomato]?['pairingCode'], testCode);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets(
     'Devices applies the selected destination crop and obscures the pairing code',

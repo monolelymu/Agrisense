@@ -214,7 +214,7 @@ void main() {
   for (final retained in [false, true]) {
     testWidgets(
       retained
-          ? 'alert explains an unavailable model without offering analysis'
+          ? 'Chili alert offers analysis again when its original photo is retained'
           : 'alert explains an expired original without offering analysis',
       (tester) async {
         final crop = retained ? Crop.chili : Crop.tomato;
@@ -263,14 +263,17 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.text('Retry analysis'), findsNothing);
+        expect(
+          find.text('Retry analysis'),
+          retained ? findsOneWidget : findsNothing,
+        );
         expect(
           find.textContaining(
             retained
                 ? 'This crop has no available analysis model.'
                 : 'Retry analysis is unavailable because the original photo',
           ),
-          findsOneWidget,
+          retained ? findsNothing : findsOneWidget,
         );
         if (!retained) expect(find.text('Capture a new photo'), findsOneWidget);
         expect(client.calls, 0);

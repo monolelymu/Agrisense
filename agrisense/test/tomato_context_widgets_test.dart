@@ -227,22 +227,25 @@ void main() {
       );
       expect(find.byType(GrowingConditionsPanel), findsOneWidget);
       for (final crop in ['Chili', 'Eggplant']) {
+        await tester.ensureVisible(find.text(crop).first);
         await tester.tap(find.text(crop).first);
         await tester.pumpAndSettle();
+        expect(find.byType(GrowingConditionsPanel), findsOneWidget);
         expect(
-          find.byType(GrowingConditionsPanel),
-          crop == 'Chili' ? findsNothing : findsOneWidget,
+          tester
+              .widget<GrowingConditionsPanel>(
+                find.byType(GrowingConditionsPanel),
+              )
+              .crop,
+          crop == 'Chili' ? Crop.chili : Crop.eggplant,
         );
-        if (crop == 'Eggplant') {
-          expect(
-            tester
-                .widget<GrowingConditionsPanel>(
-                  find.byType(GrowingConditionsPanel),
-                )
-                .crop,
-            Crop.eggplant,
-          );
-        }
+        final knowledge = find.text('$crop knowledge & care');
+        await tester.ensureVisible(knowledge);
+        await tester.tap(knowledge);
+        await tester.pumpAndSettle();
+        expect(find.text('$crop knowledge & care'), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
       }
       expect(h.polling, isFalse);
       expect(tester.takeException(), isNull);

@@ -2,9 +2,48 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agrisense/features/diagnosis/eggplant_knowledge.dart';
+import 'package:agrisense/features/diagnosis/chili_knowledge.dart';
 import 'package:agrisense/features/diagnosis/tomato_knowledge.dart';
 
 void main() {
+  test('six ordered Chili entries are complete with no disease rules', () {
+    expect(chiliKnowledge.keys, [
+      'bacterial_spot',
+      'cercospora_leaf_spot',
+      'leaf_curl',
+      'healthy',
+      'nutrient_deficiency',
+      'powdery_mildew',
+    ]);
+    for (final entry in chiliKnowledge.entries) {
+      expect(entry.value.label, entry.key);
+      for (final text in [
+        entry.value.category,
+        entry.value.explanation,
+        entry.value.symptoms,
+        entry.value.inspect,
+        entry.value.prevention,
+        entry.value.environment,
+        entry.value.limitation,
+      ]) {
+        expect(text.trim(), isNotEmpty, reason: entry.key);
+      }
+      expect(entry.value.rule, isNull);
+      expect(entry.value.sources, isNotEmpty);
+    }
+    expect(
+      chiliKnowledge['leaf_curl']!.explanation,
+      contains('does not identify a virus'),
+    );
+    expect(
+      chiliKnowledge['nutrient_deficiency']!.environment,
+      contains('do not measure'),
+    );
+    expect(
+      chiliKnowledge['healthy']!.limitation,
+      contains('not a disease threshold'),
+    );
+  });
   test(
     'all nine export labels have complete sourced entries without guessed rules',
     () {
@@ -55,11 +94,15 @@ void main() {
     for (final entry in [
       ...tomatoKnowledge.values,
       ...eggplantKnowledge.values,
+      ...chiliKnowledge.values,
     ]) {
       for (final source in entry.sources) {
         expect(source.id, isNotEmpty);
         expect(byId[source.id]?['url'], source.url);
         expect(byId[source.id]?['labels'], contains(entry.label));
+        if (chiliKnowledge.values.contains(entry)) {
+          expect(byId[source.id]?['crops'], contains('chili'));
+        }
         expect(bibliography, contains('[${source.id}]'));
         expect(Uri.parse(source.url).scheme, 'https');
       }

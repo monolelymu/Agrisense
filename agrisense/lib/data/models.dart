@@ -8,7 +8,7 @@ extension CropLabel on Crop {
   };
   String get subtitle => switch (this) {
     Crop.tomato => 'Solanum lycopersicum',
-    Crop.chili => 'Capsicum • demo setup',
+    Crop.chili => 'Capsicum',
     Crop.eggplant => 'Solanum melongena',
   };
 }

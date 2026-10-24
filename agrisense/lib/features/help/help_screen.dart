@@ -4,7 +4,7 @@ import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../diagnosis/model_catalog.dart';
 
-enum HelpDestination { scan, devices, monitoring, alerts }
+enum HelpDestination { scan, devices, monitoring, alerts, tutorial }
 
 String _availability(Crop? crop) =>
     (crop == null ? Crop.values : [crop]).map(modelStatus).join('\n');
@@ -84,7 +84,7 @@ class HelpScreen extends StatelessWidget {
           ),
           (
             'Understand your prediction',
-            'The top result is an experimental image prediction, not a confirmed diagnosis. Model scores are not measured accuracy or validated disease probabilities. Check the other predictions, symptoms and sources; another clear photo can help compare results but cannot guarantee a correct answer. Growing references and saved sensor evidence describe conditions, not confirmed plant health, and never change the image score. Humidity is not measured leaf wetness; soil percentage requires calibration. Uploaded photos and older scans do not acquire current sensor readings.',
+            'The top result is an image prediction. Confirm the cause by inspecting the plant. Model scores are not measured accuracy or validated disease probabilities. Check the other predictions, symptoms and sources; another clear photo can help compare results but cannot guarantee a correct answer. Growing references and saved sensor evidence describe conditions, not confirmed plant health, and never change the image score. Humidity is not measured leaf wetness; soil percentage requires calibration. Uploaded photos and older scans do not acquire current sensor readings.',
           ),
           (
             'Connect your devices',
@@ -147,6 +147,11 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     body: PageBody(
       children: [
+        Text(
+          'No More Guessplant',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 16),
         const SectionTitle(
           'Start with your crop',
           'You can use photo diagnosis without hardware.',

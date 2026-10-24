@@ -201,6 +201,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.pageBack();
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Readings'));
         await tester.tap(find.widgetWithText(ChoiceChip, 'Readings'));
         await tester.pumpAndSettle();
         expect(find.text('Recent sensor readings'), findsOneWidget);
@@ -272,7 +273,7 @@ void main() {
     },
   );
   testWidgets(
-    'Diagnosis warns about chosen crop and keeps unavailable diagnosis disabled',
+    'Diagnosis shows Chili model notice and keeps platform restrictions',
     (tester) async {
       viewport(tester, 360);
       final hardware = HardwareController(box)..load();
@@ -292,6 +293,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Analyzing as Chili'), findsOneWidget);
       expect(
+        find.textContaining('Chili photo analysis runs on this device.'),
+        findsOneWidget,
+      );
+      expect(
         tester
             .widget<FilledButton>(
               find.widgetWithText(FilledButton, 'Scan leaf'),
@@ -307,6 +312,14 @@ void main() {
             .onPressed,
         isNull,
       );
+      final care = find.text('Chili knowledge & care');
+      await tester.ensureVisible(care);
+      await tester.tap(care);
+      await tester.pumpAndSettle();
+      expect(find.text('Chili knowledge & care'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nutrient_deficiency')), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       expect(find.textContaining('Assign this crop’s camera'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());

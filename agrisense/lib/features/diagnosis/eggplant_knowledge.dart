@@ -27,7 +27,7 @@ const _powdery = KnowledgeSource(
   id: 'EG-POW-01',
 );
 const _downy = KnowledgeSource(
-  'UC IPM: Downy mildew (general background; Eggplant label unverified)',
+  'UC IPM: Downy mildew (general background)',
   'https://ipm.ucanr.edu/home-and-landscape/downy-mildew/',
   id: 'EG-DOWN-01',
 );
@@ -73,9 +73,9 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
   ),
   'downy_mildew': TomatoKnowledge(
     label: 'downy_mildew',
-    category: 'Unverified disease label',
+    category: 'Possible leaf disease',
     explanation:
-        'This training label needs verification for Eggplant. General downy-mildew information is supplied for inspection only.',
+        'Downy-mildew-like symptoms need expert confirmation on Eggplant. Use this general information to guide inspection.',
     symptoms:
         'General signs include pale patches above and soft gray or purplish growth underneath leaves.',
     inspect:

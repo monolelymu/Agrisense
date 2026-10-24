@@ -2,6 +2,7 @@ import '../../data/hardware_client.dart';
 import '../../data/models.dart';
 import 'tomato_knowledge.dart';
 import 'eggplant_knowledge.dart';
+import 'chili_knowledge.dart';
 
 enum ReferencePosition { within, above, below, unavailable }
 
@@ -51,17 +52,16 @@ class GrowingConditions {
     DateTime at, {
     Crop crop = Crop.tomato,
   }) {
-    if (crop == Crop.chili) {
-      throw ArgumentError('No Chili growing reference is installed.');
-    }
     final local = at.toLocal();
     final day = local.hour >= 6 && local.hour < 18;
-    final lower = crop == Crop.eggplant
+    final lower = crop != Crop.tomato
         ? 21.1
         : day
         ? 21.0
         : 18.0;
-    final upper = crop == Crop.eggplant
+    final upper = crop == Crop.chili
+        ? 23.9
+        : crop == Crop.eggplant
         ? 29.4
         : day
         ? 29.0
@@ -199,20 +199,18 @@ EnvironmentalEvidence assessCropEvidence(
   Iterable<HardwareSample> history,
   DateTime at,
 ) {
-  if (crop == Crop.chili) {
-    return const EnvironmentalEvidence(
-      EvidenceState.notAssessable,
-      'No crop-specific research reference is installed.',
-    );
-  }
   if (!recentCropSample(sample, at, crop)) {
     return const EnvironmentalEvidence(
       EvidenceState.noContext,
       'No recent sensor readings are linked to this photo.',
     );
   }
-  final rule =
-      (crop == Crop.tomato ? tomatoKnowledge : eggplantKnowledge)[label]?.rule;
+  final knowledge = switch (crop) {
+    Crop.tomato => tomatoKnowledge,
+    Crop.eggplant => eggplantKnowledge,
+    Crop.chili => chiliKnowledge,
+  };
+  final rule = knowledge[label]?.rule;
   if (rule == null) {
     return const EnvironmentalEvidence(
       EvidenceState.notAssessable,
@@ -334,9 +332,11 @@ class TomatoAssessment {
     required DateTime at,
     Crop crop = Crop.tomato,
   }) => TomatoAssessment(
-    referenceVersion: crop == Crop.eggplant
-        ? eggplantReferenceVersion
-        : tomatoReferenceVersion,
+    referenceVersion: switch (crop) {
+      Crop.tomato => tomatoReferenceVersion,
+      Crop.eggplant => eggplantReferenceVersion,
+      Crop.chili => chiliReferenceVersion,
+    },
     context: context,
     conditions: GrowingConditions.assess(sample, at, crop: crop),
     evidence: assessCropEvidence(crop, label, sample, history, at),

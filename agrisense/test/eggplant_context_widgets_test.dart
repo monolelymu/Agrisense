@@ -103,42 +103,41 @@ void main() {
     },
   );
 
-  testWidgets(
-    'automatic analysis is available with a provisional testing explanation',
-    (tester) async {
-      late Directory dir;
-      late Box<dynamic> box;
+  testWidgets('automatic analysis is available with on-device photo guidance', (
+    tester,
+  ) async {
+    late Directory dir;
+    late Box<dynamic> box;
+    await tester.runAsync(() async {
+      dir = await Directory.systemTemp.createTemp('eggplant-ui-');
+      Hive.init(dir.path);
+      box = await Hive.openBox<dynamic>('ui');
+    });
+    final h = HardwareController(box)..load();
+    addTearDown(() async {
+      h.dispose();
       await tester.runAsync(() async {
-        dir = await Directory.systemTemp.createTemp('eggplant-ui-');
-        Hive.init(dir.path);
-        box = await Hive.openBox<dynamic>('ui');
+        await Hive.close();
+        await dir.delete(recursive: true);
       });
-      final h = HardwareController(box)..load();
-      addTearDown(() async {
-        h.dispose();
-        await tester.runAsync(() async {
-          await Hive.close();
-          await dir.delete(recursive: true);
-        });
-      });
-      await tester.pumpWidget(
-        MaterialApp(
-          home: NotificationSettingsScreen(hardware: h, crop: Crop.eggplant),
-        ),
-      );
-      final control = find.byKey(const ValueKey('auto-analyze'));
-      await tester.scrollUntilVisible(
-        control,
-        400,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(tester.widget<SwitchListTile>(control).onChanged, isNotNull);
-      expect(tester.widget<SwitchListTile>(control).value, isFalse);
-      expect(
-        find.textContaining('photo preparation is provisional'),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NotificationSettingsScreen(hardware: h, crop: Crop.eggplant),
+      ),
+    );
+    final control = find.byKey(const ValueKey('auto-analyze'));
+    await tester.scrollUntilVisible(
+      control,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(tester.widget<SwitchListTile>(control).onChanged, isNotNull);
+    expect(tester.widget<SwitchListTile>(control).value, isFalse);
+    expect(
+      find.textContaining('Eggplant photo analysis runs on this device.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

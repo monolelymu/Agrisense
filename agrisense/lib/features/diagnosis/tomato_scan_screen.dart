@@ -375,7 +375,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         ],
         if (!supported)
           const Text('Photo analysis is available in the Android app.'),
-        if (crop != Crop.chili) ...[
+        ...[
           const SizedBox(height: 8),
           TextButton.icon(
             icon: const Icon(Icons.menu_book_outlined),
@@ -631,13 +631,8 @@ class TomatoResultCard extends StatelessWidget {
           const SizedBox(height: 8),
           const Text('Try another clear photo to compare.'),
         ],
-        if (scan.crop == Crop.eggplant &&
-            scan.modelVersion.endsWith('-provisional-rgb-aa01')) ...[
-          const Text(eggplantTestingNotice, style: TextStyle(color: warning)),
-          const SizedBox(height: 12),
-        ],
         const Text(
-          'Experimental prediction—not a confirmed diagnosis.',
+          'Image prediction. Confirm the cause by inspecting the plant.',
           style: TextStyle(color: muted),
         ),
         Text(dateLabel(scan.timestamp), style: const TextStyle(color: muted)),
@@ -684,12 +679,11 @@ class TomatoResultCard extends StatelessWidget {
             'This older scan saved only its leading prediction.',
             style: TextStyle(color: muted),
           ),
-        if (scan.crop != Crop.chili)
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text('Explanation & care'),
-            children: [TomatoExplanation(scan: scan)],
-          ),
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('Explanation & care'),
+          children: [TomatoExplanation(scan: scan)],
+        ),
         ExpansionTile(
           tilePadding: EdgeInsets.zero,
           title: const Text('Details'),

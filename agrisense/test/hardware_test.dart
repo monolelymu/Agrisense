@@ -89,12 +89,14 @@ void main() {
       expect(find.textContaining('1 samples'), findsOneWidget);
       await tester.tap(find.text('History').last);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Tomato • leaf miner'));
       await tester.tap(find.text('Tomato • leaf miner'));
       await tester.pumpAndSettle();
       expect(find.text('UNCERTAIN'), findsOneWidget);
       expect(find.text('leaf miner'), findsNWidgets(2));
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(find.text('Tomato • leaf miner'), findsNothing);

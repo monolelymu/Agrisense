@@ -111,6 +111,21 @@ class HardwareController extends ChangeNotifier {
   String address(Crop crop, String kind) => assignments[crop]?[kind] ?? '';
   List<HardwareSample> readings(Crop crop) =>
       samples.where((r) => r.crop == crop).toList();
+
+  DateTime? trendStart(Crop crop) => DateTime.tryParse(
+    box.get('trend-start-v1-${crop.name}', defaultValue: '') as String,
+  );
+
+  Future<void> resetTrendView(Crop crop) async {
+    await box.put('trend-start-v1-${crop.name}', _clock().toIso8601String());
+    notifyListeners();
+  }
+
+  Future<void> restoreTrendView(Crop crop) async {
+    await box.delete('trend-start-v1-${crop.name}');
+    notifyListeners();
+  }
+
   HardwareSample? latest(Crop crop) {
     final items = readings(crop);
     return items.isEmpty ? null : items.last;
@@ -130,7 +145,7 @@ class HardwareController extends ChangeNotifier {
     required DateTime at,
     HardwareSample? trigger,
   }) {
-    if (scan.crop == Crop.chili || scan.source == 'upload') return scan;
+    if (scan.source == 'upload') return scan;
     HardwareSample? sample;
     if (scan.source == 'auto') {
       sample = trigger;
@@ -206,6 +221,32 @@ class HardwareController extends ChangeNotifier {
     notifyListeners();
   });
 
+  /// Forget only this phone's endpoint, even when the board is unreachable.
+  /// Retain identity/pairing for re-adding the same sensor; no board command.
+  Future<void> clearSavedAddress(Crop crop, String kind) =>
+      withPollingPaused(() async {
+        _requireIdle();
+        if (kind != 'camera' && kind != 'sensor') {
+          throw const FormatException('Unknown device type.');
+        }
+        final next = {
+          for (final entry in assignments.entries)
+            entry.key: Map<String, String>.of(entry.value),
+        };
+        next[crop]?.remove(kind);
+        await box.put('hardware-nodes-v1', {
+          for (final entry in next.entries) entry.key.name: entry.value,
+        });
+        assignments
+          ..clear()
+          ..addAll(next);
+        status.remove(crop);
+        if (kind == 'sensor') _alertTrackers[crop]?.reset();
+        error = null;
+        issue = null;
+        notifyListeners();
+      });
+
   void _requireIdle() {
     if (_disposed || busy) {
       throw const FormatException(
@@ -240,15 +281,18 @@ class HardwareController extends ChangeNotifier {
     }
     final existing = assignments.values.where((a) => a['sensor'] == endpoint);
     final old = existing.isEmpty ? <String, String>{} : existing.first;
+    final selected = assignments[crop] ?? <String, String>{};
+    final reuseMovedSensor =
+        code.trim().isEmpty && old.isEmpty && selected['sensorId'] != null;
     final key = code.trim().isEmpty
-        ? old['pairingCode'] ?? ''
+        ? (reuseMovedSensor ? selected['pairingCode'] : old['pairingCode']) ??
+              ''
         : code.trim().toLowerCase();
     if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(key)) {
       throw const FormatException(
         'Enter the 32-character pairing code printed by the sensor.',
       );
     }
-    if (endpoint != address(crop, 'sensor')) await _stopAutomaticFor({crop});
     busy = true;
     error = null;
     notifyListeners();
@@ -258,6 +302,24 @@ class HardwareController extends ChangeNotifier {
       if (old['sensorId'] != null && old['sensorId'] != before.deviceId) {
         throw const FormatException(
           'A different sensor is using this IP. Remove the old assignment before pairing a replacement.',
+        );
+      }
+      if (reuseMovedSensor && selected['sensorId'] != before.deviceId) {
+        throw const FormatException(
+          'A different sensor is using this IP. Supply its own code to pair a replacement.',
+        );
+      }
+      if (endpoint != address(crop, 'sensor') &&
+          selected['sensorId'] != null &&
+          (selected['sensorId'] == before.deviceId ||
+              address(crop, 'sensor').isNotEmpty)) {
+        // DHCP may have moved this same board. Verify its identity first, then
+        // stop automation at its reachable address rather than the stale IP.
+        await _stopAutomaticAt(
+          crop,
+          selected['sensorId'] == before.deviceId
+              ? endpoint
+              : address(crop, 'sensor'),
         );
       }
       commandSent = true;
@@ -490,25 +552,33 @@ class HardwareController extends ChangeNotifier {
   // An old board must stop triggering before its local mapping is removed/moved.
   Future<void> _stopAutomaticFor(Set<Crop> crops) async {
     for (final crop in crops) {
-      if (assignments[crop]?['sensorId'] == null) continue;
-      await _automaticRequest(() async {
-        final sensor = address(crop, 'sensor');
-        final code = assignments[crop]?['pairingCode'] ?? '';
-        final current = await client.automaticConfiguration(sensor, code);
-        if (current == null) return;
-        _checkAutomaticIdentity(crop, current);
-        if (!current.enabled) return;
-        final off = AutomaticCapture(deviceId: current.deviceId, crop: crop);
-        await client.setAutomatic(sensor, code, off);
-        final check = await client.automaticConfiguration(sensor, code);
-        if (check == null) {
-          throw const FormatException(
-            'Could not confirm automatic capture is off. Retry before moving devices.',
-          );
-        }
-        client.verifyAutomatic(off, check);
-      });
+      if (assignments[crop]?['sensorId'] == null ||
+          address(crop, 'sensor').isEmpty) {
+        continue;
+      }
+      await _automaticRequest(
+        () => _stopAutomaticAt(crop, address(crop, 'sensor')),
+      );
     }
+  }
+
+  // Caller owns the request lock. Overrides are used only after matching the
+  // saved sensor identity at its new address.
+  Future<void> _stopAutomaticAt(Crop crop, String sensor) async {
+    final code = assignments[crop]?['pairingCode'] ?? '';
+    final current = await client.automaticConfiguration(sensor, code);
+    if (current == null) return;
+    _checkAutomaticIdentity(crop, current);
+    if (!current.enabled) return;
+    final off = AutomaticCapture(deviceId: current.deviceId, crop: crop);
+    await client.setAutomatic(sensor, code, off);
+    final check = await client.automaticConfiguration(sensor, code);
+    if (check == null) {
+      throw const FormatException(
+        'Could not confirm automatic capture is off. Retry before moving devices.',
+      );
+    }
+    client.verifyAutomatic(off, check);
   }
 
   Future<Uint8List> capture(Crop crop) {
