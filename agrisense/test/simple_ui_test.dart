@@ -4,6 +4,8 @@ import 'dart:typed_data';
 
 import 'package:agrisense/core/hardware_controller.dart';
 import 'package:agrisense/core/theme.dart';
+import 'package:agrisense/core/widgets.dart';
+import 'package:agrisense/features/monitoring/notification_settings_screen.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/data/daily_photo_schedule.dart';
@@ -126,6 +128,10 @@ void main() {
     for (final icon in ['🍅', '🌶️', '🍆']) {
       expect(find.text(icon), findsOneWidget);
     }
+    expect(
+      tester.getTopLeft(find.text('Tomato')).dy,
+      tester.getTopLeft(find.text('Eggplant')).dy,
+    );
     expect(find.byTooltip('Scan leaf'), findsNothing);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
@@ -197,6 +203,15 @@ void main() {
   testWidgets(
     'camera crop changes stay quiet and keep the same screen state',
     (tester) async {
+      hardware.assignments[Crop.tomato] = {
+        'sensor': 'http://192.168.1.20',
+        'sensorId': 'sensor-one',
+      };
+      await tester.runAsync(
+        () => hardware.withPollingPaused(
+          () => hardware.startMonitoring(Crop.tomato),
+        ),
+      );
       await show(tester);
       await openSimplePage(tester, 'Camera');
       final before = tester.state(find.byType(TomatoScanScreen));
@@ -206,6 +221,11 @@ void main() {
         await tester.tap(find.text(name));
         await tester.pump();
         expect(find.byType(LinearProgressIndicator), findsNothing);
+        expect(
+          tester.widget<CropPicker>(find.byType(CropPicker)).value.label,
+          name,
+        );
+        expect(hardware.polling, isTrue);
         expect(
           find.textContaining('Checking for an interrupted'),
           findsNothing,
@@ -221,6 +241,22 @@ void main() {
     },
     variant: TargetPlatformVariant({TargetPlatform.android}),
   );
+
+  testWidgets('sensor alert options open directly from Home on one page', (
+    tester,
+  ) async {
+    await show(tester);
+    await tester.ensureVisible(find.text('Edit sensor alerts'));
+    await tester.tap(find.text('Edit sensor alerts'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationSettingsScreen), findsOneWidget);
+    expect(find.text('Tomato sensor alerts'), findsOneWidget);
+    expect(find.text('Enable sensor alerts'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
     'background sensor refresh does not block navigation or show loading',

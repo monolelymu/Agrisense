@@ -286,7 +286,7 @@ void main() {
         find.text('Choose the crop that matches your leaf.'),
         findsOneWidget,
       );
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Chili'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Chili'));
       await tester.pumpAndSettle();
       expect(find.text('Analyzing as Chili'), findsOneWidget);
       expect(

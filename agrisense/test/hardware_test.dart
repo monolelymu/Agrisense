@@ -95,8 +95,8 @@ void main() {
       expect(find.text('Learn more'), findsOneWidget);
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Eggplant'));
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+      await tester.ensureVisible(find.widgetWithText(OutlinedButton, 'Eggplant'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(find.text('Tomato • Leaf Miner'), findsNothing);
       await chooseRecordCategory(tester, 'Readings');

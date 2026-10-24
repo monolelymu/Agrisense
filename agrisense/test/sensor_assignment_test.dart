@@ -438,7 +438,7 @@ void main() {
       );
       await tester.tap(find.text('Devices').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Eggplant'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Sensor node'));
       await tester.tap(find.text('Sensor node'));

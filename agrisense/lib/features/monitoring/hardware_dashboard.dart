@@ -12,6 +12,7 @@ import '../diagnosis/tomato_scan.dart';
 import '../diagnosis/tomato_scan_screen.dart';
 import '../diagnosis/photo_processing.dart';
 import 'monitoring_settings_screen.dart';
+import 'notification_settings_screen.dart';
 import '../help/help_screen.dart';
 import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
@@ -199,19 +200,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   }
 
   void _crop(Crop value) {
-    if (locked) return;
-    final monitoring = h.polling;
+    if (locked || crop == value) return;
     setState(() {
       crop = value;
       error = null;
       actionIssue = null;
     });
-    if (monitoring) {
-      _saveAction(
-        () => h.startMonitoring(value),
-        fallback: AppIssue.background,
-      );
-    }
+    h.selectMonitoringCrop(value);
   }
 
   Future<void> _scan() => h.withPollingPaused(() async {
@@ -371,7 +366,9 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           errorBuilder: (_, _, _) => const Icon(Icons.eco_outlined),
         ),
       ),
-      title: Text('${scan.crop.label} • ${scan.displayLabel}'),
+      title: Text(
+        '${scan.crop.label} • ${scan.uncertain ? 'Uncertain result' : scan.displayLabel}',
+      ),
       subtitle: Text(
         '${scan.uncertain ? 'Uncertain result • ' : ''}${dateLabel(scan.timestamp)}',
       ),
@@ -539,6 +536,16 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ),
       const SizedBox(height: 24),
       _scheduleCard(),
+      const SizedBox(height: 12),
+      OutlinedButton.icon(
+        onPressed: locked
+            ? null
+            : () => _openSettings(
+                NotificationSettingsScreen(hardware: h, crop: crop),
+              ),
+        icon: const Icon(Icons.notifications_outlined),
+        label: const Text('Edit sensor alerts'),
+      ),
       const SizedBox(height: 24),
       Text(
         '${crop.label} overview',

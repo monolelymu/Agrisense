@@ -148,6 +148,25 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant TomatoScanScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialCrop != widget.initialCrop &&
+        crop != widget.initialCrop) {
+      _changeCrop(widget.initialCrop);
+    }
+  }
+
+  void _changeCrop(Crop value) {
+    crop = value;
+    error = null;
+    issue = null;
+    cameraPreview = null;
+    result = null;
+    saved = false;
+    activity = '';
+  }
+
   Future<void> _selectPhoto() => widget.hardware == null
       ? _choosePhoto()
       : widget.hardware!.withPollingPaused(() async {
@@ -299,13 +318,12 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   }
 
   void _selectCrop(Crop value) {
-    if (busy || widget.hardware?.userBusy == true) return;
-    setState(() {
-      crop = value;
-      error = null;
-      cameraPreview = null;
-    });
-    widget.onCropChanged?.call(value);
+    if (busy || widget.hardware?.userBusy == true || value == crop) return;
+    if (widget.onCropChanged != null) {
+      widget.onCropChanged!(value);
+    } else {
+      setState(() => _changeCrop(value));
+    }
   }
 
   Future<void> _previewCamera() async {

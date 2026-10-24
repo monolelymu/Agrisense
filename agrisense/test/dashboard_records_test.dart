@@ -101,6 +101,59 @@ void main() {
     h.dispose();
   });
 
+  testWidgets(
+    'uncertain summary hides disease while details retain top three possibilities',
+    (tester) async {
+      final store = TomatoScanStore(box);
+      await tester.runAsync(
+        () => store.save(
+          TomatoScan(
+            id: 'uncertain',
+            timestamp: DateTime.now(),
+            label: 'bacterial_spot',
+            score: .4,
+            preview: Uint8List(0),
+            modelVersion: 'test',
+            predictions: const [
+              ScanPrediction('bacterial_spot', .4),
+              ScanPrediction('early_blight', .35),
+              ScanPrediction('healthy', .25),
+            ],
+          ),
+        ),
+      );
+      final h = HardwareController(box)..load();
+      await tester.pumpWidget(
+        HardwareApp(hardware: h, scans: store, showTutorial: false),
+      );
+      await tester.ensureVisible(find.text('Tomato • Uncertain result'));
+      expect(find.text('Tomato • Bacterial Spot'), findsNothing);
+      await openSimplePage(tester, 'Records');
+      expect(find.text('Tomato • Uncertain result'), findsOneWidget);
+      expect(find.text('Tomato • Bacterial Spot'), findsNothing);
+      await tester.tap(find.text('Tomato • Uncertain result'));
+      await tester.pumpAndSettle();
+      for (final text in [
+        'Uncertain result',
+        'Bacterial Spot',
+        'Early Blight',
+        'Healthy',
+        '40.0%',
+        '35.0%',
+        '25.0%',
+      ]) {
+        expect(find.text(text), findsOneWidget);
+      }
+      expect(find.text('Learn more'), findsNothing);
+      expect(
+        find.textContaining('Take a clear, well-lit close-up'),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      h.dispose();
+    },
+  );
+
   testWidgets('trends use compact dropdowns and retain long gaps', (
     tester,
   ) async {

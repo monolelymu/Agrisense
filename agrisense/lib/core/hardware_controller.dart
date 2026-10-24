@@ -810,10 +810,18 @@ class HardwareController extends ChangeNotifier {
       return;
     }
     _pollingCrop = crop;
-    _timer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => unawaited(monitorTick(crop)),
-    );
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+      final selected = _requestedPollingCrop;
+      if (selected != null) unawaited(monitorTick(selected));
+    });
+  }
+
+  /// Crop selection changes the model for future checks, not the kit connection.
+  void selectMonitoringCrop(Crop crop) {
+    if (_disposed || !polling) return;
+    _requestedPollingCrop = crop;
+    if (_timer != null) _pollingCrop = crop;
+    notifyListeners();
   }
 
   void stopPolling({bool stopService = true}) {

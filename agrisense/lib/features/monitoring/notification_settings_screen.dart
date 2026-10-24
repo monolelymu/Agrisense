@@ -274,7 +274,7 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('${widget.crop.label} monitoring rules')),
+    appBar: AppBar(title: Text('${widget.crop.label} sensor alerts')),
     body: SafeArea(
       child: Align(
         alignment: Alignment.topCenter,
@@ -326,7 +326,7 @@ class _NotificationSettingsScreenState
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Take a photo on warning'),
                     subtitle: const Text(
-                      'Use this crop’s camera when a sensor alert is recorded. Save changes to apply.',
+                      'Use the kit camera when a sensor alert is recorded. Save changes to apply.',
                     ),
                     value: capturePhoto,
                     onChanged: busy
@@ -385,8 +385,8 @@ class _NotificationSettingsScreenState
                   const SizedBox(height: 12),
                   Text(
                     widget.hardware.address(widget.crop, 'camera').isEmpty
-                        ? 'Assign a camera to this crop in Devices first.'
-                        : 'Camera: ${widget.hardware.address(widget.crop, 'camera')}',
+                        ? 'The kit camera is not configured yet.'
+                        : 'Uses your connected kit camera.',
                   ),
                   const SizedBox(height: 8),
                   const Text(

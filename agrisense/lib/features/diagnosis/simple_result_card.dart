@@ -72,6 +72,8 @@ class SimpleResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final predictions = [...scan.rankedPredictions]
+      ..sort((a, b) => b.score.compareTo(a.score));
     final entry = switch (scan.crop) {
       Crop.tomato => tomatoKnowledge[scan.label],
       Crop.eggplant => eggplantKnowledge[scan.label],
@@ -110,13 +112,38 @@ class SimpleResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
+            'Top model predictions',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          for (final prediction in predictions.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(prediction.displayLabel)),
+                  const SizedBox(width: 12),
+                  Text('${(prediction.score * 100).toStringAsFixed(1)}%'),
+                ],
+              ),
+            ),
+          const Text(
+            'Model scores show possibilities, not confirmed disease probabilities.',
+            style: TextStyle(color: muted),
+          ),
+          if (predictions.length < 3)
+            const Text('This saved record has fewer than three predictions.'),
+          const SizedBox(height: 12),
+          const Text(
             'What to do next',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
-            entry?.inspect ??
-                'Check the leaf and surrounding leaves for changes.',
+            scan.uncertain
+                ? 'Take a clear, well-lit close-up of one leaf. Check both sides and nearby leaves for changes.'
+                : entry?.inspect ??
+                      'Check the leaf and surrounding leaves for changes.',
           ),
           if (!scan.uncertain && entry != null) ...[
             const SizedBox(height: 8),
@@ -127,7 +154,7 @@ class SimpleResultCard extends StatelessWidget {
             'Photo prediction, not a confirmed diagnosis.',
             style: TextStyle(color: muted),
           ),
-          if (entry != null && entry.sources.isNotEmpty) ...[
+          if (!scan.uncertain && entry != null && entry.sources.isNotEmpty) ...[
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () => _sources(context, entry.sources),

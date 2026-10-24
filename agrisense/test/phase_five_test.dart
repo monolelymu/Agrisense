@@ -8,6 +8,7 @@ import 'package:agrisense/core/app_issue.dart';
 import 'package:agrisense/core/hardware_controller.dart';
 import 'package:agrisense/core/sensor_notifications.dart';
 import 'package:agrisense/core/theme.dart';
+import 'package:agrisense/core/widgets.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/alert_photo.dart';
 import 'package:agrisense/data/monitoring_alert.dart';
@@ -86,7 +87,7 @@ void main() {
             showTutorial: false,
           ),
         );
-        await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+        await tester.tap(find.widgetWithText(OutlinedButton, 'Eggplant'));
         await tester.pumpAndSettle();
         await openDashboardHelp(tester);
         expect(find.text('Selected crop: Eggplant'), findsOneWidget);
@@ -113,9 +114,7 @@ void main() {
           if (action == 'Device setup' || action == 'Technical logs') {
             expect(
               find.text(
-                action == 'Device setup'
-                    ? 'Eggplant devices'
-                    : 'Technical logs',
+                action == 'Device setup' ? 'Kit devices' : 'Technical logs',
               ),
               findsOneWidget,
             );
@@ -128,12 +127,12 @@ void main() {
               2,
             );
           }
-          expect(
-            tester
-                .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Eggplant'))
-                .selected,
-            isTrue,
-          );
+          if (action != 'Device setup') {
+            expect(
+              tester.widget<CropPicker>(find.byType(CropPicker)).value,
+              Crop.eggplant,
+            );
+          }
           if (action == 'Technical logs') {
             expect(
               tester
@@ -173,10 +172,8 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(
-        tester
-            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Chili'))
-            .selected,
-        isTrue,
+        tester.widget<CropPicker>(find.byType(CropPicker)).value,
+        Crop.chili,
       );
       expect(client.calls, 0);
       await tester.pumpWidget(const SizedBox.shrink());

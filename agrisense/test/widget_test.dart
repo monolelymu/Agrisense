@@ -54,7 +54,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('Devices').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(c.selectedCrop, Crop.eggplant);
       await tester.ensureVisible(find.text('Scan simulated nodes'));

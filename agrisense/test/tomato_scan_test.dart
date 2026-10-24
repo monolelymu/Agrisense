@@ -189,7 +189,7 @@ void main() {
       await tester.tap(find.text('History').last);
       await tester.pumpAndSettle();
       expect(find.text('early blight'), findsOneWidget);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(find.text('early blight'), findsNothing);
       await tester.tap(find.text('Diagnosis').last);
@@ -206,7 +206,7 @@ void main() {
             .onPressed,
         isNull,
       );
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Tomato'));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Tomato'));
       await tester.pumpAndSettle();
       expect(find.text('early blight'), findsNWidgets(2));
       expect(tester.takeException(), isNull);

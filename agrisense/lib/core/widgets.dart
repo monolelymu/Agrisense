@@ -125,29 +125,66 @@ class CropPicker extends StatelessWidget {
   final Crop value;
   final ValueChanged<Crop> onChanged;
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       for (final crop in Crop.values)
-        ChoiceChip(
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ExcludeSemantics(
-                child: Text(switch (crop) {
-                  Crop.tomato => '🍅',
-                  Crop.chili => '🌶️',
-                  Crop.eggplant => '🍆',
-                }),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: crop == Crop.values.last ? 0 : 8),
+            child: Semantics(
+              button: true,
+              selected: value == crop,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 12,
+                  ),
+                  backgroundColor: value == crop
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : null,
+                  side: BorderSide(
+                    color: value == crop
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                onPressed: () {
+                  if (crop != value) onChanged(crop);
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const SizedBox(width: 56, height: 32),
+                        ExcludeSemantics(
+                          child: Text(switch (crop) {
+                            Crop.tomato => '🍅',
+                            Crop.chili => '🌶️',
+                            Crop.eggplant => '🍆',
+                          }, style: const TextStyle(fontSize: 24)),
+                        ),
+                        if (value == crop)
+                          const Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Icon(Icons.check, size: 16),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(crop.label, maxLines: 1),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: 6),
-              Text(crop.label),
-            ],
+            ),
           ),
-          showCheckmark: true,
-          selected: value == crop,
-          onSelected: (_) => onChanged(crop),
         ),
     ],
   );
