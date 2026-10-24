@@ -536,16 +536,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ),
       const SizedBox(height: 24),
       _scheduleCard(),
-      const SizedBox(height: 12),
-      OutlinedButton.icon(
-        onPressed: locked
-            ? null
-            : () => _openSettings(
-                NotificationSettingsScreen(hardware: h, crop: crop),
-              ),
-        icon: const Icon(Icons.notifications_outlined),
-        label: const Text('Edit sensor alerts'),
-      ),
       const SizedBox(height: 24),
       Text(
         '${crop.label} overview',
@@ -1151,6 +1141,23 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             onPressed: locked ? null : _editTimes,
             icon: const Icon(Icons.schedule),
             label: const Text('Edit times'),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            h.notificationSettings[crop]?.awaitingLimits == true
+                ? 'Sensor photos: waiting for alert limits.'
+                : h.notificationSettings[crop]?.enabled == true
+                ? 'Sensor alerts are on.'
+                : 'Sensor alerts are off.',
+          ),
+          OutlinedButton.icon(
+            onPressed: locked
+                ? null
+                : () => _openSettings(
+                    NotificationSettingsScreen(hardware: h, crop: crop),
+                  ),
+            icon: const Icon(Icons.notifications_outlined),
+            label: const Text('Edit sensor alerts'),
           ),
           const SizedBox(height: 12),
           if (next != null)

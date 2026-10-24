@@ -5,6 +5,14 @@ import '../data/automatic_capture.dart';
 import '../data/hardware_client.dart';
 
 class SensorAlertSettings {
+  // New configurations request automatic checks, but disabled measurements
+  // cannot trigger until the user saves valid limits.
+  static const initial = SensorAlertSettings(
+    enabled: true,
+    capturePhoto: true,
+    analyzePhoto: true,
+  );
+  bool get awaitingLimits => enabled && !rules.any((rule) => rule.enabled);
   const SensorAlertSettings({
     this.enabled = false,
     this.capturePhoto = false,

@@ -114,7 +114,7 @@ class HardwareController extends ChangeNotifier {
       try {
         notificationSettings[crop] = alerts[crop.name] is Map
             ? SensorAlertSettings.fromJson(alerts[crop.name] as Map)
-            : const SensorAlertSettings();
+            : SensorAlertSettings.initial;
       } catch (_) {
         notificationSettings[crop] = const SensorAlertSettings();
         notificationStatus =
@@ -901,9 +901,9 @@ class HardwareController extends ChangeNotifier {
       if (settings.analyzePhoto && !classifier.supports(crop)) {
         throw AppIssue.unsupported;
       }
-      final next = {...notificationSettings, crop: settings};
       await box.put('foreground-notification-rules-v1', {
-        for (final e in next.entries) e.key.name: e.value.toJson(),
+        ...box.get('foreground-notification-rules-v1', defaultValue: {}) as Map,
+        crop.name: settings.toJson(),
       });
       notificationSettings[crop] = settings;
       _alertTrackers.remove(crop);
@@ -1115,6 +1115,7 @@ class HardwareController extends ChangeNotifier {
 
   Future<void> _notifyReading(Crop crop, HardwareSample sample) async {
     final settings = notificationSettings[crop];
+    if (settings?.awaitingLimits == true) return;
     if (_disposed ||
         _pollingCrop != crop ||
         !pollingActive ||

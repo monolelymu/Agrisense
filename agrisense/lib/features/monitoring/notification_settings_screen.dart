@@ -49,7 +49,7 @@ class _NotificationSettingsScreenState
     super.initState();
     final saved =
         widget.hardware.notificationSettings[widget.crop] ??
-        const SensorAlertSettings();
+        SensorAlertSettings.initial;
     enabled = saved.enabled;
     capturePhoto = saved.capturePhoto;
     showNotifications = saved.showNotifications;
@@ -89,6 +89,7 @@ class _NotificationSettingsScreenState
         setState(
           () => message =
               success ??
+              message ??
               widget.hardware.notificationStatus ??
               'Settings saved.',
         );
@@ -139,16 +140,43 @@ class _NotificationSettingsScreenState
     });
   }
 
-  void _preset(String name) {
-    try {
-      SensorAlertSettings? proposal;
-      if (name == 'sensitive') {
-        if (!widget.hardware.fresh(widget.crop)) throw AppIssue.stale;
-        proposal = SensorAlertSettings.sensitive(
-          widget.hardware.latest(widget.crop)!,
-          DateTime.now(),
-        );
+  Future<void> _preset(String name) async {
+    if (busy) return;
+    if (name == 'sensitive') {
+      if (!widget.hardware.allowLocalHttp ||
+          widget.hardware.address(widget.crop, 'sensor').isEmpty) {
+        setState(() {
+          issue = null;
+          message = 'Connect your sensor to use Sensitive.';
+        });
+        return;
       }
+      await _action(() async {
+        await widget.hardware.waitForIdle();
+        await widget.hardware.refresh(widget.crop);
+        if (!mounted) return;
+        if (!widget.hardware.fresh(widget.crop)) {
+          setState(
+            () => message =
+                'Could not read your sensor. Check its power and Wi-Fi, then try Sensitive again.',
+          );
+          return;
+        }
+        _applyPreset(
+          name,
+          SensorAlertSettings.sensitive(
+            widget.hardware.latest(widget.crop)!,
+            DateTime.now(),
+          ),
+        );
+      });
+      return;
+    }
+    _applyPreset(name, null);
+  }
+
+  void _applyPreset(String name, SensorAlertSettings? proposal) {
+    try {
       setState(() {
         applyingPreset = true;
         if (proposal != null) {
@@ -170,6 +198,9 @@ class _NotificationSettingsScreenState
         preset = name;
         dirty = true;
         applyingPreset = false;
+        message = name == 'sensitive'
+            ? 'Sensitive limits are ready. Review them below, then Save settings.'
+            : null;
       });
     } catch (e) {
       setState(() => issue = AppIssue.from(e, fallback: AppIssue.settings));
@@ -303,6 +334,12 @@ class _NotificationSettingsScreenState
                   'Choose which readings should warn you while monitoring is on.',
                 ),
                 const SizedBox(height: 20),
+                if (enabled && !selected.any((value) => value)) ...[
+                  const Text(
+                    'Waiting for alert limits. Choose measurements and limits, or connect your sensor and choose Sensitive. Save to start alerts.',
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Panel(
                   padding: 16,
                   child: SwitchListTile(
@@ -419,6 +456,11 @@ class _NotificationSettingsScreenState
                 const Text(
                   'Sensitive proposes fixed limits from a fresh sample: ±1 °C and ±5 percentage points. Review the limits below, then Save. These are change-detection limits, not disease thresholds.',
                 ),
+                if (issue != null) IssueCard(issue: issue!),
+                if (message != null) ...[
+                  const SizedBox(height: 8),
+                  Text(message!),
+                ],
                 if (baseline != null) Text('Fixed baseline: $baselineTime'),
                 TextButton(
                   onPressed: busy
@@ -499,11 +541,6 @@ class _NotificationSettingsScreenState
                       'Unsaved changes · saved on this phone after Save.',
                     ),
                   ),
-                if (issue != null) IssueCard(issue: issue!),
-                if (message != null) ...[
-                  Text(message!),
-                  const SizedBox(height: 16),
-                ],
                 FilledButton(
                   onPressed: busy ? null : _save,
                   style: FilledButton.styleFrom(

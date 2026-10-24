@@ -214,6 +214,43 @@ void main() {
       h.removeListener(listener);
     }
 
+    test(
+      'new alert defaults wait for limits and saved off choices survive reload',
+      () async {
+        final initial = h.notificationSettings[Crop.tomato]!;
+        expect(initial.enabled, isTrue);
+        expect(initial.capturePhoto, isTrue);
+        expect(initial.analyzePhoto, isTrue);
+        expect(initial.awaitingLimits, isTrue);
+        await startAndWait();
+        now = now.add(const Duration(seconds: 60));
+        await h.refresh(Crop.tomato);
+        expect(client.captures, 0);
+        expect(h.alerts, isEmpty);
+        h.stopPolling();
+        await h.saveNotificationSettings(
+          Crop.tomato,
+          const SensorAlertSettings(),
+        );
+        final restored = HardwareController(box)..load();
+        final saved = restored.notificationSettings[Crop.tomato]!;
+        expect(saved.enabled, isFalse);
+        expect(saved.capturePhoto, isFalse);
+        expect(saved.analyzePhoto, isFalse);
+        expect(
+          restored.notificationSettings[Crop.chili]!.awaitingLimits,
+          isTrue,
+        );
+        expect(
+          (box.get('foreground-notification-rules-v1') as Map).containsKey(
+            'chili',
+          ),
+          isFalse,
+        );
+        restored.dispose();
+      },
+    );
+
     const photoSettings = SensorAlertSettings(
       enabled: true,
       capturePhoto: true,
@@ -299,7 +336,11 @@ void main() {
         await h.saveNotificationSettings(Crop.tomato, settings);
         final restored = HardwareController(box)..load();
         expect(restored.notificationSettings[Crop.tomato]!.enabled, isTrue);
-        expect(restored.notificationSettings[Crop.chili]!.enabled, isFalse);
+        expect(restored.notificationSettings[Crop.chili]!.enabled, isTrue);
+        expect(
+          restored.notificationSettings[Crop.chili]!.awaitingLimits,
+          isTrue,
+        );
         restored.dispose();
       },
     );
@@ -474,7 +515,12 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      h.samples.add(sample('chart'));
+      h.samples.add(
+        HardwareSample.fromSaved({
+          ...sample('chart').toJson(),
+          'received_at': DateTime.now().toIso8601String(),
+        }),
+      );
       await tester.pumpWidget(
         HardwareApp(
           hardware: h,
@@ -482,7 +528,8 @@ void main() {
           showTutorial: false,
         ),
       );
-      await tester.tap(find.text('Trends').last);
+      await tester.ensureVisible(find.text('View trends'));
+      await tester.tap(find.text('View trends'));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('Temperature (°C)'),

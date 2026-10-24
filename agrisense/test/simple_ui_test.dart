@@ -247,14 +247,103 @@ void main() {
   ) async {
     await show(tester);
     await tester.ensureVisible(find.text('Edit sensor alerts'));
+    final panel = find
+        .ancestor(
+          of: find.text('Edit sensor alerts'),
+          matching: find.byType(Panel),
+        )
+        .first;
+    expect(
+      find.descendant(of: panel, matching: find.text('Edit times')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Edit sensor alerts'));
     await tester.pumpAndSettle();
     expect(find.byType(NotificationSettingsScreen), findsOneWidget);
     expect(find.text('Tomato sensor alerts'), findsOneWidget);
     expect(find.text('Enable sensor alerts'), findsOneWidget);
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.widgetWithText(SwitchListTile, 'Enable sensor alerts'),
+          )
+          .value,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.byKey(const ValueKey('capture-on-alert')),
+          )
+          .value,
+      isTrue,
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('auto-analyze')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      tester
+          .widget<SwitchListTile>(find.byKey(const ValueKey('auto-analyze')))
+          .value,
+      isTrue,
+    );
+    await tester.scrollUntilVisible(
+      find.text('Sensitive'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Sensitive'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect your sensor to use Sensitive.'), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Sensitive obtains a fresh sensor baseline in one tap', (
+    tester,
+  ) async {
+    hardware.assignments[Crop.tomato] = {
+      'sensor': 'http://192.168.1.20',
+      'sensorId': 'sensor-one',
+    };
+    await show(tester);
+    await tester.ensureVisible(find.text('Edit sensor alerts'));
+    await tester.tap(find.text('Edit sensor alerts'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Sensitive'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Sensitive'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
+    expect(client.reads, 1);
+    await tester.scrollUntilVisible(
+      find.text('Sensitive'),
+      -150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Sensitive'))
+          .selected,
+      isTrue,
+    );
+    expect(
+      find.text(
+        'Sensitive limits are ready. Review them below, then Save settings.',
+      ),
+      findsOneWidget,
+    );
+    expect(hardware.notificationSettings[Crop.tomato]!.awaitingLimits, isTrue);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
