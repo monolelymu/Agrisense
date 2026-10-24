@@ -3,11 +3,18 @@ import 'dart:typed_data';
 import 'package:hive_ce/hive.dart';
 import '../../data/models.dart';
 
+String diseaseDisplayName(String label) => label
+    .replaceAll('_', ' ')
+    .split(' ')
+    .where((word) => word.isNotEmpty)
+    .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
+    .join(' ');
+
 class ScanPrediction {
   const ScanPrediction(this.label, this.score);
   final String label;
   final double score;
-  String get displayLabel => label.replaceAll('_', ' ');
+  String get displayLabel => diseaseDisplayName(label);
   Map<String, dynamic> toJson() => {'label': label, 'score': score};
   factory ScanPrediction.fromJson(Map<dynamic, dynamic> json) => ScanPrediction(
     json['label'] as String,
@@ -45,7 +52,7 @@ class TomatoScan {
       predictions.isEmpty ? [ScanPrediction(label, score)] : predictions;
   // Matches the notebook's provisional threshold, not a calibrated guarantee.
   bool get uncertain => score < 0.60;
-  String get displayLabel => label.replaceAll('_', ' ');
+  String get displayLabel => diseaseDisplayName(label);
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -89,6 +96,10 @@ class TomatoScanStore {
   TomatoScanStore(this.box);
   final Box<dynamic> box;
   static const prefix = 'tomato-photo-v1/';
+  bool bookmarked(String id) =>
+      box.get('scan-bookmark-v1/$id', defaultValue: false) == true;
+  Future<void> bookmark(String id, bool value) =>
+      box.put('scan-bookmark-v1/$id', value);
 
   List<TomatoScan> load() {
     final scans = box.keys

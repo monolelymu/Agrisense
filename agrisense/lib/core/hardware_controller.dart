@@ -4,6 +4,7 @@ import 'package:hive_ce/hive.dart';
 import '../data/hardware_client.dart';
 import '../data/models.dart';
 import '../data/automatic_capture.dart';
+import '../data/daily_photo_schedule.dart';
 import 'sensor_notifications.dart';
 import 'app_issue.dart';
 import '../data/alert_photo.dart';
@@ -58,6 +59,19 @@ class HardwareController extends ChangeNotifier {
   final List<AlertPhoto> alertPhotos = [];
   final Map<Crop, String> status = {};
   bool busy = false;
+  bool backgroundWork = false;
+  bool get userBusy => busy && !backgroundWork;
+  Completer<void>? _idle;
+  Future<void> waitForIdle() async {
+    await _idle?.future;
+  }
+
+  final Map<Crop, DailyPhotoSchedule> photoSchedules = {};
+  final Map<Crop, String> cameraStatus = {};
+  final Map<Crop, DateTime> _cameraRetryAt = {};
+  final Map<Crop, String> _lastCaptureSlot = {};
+  final Set<String> _scheduleAttempts = {};
+  String? automaticStatus;
   bool allowLocalHttp = false;
   String? error;
   AppIssue? issue;
@@ -67,7 +81,10 @@ class HardwareController extends ChangeNotifier {
 
   void load() {
     backgroundEnabled =
-        box.get('background-monitoring-enabled-v1', defaultValue: false) ==
+        box.get(
+          'background-monitoring-enabled-v1',
+          defaultValue: service.supported,
+        ) ==
         true;
     this.alerts.addAll(alertStore.load());
     for (final item
@@ -82,6 +99,17 @@ class HardwareController extends ChangeNotifier {
         box.get('foreground-notification-rules-v1', defaultValue: {}) as Map;
     for (final crop in Crop.values) {
       try {
+        photoSchedules[crop] = DailyPhotoSchedule.fromJson(
+          box.get(
+                'daily-photos-v1-${crop.name}',
+                defaultValue: <String, dynamic>{},
+              )
+              as Map,
+        );
+      } catch (_) {
+        photoSchedules[crop] = const DailyPhotoSchedule();
+      }
+      try {
         notificationSettings[crop] = alerts[crop.name] is Map
             ? SensorAlertSettings.fromJson(alerts[crop.name] as Map)
             : const SensorAlertSettings();
@@ -92,7 +120,11 @@ class HardwareController extends ChangeNotifier {
       }
     }
     allowLocalHttp =
-        box.get('allow-local-hardware-http', defaultValue: false) == true;
+        box.get('allow-local-hardware-http', defaultValue: true) == true;
+    _scheduleAttempts.addAll(
+      (box.get('daily-photo-attempts-v1', defaultValue: []) as List)
+          .whereType<String>(),
+    );
     final raw =
         box.get('hardware-nodes-v1', defaultValue: <String, dynamic>{}) as Map;
     for (final crop in Crop.values) {
@@ -406,6 +438,8 @@ class HardwareController extends ChangeNotifier {
     final endpoint = address(crop, 'sensor');
     if (endpoint.isEmpty) return;
     busy = true;
+    backgroundWork = true;
+    _idle = Completer<void>();
     error = null;
     notifyListeners();
     try {
@@ -449,6 +483,9 @@ class HardwareController extends ChangeNotifier {
           : 'Could not read or save ${crop.label} sensor data. Check Wi-Fi, IP, and device storage.';
     } finally {
       busy = false;
+      backgroundWork = false;
+      _idle?.complete();
+      _idle = null;
       if (!_disposed) notifyListeners();
     }
   }
@@ -582,13 +619,22 @@ class HardwareController extends ChangeNotifier {
   }
 
   Future<Uint8List> capture(Crop crop) {
-    _requireIdle();
-    _requireHttp();
-    final endpoint = address(crop, 'camera');
-    if (endpoint.isEmpty) {
-      throw const FormatException('Assign a camera IP in Devices first.');
-    }
-    return withPollingPaused(() => _capture(endpoint));
+    return withPollingPaused(() async {
+      await waitForIdle();
+      _requireIdle();
+      _requireHttp();
+      final endpoint = address(crop, 'camera');
+      if (endpoint.isEmpty) throw AppIssue.assignment;
+      _lastCaptureSlot[crop] = _slot(crop, _clock());
+      try {
+        final bytes = await _capture(endpoint);
+        cameraStatus[crop] = 'Received';
+        return bytes;
+      } catch (_) {
+        _cameraFailed(crop);
+        rethrow;
+      }
+    });
   }
 
   Future<Uint8List> _capture(String endpoint) async {
@@ -643,9 +689,12 @@ class HardwareController extends ChangeNotifier {
   }
 
   Future<void> startMonitoring(Crop crop) async {
+    await waitForIdle();
     _requireIdle();
     _requireHttp();
-    if (address(crop, 'sensor').isEmpty) throw AppIssue.assignment;
+    if (address(crop, 'sensor').isEmpty && address(crop, 'camera').isEmpty) {
+      throw AppIssue.assignment;
+    }
     if (backgroundEnabled) await _startService(crop);
     startPolling(crop);
     notifyListeners();
@@ -657,7 +706,7 @@ class HardwareController extends ChangeNotifier {
     if (!allowLocalHttp) return;
     _requestedPollingCrop = crop;
     _resumePolling();
-    if (pollingActive) unawaited(refresh(crop));
+    if (pollingActive) unawaited(monitorTick(crop));
   }
 
   void _pausePolling({bool resetDuration = false}) {
@@ -678,12 +727,15 @@ class HardwareController extends ChangeNotifier {
         _pollingPauses > 0 ||
         !allowLocalHttp ||
         crop == null ||
-        address(crop, 'sensor').isEmpty ||
+        (address(crop, 'sensor').isEmpty && address(crop, 'camera').isEmpty) ||
         _timer != null) {
       return;
     }
     _pollingCrop = crop;
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) => refresh(crop));
+    _timer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => unawaited(monitorTick(crop)),
+    );
   }
 
   void stopPolling({bool stopService = true}) {
@@ -826,6 +878,152 @@ class HardwareController extends ChangeNotifier {
     }
   }
 
+  DailyPhotoSchedule schedule(Crop crop) =>
+      photoSchedules[crop] ?? const DailyPhotoSchedule();
+
+  Future<void> saveSchedule(Crop crop, DailyPhotoSchedule value) async {
+    value.validate();
+    await box.put('daily-photos-v1-${crop.name}', value.toJson());
+    photoSchedules[crop] = value;
+    notifyListeners();
+  }
+
+  String _slot(Crop crop, DateTime at) =>
+      '${crop.name}-${at.year}-${at.month}-${at.day}-${at.hour * 60 + at.minute}';
+
+  void _cameraFailed(Crop crop) {
+    cameraStatus[crop] = 'Unavailable';
+    _cameraRetryAt[crop] = _clock().add(const Duration(seconds: 30));
+  }
+
+  Future<void> checkCamera(Crop crop, {bool quietly = false}) async {
+    if (busy ||
+        _disposed ||
+        !allowLocalHttp ||
+        address(crop, 'camera').isEmpty) {
+      return;
+    }
+    busy = true;
+    backgroundWork = quietly;
+    _idle = Completer<void>();
+    if (!_disposed) notifyListeners();
+    try {
+      await compute(
+        previewPhoto,
+        await client.capture(address(crop, 'camera')),
+      );
+      cameraStatus[crop] = 'Received';
+      if (automaticStatus?.startsWith('Camera reconnecting') == true) {
+        automaticStatus = 'Camera reconnected. Scheduled checks will continue.';
+      }
+    } catch (_) {
+      _cameraFailed(crop);
+    } finally {
+      busy = false;
+      backgroundWork = false;
+      _idle?.complete();
+      _idle = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  /// Check only the current local minute; never replay missed slots.
+  Future<void> monitorTick(Crop crop) async {
+    if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
+      return;
+    }
+    final now = _clock();
+    final key = _slot(crop, now);
+    final settings = schedule(crop);
+    final due =
+        settings.enabled &&
+        settings.minutes.contains(now.hour * 60 + now.minute) &&
+        !_scheduleAttempts.contains(key);
+    if (due) {
+      _scheduleAttempts.add(key);
+      try {
+        await box.put('daily-photo-attempts-v1', _scheduleAttempts.toList());
+      } catch (_) {
+        automaticStatus =
+            'A scheduled check could not be saved. Please check phone storage.';
+        return;
+      }
+    }
+    await refresh(crop);
+    if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
+      return;
+    }
+    if (due && _slot(crop, _clock()) == key && _lastCaptureSlot[crop] != key) {
+      await _scheduledPhoto(crop, key);
+    } else if (cameraStatus[crop] == 'Unavailable' &&
+        !_clock().isBefore(_cameraRetryAt[crop] ?? now)) {
+      await checkCamera(crop, quietly: true);
+    }
+  }
+
+  Future<void> _scheduledPhoto(Crop crop, String id) async {
+    final endpoint = address(crop, 'camera');
+    if (endpoint.isEmpty || busy || !allowLocalHttp) return;
+    busy = true;
+    backgroundWork = true;
+    _idle = Completer<void>();
+    automaticStatus = 'Checking your plant…';
+    _lastCaptureSlot[crop] = id;
+    notifyListeners();
+    var stage = 'capture';
+    final rawKey = 'scheduled-original-v1/$id';
+    try {
+      final bytes = await client.capture(endpoint);
+      final capturedAt = _clock();
+      await compute(previewPhoto, bytes);
+      cameraStatus[crop] = 'Received';
+      stage = 'save';
+      await box.put(rawKey, {
+        'crop': crop.name,
+        'at': capturedAt.toIso8601String(),
+        'jpeg': bytes,
+        'state': 'photo_saved',
+      });
+      if (_disposed || !pollingActive || _requestedPollingCrop != crop) return;
+      stage = 'analysis';
+      if (!classifier.supports(crop)) throw AppIssue.unsupported;
+      final prediction = await classifier.classifyCrop(crop, bytes);
+      final contextual = attachScanContext(
+        TomatoScan.fromJson({
+          ...prediction.toJson(),
+          'id': 'scheduled-$id',
+          'crop': crop.name,
+          'timestamp': capturedAt.toIso8601String(),
+          'source': 'camera',
+        }),
+        at: capturedAt,
+      );
+      stage = 'save';
+      await scanStore.save(
+        TomatoScan.fromJson({...contextual.toJson(), 'source': 'scheduled'}),
+      );
+      await box.put(rawKey, {
+        ...Map<String, dynamic>.from(box.get(rawKey) as Map),
+        'state': 'completed',
+      });
+      revision++;
+      automaticStatus = '${crop.label} check saved.';
+    } catch (_) {
+      if (stage == 'capture') _cameraFailed(crop);
+      automaticStatus = stage == 'capture'
+          ? 'Camera reconnecting… The next scheduled check will run when connected.'
+          : stage == 'analysis'
+          ? 'Photo saved. Analysis could not finish.'
+          : 'Could not save this check. Please check phone storage.';
+    } finally {
+      busy = false;
+      backgroundWork = false;
+      _idle?.complete();
+      _idle = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   Future<void> _notifyReading(Crop crop, HardwareSample sample) async {
     final settings = notificationSettings[crop];
     if (_disposed ||
@@ -875,6 +1073,11 @@ class HardwareController extends ChangeNotifier {
       await _saveAlert(alert.change('alert_only'));
       return;
     }
+    if (_scheduleAttempts.contains(_slot(crop, now)) &&
+        _lastCaptureSlot[crop] == _slot(crop, now)) {
+      await _saveAlert(alert.change('alert_only'));
+      return;
+    }
     await _processAlert(alert, capture: true, manual: false);
   }
 
@@ -920,9 +1123,11 @@ class HardwareController extends ChangeNotifier {
           await _saveAlert(alert.change('interrupted'));
           return;
         }
+        _lastCaptureSlot[alert.crop] = _slot(alert.crop, _clock());
         bytes = await client.capture(alert.camera);
         // Validate originals before storage and inference. Do not resize model input here.
         await compute(previewPhoto, bytes);
+        cameraStatus[alert.crop] = 'Received';
         alert = alert.change('photo_saved', capturedAt: _clock());
         final photo = AlertPhoto(
           sampleId: alert.sample.id,
@@ -1003,6 +1208,7 @@ class HardwareController extends ChangeNotifier {
       _pendingResults.remove(alert.id);
       notificationStatus = '${alert.crop.label} automatic scan saved.';
     } catch (e) {
+      if (stage == 'capture_failed') _cameraFailed(alert.crop);
       final issue = AppIssue.from(
         e,
         fallback: switch (stage) {

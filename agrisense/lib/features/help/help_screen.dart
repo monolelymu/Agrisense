@@ -67,7 +67,7 @@ class HelpScreen extends StatelessWidget {
                 (HelpDestination.scan, 'Check a leaf'),
                 (HelpDestination.devices, 'Device setup'),
                 (HelpDestination.monitoring, 'Monitoring & Auto Scan'),
-                (HelpDestination.alerts, 'Records → Alerts'),
+                (HelpDestination.alerts, 'Technical logs'),
               ])
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(action.$1),
@@ -96,7 +96,7 @@ class HelpScreen extends StatelessWidget {
           ),
           (
             'Records and local storage',
-            'Records starts with saved leaf checks for your selected crop. Use Show to choose Alerts or Readings. Search & filters has optional search, dates and result filters. The latest 500 alerts and 20 warning originals (up to 30 MB) are retained. An alert can remain after its original photo expires. Clearing app data or uninstalling removes local records; do not use those actions as routine troubleshooting.',
+            'Records shows leaf checks for your selected crop. Choose a date or select Bookmarked to find an important check. Tap a bookmark beside a photo to save it. Sensor alerts and readings are in Settings → Technical logs. Clearing app data or uninstalling removes local records; do not use those actions as routine troubleshooting.',
           ),
           (
             'Recover a failed action',
@@ -171,7 +171,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
           ),
           (
             '4. Review your records',
-            'Records shows your saved leaf checks. Use Show for Alerts or Readings. Home → View trends opens your graphs. Help and this guide are in Settings.',
+            'Records shows your saved leaf checks. Choose a date to find an earlier check, or bookmark one to keep it easy to find. Home → View trends opens your graphs.',
           ),
         ]) ...[
           Panel(

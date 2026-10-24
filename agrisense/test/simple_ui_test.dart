@@ -6,6 +6,7 @@ import 'package:agrisense/core/hardware_controller.dart';
 import 'package:agrisense/core/theme.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
+import 'package:agrisense/data/daily_photo_schedule.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:flutter/material.dart';
@@ -18,10 +19,12 @@ import 'simple_ui_navigation.dart';
 class _ExistingBoards extends HardwareClient {
   int reads = 0, photos = 0;
   bool badPhoto = false;
+  Completer<void>? readGate;
 
   @override
   Future<HardwareSample> read(String address, Crop crop) async {
     reads++;
+    await readGate?.future;
     expect(address, 'http://192.168.1.20');
     return HardwareSample(
       id: 'reading-$reads',
@@ -50,6 +53,15 @@ class _ExistingBoards extends HardwareClient {
 class _MonitoringController extends HardwareController {
   _MonitoringController(super.box, {required super.client});
   final started = Completer<void>();
+  // Real persistence is covered by daily_monitoring_test; keep UI animations
+  // independent of operating-system file events in the widget-test clock.
+  @override
+  Future<void> saveSchedule(Crop crop, DailyPhotoSchedule value) async {
+    value.validate();
+    photoSchedules[crop] = value;
+    notifyListeners();
+  }
+
   @override
   Future<void> startMonitoring(Crop crop) async {
     await super.startMonitoring(crop);
@@ -122,7 +134,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Allow local hardware access'), findsOneWidget);
     expect(client.reads + client.photos, 0);
-    expect(hardware.allowLocalHttp, isFalse);
+    expect(hardware.allowLocalHttp, isTrue);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
@@ -139,19 +151,22 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Capture & Analyze'),
+              find.widgetWithText(FilledButton, 'Check plant now'),
             )
             .onPressed,
         isNull,
       );
-      await tester.ensureVisible(find.text('Camera movement & live view'));
-      await tester.tap(find.text('Camera movement & live view'));
-      await tester.pumpAndSettle();
-      for (final label in ['Left', 'Center', 'Right']) {
+      for (final label in [
+        'Move camera left',
+        'Center camera',
+        'Move camera right',
+      ]) {
         expect(
           tester
-              .widget<OutlinedButton>(
-                find.widgetWithText(OutlinedButton, label),
+              .widget<IconButton>(
+                find.byWidgetPredicate(
+                  (widget) => widget is IconButton && widget.tooltip == label,
+                ),
               )
               .onPressed,
           isNull,
@@ -160,14 +175,73 @@ void main() {
       await openSimplePage(tester, 'History');
       expect(find.text('No saved leaf checks'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
-      await chooseRecordCategory(tester, 'Readings');
-      expect(find.text('No sensor readings saved.'), findsOneWidget);
+      expect(find.text('Choose date'), findsOneWidget);
+      expect(find.text('Bookmarked'), findsOneWidget);
       expect(client.reads + client.photos, 0);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
     variant: TargetPlatformVariant({TargetPlatform.linux}),
   );
+
+  testWidgets(
+    'background sensor refresh does not block navigation or show loading',
+    (tester) async {
+      hardware.assignments[Crop.tomato] = {
+        'sensor': 'http://192.168.1.20',
+        'sensorId': 'sensor-one',
+      };
+      await show(tester);
+      client.readGate = Completer<void>();
+      late Future<void> reading;
+      await tester.runAsync(() async {
+        reading = hardware.refresh(Crop.tomato);
+      });
+      await tester.pump();
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(
+        tester
+            .widget<NavigationBar>(find.byType(NavigationBar))
+            .onDestinationSelected,
+        isNotNull,
+      );
+      await tester.tap(find.widgetWithText(NavigationDestination, 'Records'));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose date'), findsOneWidget);
+      await tester.runAsync(() async {
+        client.readGate!.complete();
+        await reading;
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('Choose date'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('photo times are edited and saved directly from Home', (
+    tester,
+  ) async {
+    await show(tester, largeText: true);
+    await tester.ensureVisible(find.text('Edit times'));
+    await tester.tap(find.text('Edit times'));
+    await tester.pumpAndSettle();
+    expect(find.text('Automatic photo times'), findsOneWidget);
+    await tester.tap(find.text('Add time'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Save times'));
+    await tester.tap(find.text('Save times'));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(hardware.schedule(Crop.tomato).minutes, hasLength(1));
+    expect(find.textContaining('Every day:'), findsOneWidget);
+    expect(find.text('Automatic photo times'), findsNothing);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   for (final badPhoto in [false, true]) {
     testWidgets('Connect checks saved legacy boards; invalid photo=$badPhoto', (
@@ -193,7 +267,9 @@ void main() {
       expect(find.text('Sensor: Receiving readings'), findsOneWidget);
       expect(
         find.textContaining(
-          badPhoto ? 'Camera: Unavailable.' : 'Camera: Photo received.',
+          badPhoto
+              ? 'Camera: Reconnecting…'
+              : 'Camera: Photo connection checked',
         ),
         findsOneWidget,
       );

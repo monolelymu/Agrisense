@@ -101,7 +101,7 @@ void main() {
             tester.getTopLeft(find.text('Model score: 55.0%')).dy,
             lessThan(tester.getTopLeft(find.text('UNCERTAIN')).dy),
           );
-          await tester.ensureVisible(find.text('spotted wilt virus'));
+          await tester.ensureVisible(find.text('Spotted Wilt Virus'));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           expect(find.text('55.0%'), findsOneWidget);
@@ -180,7 +180,7 @@ void main() {
           await openSimplePage(tester, page);
           expect(tester.takeException(), isNull, reason: page);
         }
-        expect(find.text('Tomato • yellow leaf curl virus'), findsOneWidget);
+        expect(find.text('Tomato • Yellow Leaf Curl Virus'), findsOneWidget);
         await chooseRecordCategory(tester, 'Alerts');
         expect(find.text('Sensor alerts'), findsOneWidget);
         expect(find.text('Analysis failed'), findsOneWidget);
@@ -255,7 +255,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Completing your request…'), findsOneWidget);
-      expect(find.textContaining('NET-001'), findsOneWidget);
+      expect(find.textContaining('NET-001'), findsNothing);
       expect(
         tester
             .widget<FilledButton>(

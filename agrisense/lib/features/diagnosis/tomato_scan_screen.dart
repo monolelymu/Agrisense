@@ -16,6 +16,7 @@ import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
 import 'crop_knowledge_screen.dart';
 import 'photo_processing.dart';
+import 'simple_result_card.dart';
 import '../help/help_screen.dart';
 
 class TomatoApp extends StatelessWidget {
@@ -69,7 +70,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       supported &&
       classifier.supports(crop) &&
       !busy &&
-      widget.hardware?.busy != true;
+      widget.hardware?.userBusy != true;
   List<TomatoScan> get cropHistory =>
       history.where((s) => s.crop == crop).toList();
   bool _busy = false, saved = false;
@@ -141,7 +142,10 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
 
   Future<void> _selectPhoto() => widget.hardware == null
       ? _choosePhoto()
-      : widget.hardware!.withPollingPaused(_choosePhoto);
+      : widget.hardware!.withPollingPaused(() async {
+          await widget.hardware!.waitForIdle();
+          await _choosePhoto();
+        });
 
   Future<void> _choosePhoto() async {
     if (!canScan) return;
@@ -196,7 +200,10 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
 
   Future<void> _capture() => widget.hardware == null
       ? Future<void>.value()
-      : widget.hardware!.withPollingPaused(_captureAndAnalyze);
+      : widget.hardware!.withPollingPaused(() async {
+          await widget.hardware!.waitForIdle();
+          await _captureAndAnalyze();
+        });
 
   Future<void> _captureAndAnalyze() async {
     if (!canScan || widget.hardware == null) return;
@@ -280,7 +287,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   }
 
   void _selectCrop(Crop value) {
-    if (busy || widget.hardware?.busy == true) return;
+    if (busy || widget.hardware?.userBusy == true) return;
     setState(() {
       crop = value;
       error = null;
@@ -326,7 +333,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
           'Check a leaf using the camera or a photo on your phone.',
         ),
         AbsorbPointer(
-        absorbing: busy || hardware.busy,
+          absorbing: busy || hardware.userBusy,
           child: CropPicker(value: crop, onChanged: _selectCrop),
         ),
         const SizedBox(height: 20),
@@ -359,7 +366,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
               if (cameraPreview != null) ...[
                 Image.memory(cameraPreview!, height: 220, fit: BoxFit.contain),
                 const SizedBox(height: 8),
-                const Text('Last preview photo • not live, analyzed or saved'),
+                const Text('Last photo • not live'),
               ] else
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
@@ -367,26 +374,35 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
                     children: [
                       Icon(Icons.camera_alt_outlined, size: 48, color: accent),
                       SizedBox(height: 12),
-                      Text('Tap Preview photo to check the camera.'),
+                      Text('Your plant will appear here.'),
                     ],
                   ),
                 ),
               const SizedBox(height: 16),
+              const Text('Move camera', textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              const Center(child: _CameraGamepad()),
+              const SizedBox(height: 8),
+              const Text(
+                'Camera movement unavailable.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: canScan && cameraReady ? _capture : null,
                 icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Capture & Analyze'),
+                label: const Text('Check plant now'),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: !busy && !hardware.busy && cameraReady
+                onPressed: !busy && !hardware.userBusy && cameraReady
                     ? _previewCamera
                     : null,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Preview photo'),
+                label: const Text('Refresh photo'),
               ),
               const SizedBox(height: 12),
-              OutlinedButton.icon(
+              TextButton.icon(
                 onPressed: canScan ? _selectPhoto : null,
                 icon: const Icon(Icons.photo_library_outlined),
                 label: const Text('Choose Photo'),
@@ -394,45 +410,14 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
               const SizedBox(height: 12),
               Text(
                 cameraReady
-                    ? 'Still photos work with the existing camera firmware.'
-                    : 'Set up your camera in Settings → Device setup. Choose Photo works without boards.',
+                    ? 'Automatic checks use this camera.'
+                    : 'Camera not connected. Tap Connect on Home.',
               ),
               if (!supported)
                 const Text('Photo analysis is available in the Android app.'),
-            Text(modelStatus(crop)),
-              TextButton.icon(
-                onPressed: busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => CropKnowledgeScreen(crop: crop),
-                        ),
-                      ),
-                icon: const Icon(Icons.menu_book_outlined),
-                label: Text('${crop.label} knowledge & care'),
-              ),
+              if (!classifier.supports(crop)) Text(modelStatus(crop)),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
-        const ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          title: Text('Camera movement & live view'),
-          children: [
-            Text(
-              'These controls need verified compatible firmware. This update uses still photos and does not send servo or streaming commands.',
-            ),
-            SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton(onPressed: null, child: Text('Left')),
-                OutlinedButton(onPressed: null, child: Text('Center')),
-                OutlinedButton(onPressed: null, child: Text('Right')),
-              ],
-            ),
-          ],
         ),
         if (shown != null) ...[
           const SizedBox(height: 24),
@@ -443,7 +428,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
-          TomatoResultCard(scan: shown),
+          SimpleResultCard(scan: shown),
           const SizedBox(height: 8),
           Text(
             result?.id == shown.id && !saved
@@ -799,6 +784,60 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             ),
     );
   }
+}
+
+class _CameraGamepad extends StatelessWidget {
+  const _CameraGamepad();
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: muted.withValues(alpha: .35), width: 2),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton.filledTonal(
+          tooltip: 'Move camera left',
+          onPressed: null,
+          iconSize: 36,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(60, 60),
+            shape: BeveledRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: 'Center camera',
+          onPressed: null,
+          iconSize: 28,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(56, 56),
+            shape: const CircleBorder(),
+          ),
+          icon: const Icon(Icons.my_location),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          tooltip: 'Move camera right',
+          onPressed: null,
+          iconSize: 36,
+          style: IconButton.styleFrom(
+            minimumSize: const Size(60, 60),
+            shape: BeveledRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
+      ],
+    ),
+  );
 }
 
 class TomatoResultCard extends StatelessWidget {

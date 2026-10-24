@@ -8,6 +8,12 @@ const warning = Color(0xFFFFCA7A);
 
 ThemeData buildTheme() => ThemeData(
   useMaterial3: true,
+  expansionTileTheme: const ExpansionTileThemeData(
+    tilePadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    childrenPadding: EdgeInsets.fromLTRB(12, 4, 12, 16),
+    shape: Border(),
+    collapsedShape: Border(),
+  ),
   brightness: Brightness.dark,
   scaffoldBackgroundColor: background,
   colorScheme: ColorScheme.fromSeed(

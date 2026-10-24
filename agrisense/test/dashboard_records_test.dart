@@ -43,7 +43,7 @@ void main() {
     },
   );
 
-  testWidgets('history searches records and scans filter by result', (
+  testWidgets('records use date and bookmarks without bulky search filters', (
     tester,
   ) async {
     final store = TomatoScanStore(box);
@@ -52,7 +52,9 @@ void main() {
         await store.save(
           TomatoScan(
             id: label,
-            timestamp: DateTime.now(),
+            timestamp: label == 'healthy'
+                ? DateTime.now()
+                : DateTime.now().subtract(const Duration(days: 1)),
             label: label,
             score: .9,
             preview: Uint8List(0),
@@ -66,21 +68,34 @@ void main() {
       HardwareApp(hardware: h, scans: store, showTutorial: false),
     );
     await openSimplePage(tester, 'History');
-    await tester.tap(find.text('Search & filters'));
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(DropdownButtonFormField<int>), findsNothing);
+    expect(find.text('Tomato • Mosaic Virus'), findsOneWidget);
+    expect(find.text('Tomato • Healthy'), findsOneWidget);
+    final tile = find.widgetWithText(ListTile, 'Tomato • Healthy');
+    await tester.ensureVisible(tile);
+    await tester.runAsync(() async {
+      await tester.tap(
+        find.descendant(of: tile, matching: find.byTooltip('Bookmark')),
+      );
+      await box.flush();
+    });
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'mosaic');
+    expect(TomatoScanStore(box).bookmarked('healthy'), isTrue);
+    await tester.ensureVisible(find.text('Bookmarked'));
+    await tester.tap(find.text('Bookmarked'));
     await tester.pumpAndSettle();
-    expect(find.text('Tomato • mosaic virus'), findsOneWidget);
-    expect(find.text('Tomato • healthy'), findsNothing);
-    await tester.tap(find.byTooltip('Clear search'));
+    expect(find.text('Tomato • Healthy'), findsOneWidget);
+    expect(find.text('Tomato • Mosaic Virus'), findsNothing);
+    await tester.tap(find.text('All'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Healthy'));
+    await tester.tap(find.text('Choose date'));
     await tester.pumpAndSettle();
-    expect(find.text('Tomato • healthy'), findsOneWidget);
-    expect(find.text('Tomato • mosaic virus'), findsNothing);
-    await tester.enterText(find.byType(TextField), 'no-such-record');
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    expect(find.text('No matching records'), findsOneWidget);
+    expect(find.text('Tomato • Healthy'), findsOneWidget);
+    expect(find.text('Tomato • Mosaic Virus'), findsNothing);
+    expect(find.text('Clear date'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     h.dispose();
   });

@@ -84,25 +84,21 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('25.0°C'), findsOneWidget);
       expect(find.text('400 raw'), findsNothing);
-      await tester.ensureVisible(find.text('More growing conditions'));
-      await tester.tap(find.text('More growing conditions'));
-      await tester.pumpAndSettle();
-      expect(find.text('400 raw'), findsOneWidget);
-      expect(find.text('Tomato • leaf miner'), findsOneWidget);
+      expect(find.text('Tomato • Leaf Miner'), findsOneWidget);
       await openSimplePage(tester, 'Trends');
       expect(find.textContaining('1 samples'), findsOneWidget);
       await openSimplePage(tester, 'History');
-      await tester.ensureVisible(find.text('Tomato • leaf miner'));
-      await tester.tap(find.text('Tomato • leaf miner'));
+      await tester.ensureVisible(find.text('Tomato • Leaf Miner'));
+      await tester.tap(find.text('Tomato • Leaf Miner'));
       await tester.pumpAndSettle();
-      expect(find.text('UNCERTAIN'), findsOneWidget);
-      expect(find.text('leaf miner'), findsNWidgets(2));
+      expect(find.text('Uncertain result'), findsOneWidget);
+      expect(find.text('Learn more'), findsOneWidget);
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.pumpAndSettle();
-      expect(find.text('Tomato • leaf miner'), findsNothing);
+      expect(find.text('Tomato • Leaf Miner'), findsNothing);
       await chooseRecordCategory(tester, 'Readings');
       expect(find.text('No sensor readings saved.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
@@ -170,6 +166,7 @@ void main() {
       final box = await Hive.openBox<dynamic>('hardware');
       final client = FakeHardware();
       final controller = HardwareController(box, client: client)..load();
+      await controller.setHttpAllowed(false);
       addTearDown(() async {
         controller.dispose();
         await box.close();
@@ -178,7 +175,7 @@ void main() {
       await controller.assign(Crop.tomato, 'sensor', '192.168.1.50');
       await controller.assign(Crop.tomato, 'camera', '192.168.1.51');
       await controller.refresh(Crop.tomato);
-      expect(() => controller.capture(Crop.tomato), throwsFormatException);
+      await expectLater(controller.capture(Crop.tomato), throwsFormatException);
       controller.startPolling(Crop.tomato);
       expect(controller.polling, isFalse);
       expect(client.calls, 0);
@@ -207,44 +204,45 @@ void main() {
     },
   );
 
-  testWidgets('real dashboard is empty without hardware and has HTTP off', (
-    tester,
-  ) async {
-    late Directory directory;
-    late Box<dynamic> box;
-    await tester.runAsync(() async {
-      directory = await Directory.systemTemp.createTemp('hardware-ui-');
-      Hive.init(directory.path);
-      box = await Hive.openBox<dynamic>('hardware-ui');
-      // Legacy demo storage must not become live readings.
-      await box.put('history', {
-        'readings': ['mock'],
+  testWidgets(
+    'real dashboard is empty without hardware and defaults local access on',
+    (tester) async {
+      late Directory directory;
+      late Box<dynamic> box;
+      await tester.runAsync(() async {
+        directory = await Directory.systemTemp.createTemp('hardware-ui-');
+        Hive.init(directory.path);
+        box = await Hive.openBox<dynamic>('hardware-ui');
+        // Legacy demo storage must not become live readings.
+        await box.put('history', {
+          'readings': ['mock'],
+        });
       });
-    });
-    final h = HardwareController(box, client: FakeHardware())..load();
-    addTearDown(() async {
-      h.dispose();
-      await box.close();
-      await directory.delete(recursive: true);
-    });
-    await tester.pumpWidget(
-      HardwareApp(
-        hardware: h,
-        scans: TomatoScanStore(box),
-        showTutorial: false,
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('No sensor readings yet'), findsOneWidget);
-    expect(find.text('MOCK READINGS'), findsNothing);
-    await openSimplePage(tester, 'Devices');
-    expect(find.text('Allow local hardware access'), findsOneWidget);
-    expect(
-      tester.widget<SwitchListTile>(find.byType(SwitchListTile).first).value,
-      isFalse,
-    );
-    await openSimplePage(tester, 'Trends');
-    expect(find.text('No readings for this metric'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      final h = HardwareController(box, client: FakeHardware())..load();
+      addTearDown(() async {
+        h.dispose();
+        await box.close();
+        await directory.delete(recursive: true);
+      });
+      await tester.pumpWidget(
+        HardwareApp(
+          hardware: h,
+          scans: TomatoScanStore(box),
+          showTutorial: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('No sensor readings yet'), findsOneWidget);
+      expect(find.text('MOCK READINGS'), findsNothing);
+      await openSimplePage(tester, 'Devices');
+      expect(find.text('Allow local hardware access'), findsOneWidget);
+      expect(
+        tester.widget<SwitchListTile>(find.byType(SwitchListTile).first).value,
+        isTrue,
+      );
+      await openSimplePage(tester, 'Trends');
+      expect(find.text('No readings for this metric'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 }

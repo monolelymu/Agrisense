@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
+import android.net.Uri
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugin.common.MethodChannel
@@ -23,6 +24,23 @@ class AgriSenseApplication : Application() {
         sharedEngine?.let { return it }
         val engine = FlutterEngine(this)
         sharedEngine = engine
+        MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/external_links")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "open") {
+                    result.notImplemented()
+                } else {
+                    val url = call.argument<String>("url")
+                    val uri = url?.let { Uri.parse(it) }
+                    if (uri == null || uri.scheme !in listOf("https", "http") || uri.host.isNullOrEmpty() || uri.userInfo != null) {
+                        result.success(false)
+                    } else {
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            result.success(true)
+                        } catch (_: Exception) { result.success(false) }
+                    }
+                }
+            }
         MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/sensor_notifications")
             .setMethodCallHandler { call, result ->
                 when (call.method) {

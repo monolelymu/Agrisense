@@ -74,7 +74,7 @@ void main() {
     'Check a leaf',
     'Device setup',
     'Monitoring & Auto Scan',
-    'Records → Alerts',
+    'Technical logs',
   ]) {
     testWidgets(
       'dashboard Help shortcut $action preserves Eggplant',
@@ -110,8 +110,15 @@ void main() {
             Crop.eggplant,
           );
         } else {
-          if (action == 'Device setup') {
-            expect(find.text('Eggplant devices'), findsOneWidget);
+          if (action == 'Device setup' || action == 'Technical logs') {
+            expect(
+              find.text(
+                action == 'Device setup'
+                    ? 'Eggplant devices'
+                    : 'Technical logs',
+              ),
+              findsOneWidget,
+            );
             expect(find.byType(NavigationBar), findsNothing);
           } else {
             expect(
@@ -127,7 +134,7 @@ void main() {
                 .selected,
             isTrue,
           );
-          if (action == 'Records → Alerts') {
+          if (action == 'Technical logs') {
             expect(
               tester
                   .widget<DropdownButtonFormField<int>>(

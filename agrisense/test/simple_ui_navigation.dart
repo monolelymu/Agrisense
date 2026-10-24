@@ -30,6 +30,12 @@ Future<void> openSimplePage(WidgetTester tester, String page) async {
 }
 
 Future<void> chooseRecordCategory(WidgetTester tester, String label) async {
+  if (find.byType(DropdownButtonFormField<int>).evaluate().isEmpty) {
+    await openSimplePage(tester, 'Settings');
+    await tester.ensureVisible(find.widgetWithText(ListTile, 'Technical logs'));
+    await tester.tap(find.widgetWithText(ListTile, 'Technical logs'));
+    await tester.pumpAndSettle();
+  }
   await tester.ensureVisible(find.byType(DropdownButtonFormField<int>));
   await tester.tap(find.byType(DropdownButtonFormField<int>));
   await tester.pumpAndSettle();

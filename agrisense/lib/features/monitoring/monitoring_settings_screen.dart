@@ -110,7 +110,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Phone limits control alerts, warning photos and optional automatic analysis. Open Records → Show → Alerts to review each alert and its linked result.',
+                  'Phone limits control alerts, warning photos and optional automatic analysis. Open Settings → Technical logs to review each alert and its linked result. Daily photo times are edited directly on Home.',
                 ),
               ],
             ),

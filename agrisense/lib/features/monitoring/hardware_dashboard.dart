@@ -16,9 +16,11 @@ import '../help/help_screen.dart';
 import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
 import 'alert_detail_screen.dart';
-import '../diagnosis/tomato_context_widgets.dart';
 import '../diagnosis/model_catalog.dart';
 import '../diagnosis/crop_knowledge_screen.dart';
+import '../diagnosis/simple_result_card.dart';
+import '../../data/daily_photo_schedule.dart';
+import 'photo_times_sheet.dart';
 
 class HardwareApp extends StatelessWidget {
   const HardwareApp({
@@ -62,6 +64,9 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   Crop crop = Crop.tomato;
   int page = 0;
   int historyCategory = 0;
+  DateTime? recordDate;
+  bool bookmarksOnly = false;
+  final Set<String> _bookmarkWrites = {};
   String metric = 'Temperature';
   int trendDays = 1;
   String historyQuery = '';
@@ -75,11 +80,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   AppIssue? actionIssue;
   bool saving = false;
   bool cameraBusy = false;
-  final Map<Crop, String> _cameraChecks = {};
-  final Map<Crop, String> _checkedCameraAddresses = {};
+  bool _askedForNotifications = false;
   int _scanRevision = -1;
   HardwareController get h => widget.hardware;
-  bool get locked => saving || h.busy || cameraBusy;
+  bool get locked => saving || h.userBusy || cameraBusy;
   static const tabs = [
     'Home',
     'Camera',
@@ -87,6 +91,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     'Settings',
     'Device setup',
     'Trends',
+    'Technical logs',
   ];
   static const icons = [
     Icons.home_outlined,
@@ -157,9 +162,9 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         await _openSettings(MonitoringSettingsScreen(hardware: h, crop: crop));
       case HelpDestination.alerts:
         setState(() {
-          page = 2;
           historyCategory = 1;
         });
+        _secondaryPage(6);
       case null:
         break;
     }
@@ -229,7 +234,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
               appBar: AppBar(title: Text('${scan.crop.label} result')),
               body: PageBody(
                 children: [
-                  TomatoResultCard(scan: scan),
+                  SimpleResultCard(scan: scan),
                   if (scan.alertId != null)
                     TextButton(
                       onPressed: () => Navigator.of(context).push(
@@ -298,6 +303,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         actionIssue = null;
       });
       try {
+        await h.waitForIdle();
         await action();
         return true;
       } catch (e) {
@@ -329,10 +335,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       preview = await compute(previewPhoto, await h.capture(selected));
     }, fallback: AppIssue.camera);
     if (!success || !mounted) return;
-    setState(() {
-      _cameraChecks[selected] = 'Photo received. Tap Connect to check again.';
-      _checkedCameraAddresses[selected] = h.address(selected, 'camera');
-    });
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -372,7 +374,19 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       subtitle: Text(
         '${scan.uncertain ? 'Uncertain result • ' : ''}${dateLabel(scan.timestamp)}',
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: IconButton(
+        tooltip: widget.scans.bookmarked(scan.id)
+            ? 'Remove bookmark'
+            : 'Bookmark',
+        icon: Icon(
+          widget.scans.bookmarked(scan.id)
+              ? Icons.bookmark
+              : Icons.bookmark_border,
+        ),
+        onPressed: _bookmarkWrites.contains(scan.id)
+            ? null
+            : () => _bookmark(scan.id),
+      ),
       onTap: () => _result(scan),
     ),
   );
@@ -463,7 +477,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                   onPressed: locked ? null : _connect,
                   icon: const Icon(Icons.link),
                   label: Text(
-                    saving ? 'Checking your devices…' : 'Connect AgriSense',
+                    saving
+                        ? 'Checking your devices…'
+                        : h.polling &&
+                              (h.status[crop] == 'Unavailable' ||
+                                  h.cameraStatus[crop] == 'Unavailable')
+                        ? 'Retry connection'
+                        : 'Connect AgriSense',
                   ),
                 ),
               ),
@@ -476,7 +496,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                     : h.fresh(crop)
                     ? 'Receiving readings'
                     : h.status[crop] == 'Unavailable'
-                    ? 'Unavailable. Check power and Wi-Fi.'
+                    ? 'Reconnecting…'
                     : 'Not checked. Tap Connect.',
                 h.fresh(crop),
               ),
@@ -486,10 +506,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 'Camera',
                 h.address(crop, 'camera').isEmpty
                     ? 'Not set up'
-                    : _checkedCameraAddresses[crop] == h.address(crop, 'camera')
-                    ? _cameraChecks[crop] ?? 'Not checked. Tap Connect.'
+                    : h.cameraStatus[crop] == 'Received'
+                    ? 'Photo connection checked'
+                    : h.cameraStatus[crop] == 'Unavailable'
+                    ? 'Reconnecting…'
                     : 'Not checked. Tap Connect.',
-                false,
+                h.cameraStatus[crop] == 'Received',
               ),
               const SizedBox(height: 8),
               Row(
@@ -499,27 +521,19 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                     color: h.polling ? accent : muted,
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(h.monitoringStatus)),
+                  Expanded(
+                    child: Text(
+                      h.polling ? 'Monitoring is on' : 'Tap Connect to start',
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: locked
-                    ? null
-                    : () => _openSettings(
-                        MonitoringSettingsScreen(hardware: h, crop: crop),
-                      ),
-                icon: const Icon(Icons.tune),
-                label: const Text('Monitoring settings'),
-              ),
-              TextButton(
-                onPressed: locked ? null : () => _secondaryPage(4),
-                child: const Text('Device setup'),
               ),
             ],
           ),
         ),
       ),
+      const SizedBox(height: 24),
+      _scheduleCard(),
       const SizedBox(height: 24),
       Text(
         '${crop.label} overview',
@@ -549,9 +563,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                   : r.soil == null
                   ? 'Unavailable'
                   : '${r.soil!.toStringAsFixed(0)}%',
-              r.soilCalibrated
-                  ? 'Calibrated by device'
-                  : 'Uncalibrated • raw ${r.soilRaw}',
+              r.soilCalibrated ? 'Calibrated by device' : 'Needs calibration',
             ),
             _metric(
               'Temperature',
@@ -577,52 +589,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         spacing: 12,
         runSpacing: 8,
         children: [
-          OutlinedButton(
-            onPressed:
-                locked || !h.allowLocalHttp || h.address(crop, 'sensor').isEmpty
-                ? null
-                : () => h.refresh(crop),
-            child: const Text('Read sensors'),
-          ),
           TextButton(
             onPressed: locked ? null : () => _secondaryPage(5),
             child: const Text('View trends'),
           ),
         ],
       ),
-      ...[
-        const SizedBox(height: 20),
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          title: const Text('More growing conditions'),
-          children: [
-            if (r != null) ...[
-              _metric(
-                'Gas sensor',
-                '${r.gasRaw} raw',
-                'Uncalibrated MQ135 ADC; not ppm',
-              ),
-              const SizedBox(height: 12),
-            ],
-            GrowingConditionsPanel(
-              crop: crop,
-              sample:
-                  r != null && r.deviceId == h.assignments[crop]?['sensorId']
-                  ? r
-                  : null,
-            ),
-          ],
-        ),
-        TextButton.icon(
-          icon: const Icon(Icons.menu_book_outlined),
-          label: Text('${crop.label} knowledge & care'),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => CropKnowledgeScreen(crop: crop),
-            ),
-          ),
-        ),
-      ],
       const SizedBox(height: 24),
       Text('Latest diagnosis', style: Theme.of(context).textTheme.titleLarge),
       if (results.isEmpty)
@@ -648,23 +620,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     }
     final selected = crop;
     await _saveAction(() async {
+      if (h.backgroundEnabled && !_askedForNotifications) {
+        _askedForNotifications = true;
+        try {
+          await h.notifications.requestPermission();
+        } catch (_) {
+          /* Monitoring can run if notifications are declined. */
+        }
+      }
       if (h.address(selected, 'sensor').isNotEmpty) {
         await h.refresh(selected);
       }
       final camera = h.address(selected, 'camera');
       if (camera.isNotEmpty) {
-        try {
-          // Decode the JPEG too: a responding server alone is not a camera check.
-          await compute(previewPhoto, await h.capture(selected));
-          _cameraChecks[selected] =
-              'Photo received. Tap Connect to check again.';
-        } catch (_) {
-          _cameraChecks[selected] =
-              'Unavailable. Check camera power and Wi-Fi.';
-        }
-        _checkedCameraAddresses[selected] = camera;
+        await h.checkCamera(selected);
       }
-      if (h.fresh(selected) && !h.polling) await h.startMonitoring(selected);
+      if (!h.polling) await h.startMonitoring(selected);
     }, fallback: AppIssue.connection);
   }
 
@@ -713,10 +684,21 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ),
     ),
     const SizedBox(height: 12),
-    const Panel(
-      child: Text(
-        'Time-of-day snapshots and camera movement need compatible firmware. They are not enabled by this app update.',
+    Card(
+      child: ListTile(
+        title: const Text('Technical logs'),
+        subtitle: const Text(
+          'Sensor readings, alerts and saved photo originals',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _secondaryPage(6),
       ),
+    ),
+    const SizedBox(height: 12),
+    OutlinedButton.icon(
+      onPressed: () => _openSettings(CropKnowledgeScreen(crop: crop)),
+      icon: const Icon(Icons.menu_book_outlined),
+      label: const Text('Plant reference details'),
     ),
     const SizedBox(height: 12),
     OutlinedButton.icon(
@@ -1144,7 +1126,175 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     }
   }
 
-  List<Widget> _history(List<TomatoScan> results) {
+  Future<void> _bookmark(String id) async {
+    if (!_bookmarkWrites.add(id)) return;
+    try {
+      await widget.scans.bookmark(id, !widget.scans.bookmarked(id));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save this bookmark. Please try again.'),
+          ),
+        );
+      }
+    } finally {
+      _bookmarkWrites.remove(id);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _editTimes() async {
+    final selected = crop;
+    final value = await showModalBottomSheet<DailyPhotoSchedule>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => PhotoTimesSheet(schedule: h.schedule(selected)),
+    );
+    if (value != null && mounted) {
+      await _saveAction(() => h.saveSchedule(selected, value));
+    }
+  }
+
+  Widget _scheduleCard() {
+    final settings = h.schedule(crop);
+    final next = settings.next(DateTime.now());
+    String time(int minute) =>
+        TimeOfDay(hour: minute ~/ 60, minute: minute % 60).format(context);
+    return Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Automatic photos'),
+            value: settings.enabled,
+            onChanged: locked
+                ? null
+                : (enabled) {
+                    if (enabled && settings.minutes.isEmpty) {
+                      _editTimes();
+                    } else {
+                      _saveAction(
+                        () => h.saveSchedule(
+                          crop,
+                          DailyPhotoSchedule(
+                            enabled: enabled,
+                            minutes: settings.minutes,
+                          ),
+                        ),
+                      );
+                    }
+                  },
+          ),
+          Text(
+            settings.minutes.isEmpty
+                ? 'Choose when to check your plant each day.'
+                : 'Every day: ${settings.minutes.map(time).join(' · ')}',
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: locked ? null : _editTimes,
+            icon: const Icon(Icons.schedule),
+            label: const Text('Edit times'),
+          ),
+          const SizedBox(height: 12),
+          if (next != null)
+            Text(
+              !h.polling
+                  ? 'Connect to start scheduled photos.'
+                  : h.address(crop, 'camera').isEmpty
+                  ? 'Waiting for a camera connection.'
+                  : 'Next check: ${MaterialLocalizations.of(context).formatMediumDate(next)} · ${TimeOfDay.fromDateTime(next).format(context)}',
+            ),
+          if (h.automaticStatus != null) ...[
+            const SizedBox(height: 8),
+            Text(h.automaticStatus!),
+          ],
+          if (h.polling) ...[
+            const SizedBox(height: 8),
+            Text(
+              h.backgroundActive
+                  ? 'Checks continue while your phone is locked.'
+                  : 'Keep the app open. Background monitoring is not active.',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _records(List<TomatoScan> results) {
+    final filtered = results.where((scan) {
+      final at = scan.timestamp.toLocal();
+      return (!bookmarksOnly || widget.scans.bookmarked(scan.id)) &&
+          (recordDate == null ||
+              (at.year == recordDate!.year &&
+                  at.month == recordDate!.month &&
+                  at.day == recordDate!.day));
+    }).toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return [
+      Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          OutlinedButton.icon(
+            icon: const Icon(Icons.calendar_today_outlined),
+            label: Text(
+              recordDate == null
+                  ? 'Choose date'
+                  : MaterialLocalizations.of(
+                      context,
+                    ).formatMediumDate(recordDate!),
+            ),
+            onPressed: () async {
+              final value = await showDatePicker(
+                context: context,
+                initialDate: recordDate ?? DateTime.now(),
+                firstDate: DateTime(2000),
+                lastDate: DateTime.now(),
+              );
+              if (value != null && mounted) setState(() => recordDate = value);
+            },
+          ),
+          if (recordDate != null)
+            TextButton(
+              onPressed: () => setState(() => recordDate = null),
+              child: const Text('Clear date'),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(value: false, label: Text('All')),
+          ButtonSegment(value: true, label: Text('Bookmarked')),
+        ],
+        selected: {bookmarksOnly},
+        onSelectionChanged: (values) =>
+            setState(() => bookmarksOnly = values.single),
+      ),
+      const SizedBox(height: 20),
+      if (filtered.isEmpty)
+        EmptyState(
+          bookmarksOnly
+              ? 'No bookmarked checks'
+              : recordDate != null
+              ? 'No checks on this date'
+              : 'No saved leaf checks',
+          bookmarksOnly
+              ? 'Tap the bookmark beside a check to save it here.'
+              : 'Your plant photos and results will appear here.',
+        ),
+      for (final scan in filtered) ...[
+        _scanTile(scan),
+        const SizedBox(height: 12),
+      ],
+    ];
+  }
+
+  List<Widget> _technicalHistory(List<TomatoScan> results) {
     final filteredScans =
         results
             .where(
@@ -1512,7 +1662,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                       const Text('Completing your request…'),
                       const SizedBox(height: 16),
                     ],
-                    if (error != null || h.error != null)
+                    if (error != null || (page >= 3 && h.error != null))
                       IssueCard(
                         issue: error != null
                             ? actionIssue ??
@@ -1538,10 +1688,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                             : null,
                       ),
                     if (page == 0) ..._dashboard(results),
-                    if (page == 2) ..._history(results),
+                    if (page == 2) ..._records(results),
                     if (page == 3) ..._settings(),
                     if (page == 4) ..._devices(),
                     if (page == 5) ..._trends(),
+                    if (page == 6) ..._technicalHistory(results),
                   ],
                 ),
           bottomNavigationBar: page >= 3
