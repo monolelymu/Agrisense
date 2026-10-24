@@ -167,12 +167,6 @@ class CropPicker extends StatelessWidget {
                             Crop.eggplant => '🍆',
                           }, style: const TextStyle(fontSize: 24)),
                         ),
-                        if (value == crop)
-                          const Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Icon(Icons.check, size: 16),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 6),

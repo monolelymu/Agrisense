@@ -162,7 +162,7 @@ void main() {
         expect(restored.schedule(crop).minutes, [480]);
       }
       await restored.refresh(Crop.chili);
-      expect(restored.samples.single.crop, Crop.eggplant);
+      expect(restored.samples.single.crop, Crop.chili);
       expect(restored.latest(Crop.chili)?.deviceId, 'sensor-one');
       await restored.saveSchedule(
         Crop.chili,
@@ -171,9 +171,54 @@ void main() {
       final reloaded = HardwareController(box)..load();
       expect(reloaded.schedule(Crop.tomato).minutes, [600]);
       expect((box.get('daily-photos-v1-eggplant') as Map)['minutes'], [480]);
-      expect(reloaded.samples.single.crop, Crop.eggplant);
+      expect(reloaded.samples.single.crop, Crop.chili);
       restored.dispose();
       reloaded.dispose();
+    },
+  );
+
+  test(
+    'selected crop controls alert rules and diagnosis even when firmware keeps its old crop',
+    () async {
+      await box.put('hardware-nodes-v1', {
+        'tomato': {
+          'sensor': 'http://192.168.1.20',
+          'sensorId': 'sensor-one',
+          'camera': 'http://192.168.1.21',
+        },
+      });
+      h.dispose();
+      h = HardwareController(
+        box,
+        client: boards,
+        classifier: model,
+        service: _Service(),
+        clock: () => now,
+      )..load();
+      await h.saveNotificationSettings(
+        Crop.chili,
+        const SensorAlertSettings(
+          enabled: true,
+          capturePhoto: true,
+          analyzePhoto: true,
+          showNotifications: false,
+          duration: 10,
+          cooldown: 30,
+          rules: [
+            CaptureRule(true, 20, 30),
+            CaptureRule(false, 0, 100),
+            CaptureRule(false, 0, 100),
+          ],
+        ),
+      );
+      await h.withPollingPaused(() => h.startMonitoring(Crop.chili));
+      await h.refresh(Crop.chili);
+      now = now.add(const Duration(seconds: 10));
+      await h.refresh(Crop.chili);
+      expect(h.samples.every((sample) => sample.crop == Crop.chili), isTrue);
+      expect(h.alerts.single.crop, Crop.chili);
+      expect(h.scanStore.load().single.crop, Crop.chili);
+      expect(boards.captures, 1);
     },
   );
 

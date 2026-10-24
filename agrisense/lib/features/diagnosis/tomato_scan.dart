@@ -97,6 +97,50 @@ class TomatoScanStore {
   // Session-only: Android picker recovery must not repeat on crop/tab changes.
   bool photoRecoveryChecked = false;
   final Box<dynamic> box;
+  final Map<Crop, TomatoScan> unsavedResults = {};
+  static const _originalPrefix = 'manual-camera-original-v1/';
+
+  Future<CameraOriginal> saveCameraOriginal(
+    Crop crop,
+    DateTime at,
+    Uint8List jpeg,
+  ) async {
+    final photo = CameraOriginal(
+      '${crop.name}-${at.microsecondsSinceEpoch}',
+      crop,
+      at,
+      jpeg,
+    );
+    await box.put('$_originalPrefix${photo.id}', {
+      'crop': crop.name,
+      'at': at.toIso8601String(),
+      'jpeg': jpeg,
+    });
+    return photo;
+  }
+
+  List<CameraOriginal> pendingCameraPhotos(Crop crop) {
+    final photos = <CameraOriginal>[];
+    for (final key in box.keys.whereType<String>().where(
+      (key) => key.startsWith(_originalPrefix),
+    )) {
+      final id = key.substring(_originalPrefix.length);
+      if (box.containsKey('${prefix}camera-$id')) continue;
+      final value = box.get(key) as Map;
+      if (value['crop'] != crop.name) continue;
+      photos.add(
+        CameraOriginal(
+          id,
+          crop,
+          DateTime.parse(value['at'] as String),
+          Uint8List.fromList((value['jpeg'] as List).cast<int>()),
+        ),
+      );
+    }
+    photos.sort((a, b) => b.at.compareTo(a.at));
+    return photos;
+  }
+
   static const prefix = 'tomato-photo-v1/';
   bool bookmarked(String id) =>
       box.get('scan-bookmark-v1/$id', defaultValue: false) == true;
@@ -115,4 +159,12 @@ class TomatoScanStore {
 
   Future<void> save(TomatoScan scan) =>
       box.put('$prefix${scan.id}', scan.toJson());
+}
+
+class CameraOriginal {
+  const CameraOriginal(this.id, this.crop, this.at, this.jpeg);
+  final String id;
+  final Crop crop;
+  final DateTime at;
+  final Uint8List jpeg;
 }

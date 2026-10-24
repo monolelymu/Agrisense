@@ -1111,7 +1111,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         children: [
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Automatic photos'),
+            title: const Text('Scheduled photos'),
+            subtitle: const Text(
+              'This switch controls daily photo times only.',
+            ),
             value: settings.enabled,
             onChanged: locked
                 ? null
@@ -1150,6 +1153,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 ? 'Sensor alerts are on.'
                 : 'Sensor alerts are off.',
           ),
+          const SizedBox(height: 8),
+          const Text(
+            'Sensor-triggered photos are controlled separately in sensor alerts.',
+          ),
+          const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: locked
                 ? null

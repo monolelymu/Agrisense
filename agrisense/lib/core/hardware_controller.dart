@@ -518,7 +518,13 @@ class HardwareController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final reading = await client.read(endpoint, _sensorCrop ?? crop);
+      final measured = await client.read(endpoint, _sensorCrop ?? crop);
+      // Validate the firmware protocol above, then tag new app records with
+      // the crop selected when this request started. Old records stay intact.
+      final reading = HardwareSample.fromSaved({
+        ...measured.toJson(),
+        'crop': crop.name,
+      });
       final expectedId = assignments[crop]?['sensorId'];
       if (expectedId != null && reading.deviceId != expectedId) {
         throw const FormatException(
@@ -543,7 +549,7 @@ class HardwareController extends ChangeNotifier {
       }
       status[crop] = 'Received';
       try {
-        await _notifyReading(reading.crop, reading);
+        await _notifyReading(crop, reading);
       } catch (_) {
         notificationIssue = AppIssue.write;
         notificationStatus =
@@ -819,6 +825,7 @@ class HardwareController extends ChangeNotifier {
   /// Crop selection changes the model for future checks, not the kit connection.
   void selectMonitoringCrop(Crop crop) {
     if (_disposed || !polling) return;
+    if (_requestedPollingCrop != crop) _alertTrackers.clear();
     _requestedPollingCrop = crop;
     if (_timer != null) _pollingCrop = crop;
     notifyListeners();
@@ -1181,9 +1188,7 @@ class HardwareController extends ChangeNotifier {
       (allowLocalHttp || (manual && !capture)) &&
       (_foreground || backgroundActive) &&
       _run == run &&
-      (manual ||
-          (_requestedPollingCrop != null &&
-              (_sensorCrop ?? _requestedPollingCrop) == alert.crop));
+      (manual || _requestedPollingCrop == alert.crop);
 
   Future<void> _processAlert(
     MonitoringAlert initial, {

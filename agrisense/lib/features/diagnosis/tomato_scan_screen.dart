@@ -61,7 +61,9 @@ class TomatoScanScreen extends StatefulWidget {
 
 class _TomatoScanScreenState extends State<TomatoScanScreen> {
   final picker = ImagePicker();
-  final classifier = TomatoClassifier();
+  final _standaloneClassifier = TomatoClassifier();
+  TomatoClassifier get classifier =>
+      widget.hardware?.classifier ?? _standaloneClassifier;
   List<TomatoScan> history = [];
   TomatoScan? result;
   Crop crop = Crop.tomato;
@@ -99,6 +101,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     if (widget.hardware != null) page = 1;
     try {
       history = widget.store.load();
+      result = widget.store.unsavedResults[crop];
     } catch (_) {
       issue = AppIssue.history;
       error =
@@ -162,7 +165,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     error = null;
     issue = null;
     cameraPreview = null;
-    result = null;
+    result = widget.store.unsavedResults[value];
     saved = false;
     activity = '';
   }
@@ -248,24 +251,15 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     try {
       final bytes = await widget.hardware!.capture(selectedCrop);
       final capturedAt = DateTime.now();
-      if (!mounted) return;
-      setState(() => activity = 'Analyzing camera photo…');
-      final prediction = await classifier.classifyCrop(selectedCrop, bytes);
-      final scan = widget.hardware!.attachScanContext(
-        TomatoScan.fromJson({
-          ...prediction.toJson(),
-          'source': 'camera',
-          'timestamp': capturedAt.toIso8601String(),
-        }),
-        at: capturedAt,
+      await compute(previewPhoto, bytes);
+      final original = await widget.store.saveCameraOriginal(
+        selectedCrop,
+        capturedAt,
+        bytes,
       );
       if (!mounted) return;
-      setState(() {
-        result = scan;
-        saved = false;
-        page = 1;
-      });
-      await _save(scan);
+      setState(() => activity = 'Analyzing camera photo…');
+      await _analyzeCameraOriginal(original);
     } catch (e) {
       issue = AppIssue.from(
         e,
@@ -275,9 +269,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       );
       if (mounted) {
         setState(
-          () => error = e is FormatException
-              ? e.message
-              : 'Camera capture or analysis failed. Check its IP, Wi-Fi and firmware.',
+          () => error =
+              'The photo could not be captured, saved or analyzed. Any saved original is available below for retry.',
         );
       }
     } finally {
@@ -285,9 +278,60 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     }
   }
 
+  Future<void> _analyzeCameraOriginal(CameraOriginal original) async {
+    final prediction = await classifier.classifyCrop(
+      original.crop,
+      original.jpeg,
+    );
+    final scan = widget.hardware!.attachScanContext(
+      TomatoScan.fromJson({
+        ...prediction.toJson(),
+        'id': 'camera-${original.id}',
+        'crop': original.crop.name,
+        'source': 'camera',
+        'timestamp': original.at.toIso8601String(),
+      }),
+      at: original.at,
+    );
+    if (!mounted) return;
+    setState(() {
+      result = scan;
+      saved = false;
+      page = 1;
+    });
+    await _save(scan);
+  }
+
+  Future<void> _retryCameraOriginal(CameraOriginal original) =>
+      widget.hardware!.withPollingPaused(() async {
+        await widget.hardware!.waitForIdle();
+        if (!mounted || busy) return;
+        setState(() {
+          busy = true;
+          error = null;
+          activity = 'Analyzing saved photo…';
+        });
+        try {
+          await _analyzeCameraOriginal(original);
+        } catch (_) {
+          if (mounted) {
+            setState(() {
+              issue = AppIssue.model;
+              error = 'Analysis failed. Your photo is saved; try again later.';
+            });
+          }
+        } finally {
+          if (mounted) setState(() => busy = false);
+        }
+      });
+
   Future<void> _save(TomatoScan scan) async {
+    widget.store.unsavedResults[scan.crop] = scan;
     try {
       await widget.store.save(scan);
+      if (widget.store.unsavedResults[scan.crop]?.id == scan.id) {
+        widget.store.unsavedResults.remove(scan.crop);
+      }
       if (!mounted) return;
       setState(() {
         saved = true;
@@ -356,6 +400,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
 
   Widget _embeddedCamera(TomatoScan? shown) {
     final hardware = widget.hardware!;
+    final pending = widget.store.pendingCameraPhotos(crop);
     final cameraReady =
         hardware.allowLocalHttp && hardware.address(crop, 'camera').isNotEmpty;
     return PageBody(
@@ -369,6 +414,24 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
           child: CropPicker(value: crop, onChanged: _selectCrop),
         ),
         const SizedBox(height: 20),
+        if (pending.isNotEmpty) ...[
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('A camera photo is saved and waiting for analysis.'),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: busy
+                      ? null
+                      : () => _retryCameraOriginal(pending.first),
+                  child: const Text('Retry photo analysis'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (busy) ...[
           const LinearProgressIndicator(),
           const SizedBox(height: 8),

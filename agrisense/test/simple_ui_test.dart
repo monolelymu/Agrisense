@@ -11,6 +11,8 @@ import 'package:agrisense/data/models.dart';
 import 'package:agrisense/data/daily_photo_schedule.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan_screen.dart';
+import 'package:agrisense/features/diagnosis/tomato_classifier.dart';
+import 'package:agrisense/features/monitoring/photo_times_sheet.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,7 +56,7 @@ class _ExistingBoards extends HardwareClient {
 }
 
 class _MonitoringController extends HardwareController {
-  _MonitoringController(super.box, {required super.client});
+  _MonitoringController(super.box, {required super.client, super.classifier});
   final started = Completer<void>();
   @override
   DailyPhotoSchedule schedule(Crop crop) =>
@@ -72,6 +74,33 @@ class _MonitoringController extends HardwareController {
   Future<void> startMonitoring(Crop crop) async {
     await super.startMonitoring(crop);
     if (!started.isCompleted) started.complete();
+  }
+}
+
+class _RetryModel extends TomatoClassifier {
+  bool fail = true;
+  @override
+  Future<TomatoScan> classifyCrop(Crop crop, Uint8List bytes) async {
+    if (fail) throw StateError('test model unavailable');
+    return TomatoScan(
+      id: 'test',
+      timestamp: DateTime.now(),
+      crop: crop,
+      label: 'healthy',
+      score: .9,
+      preview: bytes,
+      modelVersion: 'test',
+    );
+  }
+}
+
+class _RetryStore extends TomatoScanStore {
+  _RetryStore(super.box);
+  bool fail = true;
+  @override
+  Future<void> save(TomatoScan scan) async {
+    if (fail) throw StateError('test storage unavailable');
+    await super.save(scan);
   }
 }
 
@@ -381,6 +410,172 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets(
+    'photo times can be cleared and editing an off schedule keeps it off',
+    (tester) async {
+      for (final clearAll in [true, false]) {
+        DailyPhotoSchedule? saved;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () async {
+                    saved = await showModalBottomSheet<DailyPhotoSchedule>(
+                      context: context,
+                      builder: (_) => const PhotoTimesSheet(
+                        schedule: DailyPhotoSchedule(minutes: [480, 600]),
+                      ),
+                    );
+                  },
+                  child: const Text('Edit'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Edit'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Remove time').first);
+        await tester.pump();
+        if (clearAll) {
+          await tester.tap(find.byTooltip('Remove time'));
+          await tester.pump();
+        }
+        expect(
+          tester
+              .widget<FilledButton>(
+                find.widgetWithText(FilledButton, 'Save times'),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        await tester.tap(find.text('Save times'));
+        await tester.pumpAndSettle();
+        expect(saved!.enabled, isFalse);
+        expect(saved!.minutes, clearAll ? isEmpty : [600]);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
+
+  testWidgets('Back keeps alert edits until discard is confirmed', (
+    tester,
+  ) async {
+    await show(tester);
+    await tester.ensureVisible(find.text('Edit sensor alerts'));
+    await tester.tap(find.text('Edit sensor alerts'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.widgetWithText(SwitchListTile, 'Enable sensor alerts'),
+    );
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsOneWidget);
+    await tester.tap(find.text('Keep editing'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<SwitchListTile>(
+            find.widgetWithText(SwitchListTile, 'Enable sensor alerts'),
+          )
+          .value,
+      isFalse,
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(hardware.notificationSettings[Crop.tomato]!.enabled, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'failed camera analysis keeps the original and retries without another capture',
+    (tester) async {
+      hardware.dispose();
+      final model = _RetryModel();
+      hardware = _MonitoringController(box, client: client, classifier: model)
+        ..load();
+      hardware.assignments[Crop.tomato] = {'camera': 'http://192.168.1.21'};
+      final store = TomatoScanStore(box);
+      await tester.pumpWidget(
+        HardwareApp(hardware: hardware, scans: store, showTutorial: false),
+      );
+      await openSimplePage(tester, 'Camera');
+      await tester.ensureVisible(find.text('Check plant now'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Check plant now'));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      });
+      await tester.pumpAndSettle();
+      expect(client.photos, 1);
+      expect(
+        TomatoScanStore(box).pendingCameraPhotos(Crop.tomato),
+        hasLength(1),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      model.fail = false;
+      final reopened = TomatoScanStore(box);
+      await tester.pumpWidget(
+        HardwareApp(hardware: hardware, scans: reopened, showTutorial: false),
+      );
+      await openSimplePage(tester, 'Camera');
+      await tester.ensureVisible(find.text('Retry photo analysis'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('Retry photo analysis'));
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      });
+      await tester.pumpAndSettle();
+      expect(client.photos, 1);
+      expect(reopened.load(), hasLength(1));
+      expect(reopened.pendingCameraPhotos(Crop.tomato), isEmpty);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android}),
+  );
+
+  testWidgets('crop switching preserves a result whose save failed', (
+    tester,
+  ) async {
+    final store = _RetryStore(box);
+    final result = TomatoScan(
+      id: 'unsaved',
+      timestamp: DateTime.now(),
+      label: 'healthy',
+      score: .9,
+      preview: client.badPhoto
+          ? Uint8List(0)
+          : Uint8List.fromList(img.encodeJpg(img.Image(width: 4, height: 4))),
+      modelVersion: 'test',
+    );
+    store.unsavedResults[Crop.tomato] = result;
+    await tester.pumpWidget(
+      HardwareApp(hardware: hardware, scans: store, showTutorial: false),
+    );
+    await openSimplePage(tester, 'Camera');
+    expect(find.text('Retry saving'), findsOneWidget);
+    await tester.ensureVisible(find.text('Chili'));
+    await tester.tap(find.text('Chili'));
+    await tester.pumpAndSettle();
+    expect(find.text('Retry saving'), findsNothing);
+    await tester.tap(find.text('Tomato'));
+    await tester.pumpAndSettle();
+    expect(find.text('Retry saving'), findsOneWidget);
+    store.fail = false;
+    await tester.ensureVisible(find.text('Retry saving'));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Retry saving'));
+      await box.flush();
+    });
+    await tester.pumpAndSettle();
+    expect(store.load().single.id, 'unsaved');
+    expect(store.unsavedResults, isEmpty);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('photo times are edited and saved directly from Home', (
     tester,

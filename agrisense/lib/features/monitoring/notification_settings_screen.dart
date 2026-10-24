@@ -37,6 +37,36 @@ class _NotificationSettingsScreenState
       analyzePhoto = false,
       repeat = false;
   bool applyingPreset = false;
+  bool _askingToLeave = false;
+  Future<void> _confirmLeave() async {
+    if (_askingToLeave || !mounted) return;
+    _askingToLeave = true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard unsaved changes?'),
+        content: const Text('Your sensor alert changes have not been saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    _askingToLeave = false;
+    if (discard == true && mounted) {
+      setState(() => dirty = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pop();
+      });
+    }
+  }
+
   String preset = 'custom';
   Map<String, dynamic>? baseline;
   String get baselineTime {
@@ -304,7 +334,15 @@ class _NotificationSettingsScreenState
   );
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy && !dirty,
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop && !busy) _confirmLeave();
+    },
+    child: _settingsPage(context),
+  );
+
+  Widget _settingsPage(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text('${widget.crop.label} sensor alerts')),
     body: SafeArea(
       child: Align(

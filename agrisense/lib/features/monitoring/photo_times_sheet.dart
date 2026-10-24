@@ -62,7 +62,10 @@ class _PhotoTimesSheetState extends State<PhotoTimesSheet> {
               trailing: IconButton(
                 tooltip: 'Remove time',
                 icon: const Icon(Icons.close),
-                onPressed: () => setState(() => times.remove(minute)),
+                onPressed: () => setState(() {
+                  times.remove(minute);
+                  error = null;
+                }),
               ),
             ),
           if (error != null)
@@ -76,17 +79,25 @@ class _PhotoTimesSheetState extends State<PhotoTimesSheet> {
             label: const Text('Add time'),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Save times to turn on automatic photos. Your phone must stay connected.',
+          Text(
+            times.isEmpty
+                ? 'Saving an empty list turns scheduled photos off.'
+                : widget.schedule.minutes.isEmpty
+                ? 'Save times to turn scheduled photos on. Your phone must stay connected.'
+                : 'Saving keeps your current schedule On or Off. Your phone must stay connected.',
           ),
           const SizedBox(height: 12),
           FilledButton(
-            onPressed: times.isEmpty
-                ? null
-                : () => Navigator.pop(
-                    context,
-                    DailyPhotoSchedule(enabled: true, minutes: List.of(times)),
-                  ),
+            onPressed: () => Navigator.pop(
+              context,
+              DailyPhotoSchedule(
+                enabled:
+                    times.isNotEmpty &&
+                    (widget.schedule.minutes.isEmpty ||
+                        widget.schedule.enabled),
+                minutes: List.of(times),
+              ),
+            ),
             child: const Text('Save times'),
           ),
         ],
