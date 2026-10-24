@@ -9,6 +9,7 @@ import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
+import 'simple_ui_navigation.dart';
 
 Map<String, dynamic> packet() => {
   'version': 1,
@@ -82,13 +83,15 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('25.0°C'), findsOneWidget);
+      expect(find.text('400 raw'), findsNothing);
+      await tester.ensureVisible(find.text('More growing conditions'));
+      await tester.tap(find.text('More growing conditions'));
+      await tester.pumpAndSettle();
       expect(find.text('400 raw'), findsOneWidget);
       expect(find.text('Tomato • leaf miner'), findsOneWidget);
-      await tester.tap(find.text('Trends').last);
-      await tester.pumpAndSettle();
+      await openSimplePage(tester, 'Trends');
       expect(find.textContaining('1 samples'), findsOneWidget);
-      await tester.tap(find.text('History').last);
-      await tester.pumpAndSettle();
+      await openSimplePage(tester, 'History');
       await tester.ensureVisible(find.text('Tomato • leaf miner'));
       await tester.tap(find.text('Tomato • leaf miner'));
       await tester.pumpAndSettle();
@@ -100,8 +103,7 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
       await tester.pumpAndSettle();
       expect(find.text('Tomato • leaf miner'), findsNothing);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Readings'));
-      await tester.pumpAndSettle();
+      await chooseRecordCategory(tester, 'Readings');
       expect(find.text('No sensor readings saved.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -235,15 +237,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('No sensor readings yet'), findsOneWidget);
     expect(find.text('MOCK READINGS'), findsNothing);
-    await tester.tap(find.text('Devices').last);
-    await tester.pumpAndSettle();
+    await openSimplePage(tester, 'Devices');
     expect(find.text('Allow local hardware access'), findsOneWidget);
     expect(
       tester.widget<SwitchListTile>(find.byType(SwitchListTile).first).value,
       isFalse,
     );
-    await tester.tap(find.text('Trends').last);
-    await tester.pumpAndSettle();
+    await openSimplePage(tester, 'Trends');
     expect(find.text('No readings for this metric'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });

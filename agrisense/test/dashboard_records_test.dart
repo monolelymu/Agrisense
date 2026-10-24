@@ -9,6 +9,7 @@ import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
+import 'simple_ui_navigation.dart';
 
 void main() {
   late Directory directory;
@@ -64,7 +65,8 @@ void main() {
     await tester.pumpWidget(
       HardwareApp(hardware: h, scans: store, showTutorial: false),
     );
-    await tester.tap(find.widgetWithText(NavigationDestination, 'History'));
+    await openSimplePage(tester, 'History');
+    await tester.tap(find.text('Search & filters'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'mosaic');
     await tester.pumpAndSettle();
@@ -99,8 +101,7 @@ void main() {
         showTutorial: false,
       ),
     );
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Trends'));
-    await tester.pumpAndSettle();
+    await openSimplePage(tester, 'Trends');
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     expect(chart.data.lineBarsData.single.spots, hasLength(3));
     expect(chart.data.lineBarsData.single.spots[1], FlSpot.nullSpot);
@@ -129,6 +130,7 @@ class _GraphController extends HardwareController {
     start = DateTime.now();
     notifyListeners();
   }
+
   @override
   Future<void> restoreTrendView(Crop crop) async {
     start = null;

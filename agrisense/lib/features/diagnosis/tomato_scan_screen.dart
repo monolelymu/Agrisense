@@ -15,6 +15,7 @@ import 'tomato_scan.dart';
 import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
 import 'crop_knowledge_screen.dart';
+import 'photo_processing.dart';
 import '../help/help_screen.dart';
 
 class TomatoApp extends StatelessWidget {
@@ -41,12 +42,18 @@ class TomatoScanScreen extends StatefulWidget {
     this.demoController,
     this.hardware,
     this.initialCrop = Crop.tomato,
+    this.embedded = false,
+    this.onCropChanged,
+    this.onBusyChanged,
     super.key,
   });
   final TomatoScanStore store;
   final AppController? demoController;
   final HardwareController? hardware;
   final Crop initialCrop;
+  final bool embedded;
+  final ValueChanged<Crop>? onCropChanged;
+  final ValueChanged<bool>? onBusyChanged;
   @override
   State<TomatoScanScreen> createState() => _TomatoScanScreenState();
 }
@@ -58,10 +65,25 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   TomatoScan? result;
   Crop crop = Crop.tomato;
   int page = 0;
-  bool get canScan => supported && classifier.supports(crop) && !busy;
+  bool get canScan =>
+      supported &&
+      classifier.supports(crop) &&
+      !busy &&
+      widget.hardware?.busy != true;
   List<TomatoScan> get cropHistory =>
       history.where((s) => s.crop == crop).toList();
-  bool busy = false, saved = false;
+  bool _busy = false, saved = false;
+  bool get busy => _busy;
+  set busy(bool value) {
+    _busy = value;
+    if (widget.onBusyChanged != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onBusyChanged!(busy);
+      });
+    }
+  }
+
+  Uint8List? cameraPreview;
   String? error;
   AppIssue? issue;
   String activity = '';
@@ -117,7 +139,11 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     }
   }
 
-  Future<void> _selectPhoto() async {
+  Future<void> _selectPhoto() => widget.hardware == null
+      ? _choosePhoto()
+      : widget.hardware!.withPollingPaused(_choosePhoto);
+
+  Future<void> _choosePhoto() async {
     if (!canScan) return;
     final selectedCrop = crop;
     setState(() {
@@ -168,7 +194,11 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     await _save(scan);
   }
 
-  Future<void> _capture() async {
+  Future<void> _capture() => widget.hardware == null
+      ? Future<void>.value()
+      : widget.hardware!.withPollingPaused(_captureAndAnalyze);
+
+  Future<void> _captureAndAnalyze() async {
     if (!canScan || widget.hardware == null) return;
     final selectedCrop = crop;
     setState(() {
@@ -250,11 +280,184 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   }
 
   void _selectCrop(Crop value) {
-    if (busy) return;
+    if (busy || widget.hardware?.busy == true) return;
     setState(() {
       crop = value;
       error = null;
+      cameraPreview = null;
     });
+    widget.onCropChanged?.call(value);
+  }
+
+  Future<void> _previewCamera() async {
+    if (busy || widget.hardware == null) return;
+    setState(() {
+      busy = true;
+      error = null;
+      issue = null;
+      cameraPreview = null;
+      activity = 'Getting a camera photo…';
+    });
+    try {
+      final photo = await widget.hardware!.capture(crop);
+      final preview = await compute(previewPhoto, photo);
+      if (mounted) setState(() => cameraPreview = preview);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          issue = AppIssue.from(e, fallback: AppIssue.camera);
+          error =
+              'Camera unavailable. Check its power and Wi-Fi, then try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Widget _embeddedCamera(TomatoScan? shown) {
+    final hardware = widget.hardware!;
+    final cameraReady =
+        hardware.allowLocalHttp && hardware.address(crop, 'camera').isNotEmpty;
+    return PageBody(
+      children: [
+        const SectionTitle(
+          'Camera',
+          'Check a leaf using the camera or a photo on your phone.',
+        ),
+        AbsorbPointer(
+        absorbing: busy || hardware.busy,
+          child: CropPicker(value: crop, onChanged: _selectCrop),
+        ),
+        const SizedBox(height: 20),
+        if (busy) ...[
+          const LinearProgressIndicator(),
+          const SizedBox(height: 8),
+          Text(activity),
+          const SizedBox(height: 16),
+        ],
+        if (error != null) ...[
+          IssueCard(
+            issue: issue ?? AppIssue.camera,
+            onRetry: busy
+                ? null
+                : issue == AppIssue.storage && result != null
+                ? _retrySave
+                : cameraReady
+                ? _previewCamera
+                : null,
+            retryLabel: issue == AppIssue.storage
+                ? 'Retry saving'
+                : 'Retry camera',
+          ),
+          const SizedBox(height: 16),
+        ],
+        Panel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (cameraPreview != null) ...[
+                Image.memory(cameraPreview!, height: 220, fit: BoxFit.contain),
+                const SizedBox(height: 8),
+                const Text('Last preview photo • not live, analyzed or saved'),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Icon(Icons.camera_alt_outlined, size: 48, color: accent),
+                      SizedBox(height: 12),
+                      Text('Tap Preview photo to check the camera.'),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: canScan && cameraReady ? _capture : null,
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: const Text('Capture & Analyze'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: !busy && !hardware.busy && cameraReady
+                    ? _previewCamera
+                    : null,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Preview photo'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: canScan ? _selectPhoto : null,
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Choose Photo'),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                cameraReady
+                    ? 'Still photos work with the existing camera firmware.'
+                    : 'Set up your camera in Settings → Device setup. Choose Photo works without boards.',
+              ),
+              if (!supported)
+                const Text('Photo analysis is available in the Android app.'),
+            Text(modelStatus(crop)),
+              TextButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => CropKnowledgeScreen(crop: crop),
+                        ),
+                      ),
+                icon: const Icon(Icons.menu_book_outlined),
+                label: Text('${crop.label} knowledge & care'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: Text('Camera movement & live view'),
+          children: [
+            Text(
+              'These controls need verified compatible firmware. This update uses still photos and does not send servo or streaming commands.',
+            ),
+            SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton(onPressed: null, child: Text('Left')),
+                OutlinedButton(onPressed: null, child: Text('Center')),
+                OutlinedButton(onPressed: null, child: Text('Right')),
+              ],
+            ),
+          ],
+        ),
+        if (shown != null) ...[
+          const SizedBox(height: 24),
+          Text(
+            result?.id == shown.id
+                ? 'Leaf check result'
+                : 'Latest saved result',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 12),
+          TomatoResultCard(scan: shown),
+          const SizedBox(height: 8),
+          Text(
+            result?.id == shown.id && !saved
+                ? 'Not saved yet.'
+                : 'Saved on this device.',
+          ),
+          if (result?.id == shown.id && !saved)
+            TextButton(
+              onPressed: busy ? null : _retrySave,
+              child: const Text('Retry saving'),
+            ),
+        ],
+      ],
+    );
   }
 
   void _showScan(TomatoScan scan) => setState(() {
@@ -399,6 +602,9 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     final shown = result?.crop == crop
         ? result
         : (scans.isEmpty ? null : scans.first);
+    if (widget.embedded && widget.hardware != null) {
+      return _embeddedCamera(shown);
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('AgriSense'),

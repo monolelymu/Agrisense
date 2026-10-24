@@ -64,10 +64,10 @@ class HelpScreen extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final action in const [
-                (HelpDestination.scan, 'Scan leaf'),
-                (HelpDestination.devices, 'Devices'),
+                (HelpDestination.scan, 'Check a leaf'),
+                (HelpDestination.devices, 'Device setup'),
                 (HelpDestination.monitoring, 'Monitoring & Auto Scan'),
-                (HelpDestination.alerts, 'History → Alerts'),
+                (HelpDestination.alerts, 'Records → Alerts'),
               ])
                 OutlinedButton(
                   onPressed: () => Navigator.of(context).pop(action.$1),
@@ -88,15 +88,15 @@ class HelpScreen extends StatelessWidget {
           ),
           (
             'Connect your devices',
-            'Use the same trusted Wi-Fi for your phone and boards. In Devices, select the crop, enable local hardware access and enter each board’s IP address. Pair the sensor using its private code. Assign and test the sensor and camera before monitoring. Hardware is not required for uploaded-photo analysis.',
+            'Join the same trusted pocket Wi-Fi as your boards. On Home, tap Connect AgriSense to check saved devices and start sensor monitoring. For first setup or changed addresses, open Settings → Device setup. Existing firmware still needs board addresses and sensor pairing during setup; automatic discovery is not added by this update. Choose Photo on Camera works without boards.',
           ),
           (
             'Monitoring and background operation',
             'Monitoring & Auto Scan has separate controls for monitoring, notifications, warning photos, automatic analysis and background operation. A saved alert does not necessarily have a photo or diagnosis. Standard uses your limits, a 30-second duration and 300-second cooldown; each measurement must recover before triggering again. Sensitive proposes fixed limits from one fresh sample: ±1 °C and ±5 percentage points for humidity and calibrated soil, with a 10-second duration and 30-second cooldown and repeat alerts. Review before saving. Editing switches to Custom. These are change-detection limits, not disease thresholds. Checks are requested every ten seconds; Android may delay them. Denied notifications do not prevent saving or analysis. Start background monitoring while the app is visible; force-stop, reboot or process termination ends it. Settings, Help and manual analysis pause monitoring. Advanced board SD capture is independent, uses a minimum 60-second cooldown and must be stopped by connecting and saving Off to the sensor. Its SD photos are not imported automatically.',
           ),
           (
-            'History and local storage',
-            'History is filtered by crop. Scans contains saved predictions, Alerts contains sensor events and linked photos/results, and Readings contains sensor samples. The latest 500 alerts and 20 warning originals (up to 30 MB) are retained. An alert can remain after its original photo expires. Saved diagnoses retain their existing history. Clearing app data or uninstalling removes local records; do not use those actions as routine troubleshooting.',
+            'Records and local storage',
+            'Records starts with saved leaf checks for your selected crop. Use Show to choose Alerts or Readings. Search & filters has optional search, dates and result filters. The latest 500 alerts and 20 warning originals (up to 30 MB) are retained. An alert can remain after its original photo expires. Clearing app data or uninstalling removes local records; do not use those actions as routine troubleshooting.',
           ),
           (
             'Recover a failed action',
@@ -148,7 +148,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     body: PageBody(
       children: [
         Text(
-          'No More Guessplant',
+          'No More GuessPlant',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 16),
@@ -163,15 +163,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
           ),
           (
             '2. Connect, if you have boards',
-            'In Devices, enable local hardware access on trusted Wi-Fi. Assign and test the sensor and camera.',
+            'Join your pocket Wi-Fi, then tap Connect AgriSense on Home. First time? Use Settings → Device setup to save your boards.',
           ),
           (
             '3. Monitor or scan',
-            'Use a sharp, evenly lit leaf photo. Predictions and model scores are not confirmed diagnoses. For connected boards, configure Monitoring & Auto Scan; enable background operation separately.',
+            'Open Camera to Capture & Analyze or Choose Photo. Use a sharp, evenly lit leaf photo. Predictions are not confirmed diagnoses. Monitoring options are in Settings.',
           ),
           (
             '4. Review your records',
-            'History separates Scans, Alerts and Readings by crop. Help explains error codes and setup. You can replay this tutorial there.',
+            'Records shows your saved leaf checks. Use Show for Alerts or Readings. Home → View trends opens your graphs. Help and this guide are in Settings.',
           ),
         ]) ...[
           Panel(

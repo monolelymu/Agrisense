@@ -65,7 +65,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Monitoring pauses on settings screens. Enable background operation below to continue from the Dashboard when minimized or screen-locked.',
+                  'Monitoring pauses on this screen. Enable background operation below to continue from Home when minimized or screen-locked.',
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -90,7 +90,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 if (!hardware.allowLocalHttp ||
                     hardware.address(crop, 'sensor').isEmpty)
                   const Text(
-                    'Enable local hardware access and assign a sensor in Devices to start monitoring.',
+                    'Enable local hardware access and assign a sensor in Settings → Device setup to start monitoring.',
                   ),
                 const SizedBox(height: 12),
                 Text(hardware.monitoringStatus),
@@ -110,7 +110,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Phone limits control alerts, warning photos and optional automatic analysis. Open History to review each alert and its linked result.',
+                  'Phone limits control alerts, warning photos and optional automatic analysis. Open Records → Show → Alerts to review each alert and its linked result.',
                 ),
               ],
             ),
@@ -181,7 +181,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                     hardware.address(crop, 'sensor').isEmpty) ...[
                   const SizedBox(height: 8),
                   const Text(
-                    'Enable local hardware access and assign a sensor in Devices to manage board capture.',
+                    'Enable local hardware access and assign a sensor in Settings → Device setup to manage board capture.',
                   ),
                 ],
               ],

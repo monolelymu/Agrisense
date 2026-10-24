@@ -16,6 +16,7 @@ import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan_screen.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:agrisense/features/monitoring/monitoring_settings_screen.dart';
+import 'simple_ui_navigation.dart';
 
 class _NoRequests extends HardwareClient {
   int calls = 0;
@@ -173,16 +174,14 @@ void main() {
         );
         expect(find.text('Not calibrated'), findsOneWidget);
         expect(find.text('Unavailable'), findsOneWidget);
-        expect(find.text('Uncalibrated MQ135 ADC; not ppm'), findsOneWidget);
+        expect(find.text('Uncalibrated MQ135 ADC; not ppm'), findsNothing);
         expect(find.text('Saved sensor readings'), findsNothing);
         for (final page in ['Devices', 'Trends', 'History']) {
-          await tester.tap(find.widgetWithText(NavigationDestination, page));
-          await tester.pumpAndSettle();
+          await openSimplePage(tester, page);
           expect(tester.takeException(), isNull, reason: page);
         }
         expect(find.text('Tomato • yellow leaf curl virus'), findsOneWidget);
-        await tester.tap(find.widgetWithText(ChoiceChip, 'Alerts'));
-        await tester.pumpAndSettle();
+        await chooseRecordCategory(tester, 'Alerts');
         expect(find.text('Sensor alerts'), findsOneWidget);
         expect(find.text('Analysis failed'), findsOneWidget);
         expect(find.text('Older warning photos'), findsNothing);
@@ -201,9 +200,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.pageBack();
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Readings'));
-        await tester.tap(find.widgetWithText(ChoiceChip, 'Readings'));
-        await tester.pumpAndSettle();
+        await chooseRecordCategory(tester, 'Readings');
         expect(find.text('Recent sensor readings'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
@@ -262,7 +259,7 @@ void main() {
       expect(
         tester
             .widget<FilledButton>(
-              find.widgetWithText(FilledButton, 'Scan leaf'),
+              find.widgetWithText(FilledButton, 'Connect AgriSense'),
             )
             .onPressed,
         isNull,

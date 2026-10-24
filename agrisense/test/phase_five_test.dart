@@ -19,6 +19,7 @@ import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:agrisense/features/monitoring/alert_detail_screen.dart';
 import 'package:agrisense/features/monitoring/monitoring_settings_screen.dart';
 import 'package:agrisense/data/models.dart';
+import 'simple_ui_navigation.dart';
 
 class _OfflineClient extends HardwareClient {
   int calls = 0;
@@ -70,10 +71,10 @@ void main() {
   );
 
   for (final action in [
-    'Scan leaf',
-    'Devices',
+    'Check a leaf',
+    'Device setup',
     'Monitoring & Auto Scan',
-    'History → Alerts',
+    'Records → Alerts',
   ]) {
     testWidgets(
       'dashboard Help shortcut $action preserves Eggplant',
@@ -87,13 +88,12 @@ void main() {
         );
         await tester.tap(find.widgetWithText(ChoiceChip, 'Eggplant'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Help & troubleshooting'));
-        await tester.pumpAndSettle();
+        await openDashboardHelp(tester);
         expect(find.text('Selected crop: Eggplant'), findsOneWidget);
         await tester.ensureVisible(find.widgetWithText(OutlinedButton, action));
         await tester.tap(find.widgetWithText(OutlinedButton, action));
         await tester.pumpAndSettle();
-        if (action == 'Scan leaf') {
+        if (action == 'Check a leaf') {
           expect(
             tester
                 .widget<TomatoScanScreen>(find.byType(TomatoScanScreen))
@@ -110,24 +110,31 @@ void main() {
             Crop.eggplant,
           );
         } else {
-          expect(
-            tester
-                .widget<NavigationBar>(find.byType(NavigationBar))
-                .selectedIndex,
-            action == 'Devices' ? 2 : 3,
-          );
+          if (action == 'Device setup') {
+            expect(find.text('Eggplant devices'), findsOneWidget);
+            expect(find.byType(NavigationBar), findsNothing);
+          } else {
+            expect(
+              tester
+                  .widget<NavigationBar>(find.byType(NavigationBar))
+                  .selectedIndex,
+              2,
+            );
+          }
           expect(
             tester
                 .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Eggplant'))
                 .selected,
             isTrue,
           );
-          if (action == 'History → Alerts') {
+          if (action == 'Records → Alerts') {
             expect(
               tester
-                  .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Alerts'))
-                  .selected,
-              isTrue,
+                  .widget<DropdownButtonFormField<int>>(
+                    find.byType(DropdownButtonFormField<int>),
+                  )
+                  .initialValue,
+              1,
             );
           }
         }

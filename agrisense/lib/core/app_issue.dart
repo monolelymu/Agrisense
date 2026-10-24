@@ -21,7 +21,7 @@ class AppIssue {
   static const httpOff = AppIssue(
     'NET-003',
     'Local device access is off',
-    'Open Devices and enable local hardware access on your trusted Wi-Fi.',
+    'Open Settings → Device setup and enable local hardware access on your trusted Wi-Fi.',
   );
   static const pairing = AppIssue(
     'DEV-001',
@@ -31,12 +31,12 @@ class AppIssue {
   static const identity = AppIssue(
     'DEV-002',
     'Device or crop does not match',
-    'Check the selected crop and assigned board in Devices. Confirm the intended board before reassigning it.',
+    'Check the selected crop and assigned board in Settings → Device setup. Confirm the intended board before reassigning it.',
   );
   static const protocol = AppIssue(
     'DEV-003',
     'Device response is incompatible',
-    'Check the board IP and device type in Devices. Reload settings before retrying a change; the board may already have received it.',
+    'Check the board IP and device type in Settings → Device setup. Reload settings before retrying a change; the board may already have received it.',
   );
   static const stale = AppIssue(
     'SEN-001',
@@ -56,7 +56,7 @@ class AppIssue {
   static const camera = AppIssue(
     'CAM-001',
     'Camera capture failed',
-    'Test the camera in Devices. Check its power, Wi-Fi and IP address, then retry capture.',
+    'Test the camera in Settings → Device setup. Check its power, Wi-Fi and IP address, then retry capture.',
   );
   static const model = AppIssue(
     'ML-001',
@@ -106,7 +106,7 @@ class AppIssue {
   static const assignment = AppIssue(
     'DEV-004',
     'Device is not assigned',
-    'Select the crop in Devices, assign its sensor or camera, and test the connection before retrying.',
+    'Select the crop in Settings → Device setup, assign its sensor or camera, and test the connection before retrying.',
   );
   static const write = AppIssue(
     'STO-003',

@@ -18,6 +18,7 @@ import 'package:agrisense/features/help/help_screen.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:agrisense/features/monitoring/monitoring_settings_screen.dart';
 import 'package:agrisense/features/monitoring/notification_settings_screen.dart';
+import 'simple_ui_navigation.dart';
 
 class NoNetwork extends HardwareClient {
   int calls = 0;
@@ -104,8 +105,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(box.get('tutorial-complete-v1'), isTrue);
       expect(client.calls, 0);
-      await tester.tap(find.byTooltip('Help & troubleshooting'));
-      await tester.pumpAndSettle();
+      await openDashboardHelp(tester);
       await tester.tap(find.text('Replay tutorial'));
       await tester.pumpAndSettle();
       expect(find.text('Welcome to AgriSense'), findsOneWidget);
@@ -148,11 +148,9 @@ void main() {
           showTutorial: false,
         ),
       );
-      await tester.tap(find.text('History').last);
-      await tester.pumpAndSettle();
+      await openSimplePage(tester, 'History');
       expect(find.text('Warning photos'), findsNothing);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Readings'));
-      await tester.pumpAndSettle();
+      await chooseRecordCategory(tester, 'Readings');
       expect(find.text('No sensor readings saved.'), findsOneWidget);
       expect(find.text('No saved scans'), findsNothing);
       expect(hardware.alertPhotos.single.sampleId, 'warning');
@@ -259,8 +257,7 @@ void main() {
         ),
       );
       for (final page in ['Devices', 'Trends', 'History', 'Dashboard']) {
-        await tester.tap(find.text(page).last);
-        await tester.pumpAndSettle();
+        await openSimplePage(tester, page);
         expect(tester.takeException(), isNull, reason: page);
       }
       await tester.pumpWidget(const SizedBox.shrink());

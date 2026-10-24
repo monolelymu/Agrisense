@@ -74,14 +74,23 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   String? error;
   AppIssue? actionIssue;
   bool saving = false;
+  bool cameraBusy = false;
+  final Map<Crop, String> _cameraChecks = {};
+  final Map<Crop, String> _checkedCameraAddresses = {};
   int _scanRevision = -1;
   HardwareController get h => widget.hardware;
-  bool get locked => saving || h.busy;
-  static const tabs = ['Dashboard', 'Trends', 'Devices', 'History'];
+  bool get locked => saving || h.busy || cameraBusy;
+  static const tabs = [
+    'Home',
+    'Camera',
+    'Records',
+    'Settings',
+    'Device setup',
+    'Trends',
+  ];
   static const icons = [
-    Icons.dashboard_outlined,
-    Icons.show_chart,
-    Icons.router_outlined,
+    Icons.home_outlined,
+    Icons.camera_alt_outlined,
     Icons.history,
   ];
 
@@ -141,14 +150,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         setState(() => page = 0);
         await _tutorial();
       case HelpDestination.scan:
-        await _scan();
+        setState(() => page = 1);
       case HelpDestination.devices:
-        setState(() => page = 2);
+        _secondaryPage(4);
       case HelpDestination.monitoring:
         await _openSettings(MonitoringSettingsScreen(hardware: h, crop: crop));
       case HelpDestination.alerts:
         setState(() {
-          page = 3;
+          page = 2;
           historyCategory = 1;
         });
       case null:
@@ -320,6 +329,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       preview = await compute(previewPhoto, await h.capture(selected));
     }, fallback: AppIssue.camera);
     if (!success || !mounted) return;
+    setState(() {
+      _cameraChecks[selected] = 'Photo received. Tap Connect to check again.';
+      _checkedCameraAddresses[selected] = h.address(selected, 'camera');
+    });
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -357,7 +370,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       ),
       title: Text('${scan.crop.label} • ${scan.displayLabel}'),
       subtitle: Text(
-        '${scan.source == 'auto' ? 'Auto Scan • ' : ''}${scan.uncertain ? 'Uncertain • ' : ''}${(scan.score * 100).toStringAsFixed(1)}% model score\n${dateLabel(scan.timestamp)}',
+        '${scan.uncertain ? 'Uncertain result • ' : ''}${dateLabel(scan.timestamp)}',
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _result(scan),
@@ -429,12 +442,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         'A closer look at your crops.',
         'Your growing conditions, all in one place.',
       ),
-      FilledButton.icon(
-        onPressed: locked ? null : _scan,
-        icon: const Icon(Icons.add_photo_alternate_outlined),
-        label: const Text('Scan leaf'),
-      ),
-      const SizedBox(height: 20),
       SizedBox(
         width: double.infinity,
         child: Panel(
@@ -446,16 +453,43 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
+              const Text(
+                'Join the same pocket Wi-Fi as your boards, then connect.',
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: locked ? null : _connect,
+                  icon: const Icon(Icons.link),
+                  label: Text(
+                    saving ? 'Checking your devices…' : 'Connect AgriSense',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               _connectionRow(
                 Icons.sensors,
                 'Sensor',
-                h.address(crop, 'sensor').isNotEmpty,
+                h.address(crop, 'sensor').isEmpty
+                    ? 'Not set up'
+                    : h.fresh(crop)
+                    ? 'Receiving readings'
+                    : h.status[crop] == 'Unavailable'
+                    ? 'Unavailable. Check power and Wi-Fi.'
+                    : 'Not checked. Tap Connect.',
+                h.fresh(crop),
               ),
               const SizedBox(height: 8),
               _connectionRow(
                 Icons.camera_alt_outlined,
                 'Camera',
-                h.address(crop, 'camera').isNotEmpty,
+                h.address(crop, 'camera').isEmpty
+                    ? 'Not set up'
+                    : _checkedCameraAddresses[crop] == h.address(crop, 'camera')
+                    ? _cameraChecks[crop] ?? 'Not checked. Tap Connect.'
+                    : 'Not checked. Tap Connect.',
+                false,
               ),
               const SizedBox(height: 8),
               Row(
@@ -476,7 +510,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                         MonitoringSettingsScreen(hardware: h, crop: crop),
                       ),
                 icon: const Icon(Icons.tune),
-                label: const Text('Monitoring & Auto Scan'),
+                label: const Text('Monitoring settings'),
+              ),
+              TextButton(
+                onPressed: locked ? null : () => _secondaryPage(4),
+                child: const Text('Device setup'),
               ),
             ],
           ),
@@ -491,7 +529,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (r == null)
         const EmptyState(
           'No sensor readings yet',
-          'Assign a sensor IP in Devices, then tap Read sensors.',
+          'Tap Connect to check your saved sensor. First time? Open Device setup.',
         )
       else ...[
         Tag(h.fresh(crop) ? 'RECENT SENSOR READING' : 'SAVED SENSOR READING'),
@@ -529,11 +567,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                   : '${r.humidity!.toStringAsFixed(0)}%',
               'Relative humidity',
             ),
-            _metric(
-              'Gas sensor',
-              '${r.gasRaw} raw',
-              'Uncalibrated MQ135 ADC; not ppm',
-            ),
           ],
         ),
         if (r.temperature == null || r.humidity == null)
@@ -552,18 +585,33 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             child: const Text('Read sensors'),
           ),
           TextButton(
-            onPressed: locked ? null : () => setState(() => page = 2),
-            child: const Text('Set up devices'),
+            onPressed: locked ? null : () => _secondaryPage(5),
+            child: const Text('View trends'),
           ),
         ],
       ),
       ...[
         const SizedBox(height: 20),
-        GrowingConditionsPanel(
-          crop: crop,
-          sample: r != null && r.deviceId == h.assignments[crop]?['sensorId']
-              ? r
-              : null,
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          title: const Text('More growing conditions'),
+          children: [
+            if (r != null) ...[
+              _metric(
+                'Gas sensor',
+                '${r.gasRaw} raw',
+                'Uncalibrated MQ135 ADC; not ppm',
+              ),
+              const SizedBox(height: 12),
+            ],
+            GrowingConditionsPanel(
+              crop: crop,
+              sample:
+                  r != null && r.deviceId == h.assignments[crop]?['sensorId']
+                  ? r
+                  : null,
+            ),
+          ],
         ),
         TextButton.icon(
           icon: const Icon(Icons.menu_book_outlined),
@@ -581,8 +629,102 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         const Text('No saved scans for this crop yet.')
       else
         _scanTile(results.first),
+      const SizedBox(height: 16),
+      OutlinedButton.icon(
+        onPressed: locked ? null : () => setState(() => page = 1),
+        icon: const Icon(Icons.camera_alt_outlined),
+        label: const Text('Check a leaf'),
+      ),
     ];
   }
+
+  // Reuse the installed firmware's existing endpoints. Discovery is not assumed.
+  Future<void> _connect() async {
+    if (!h.allowLocalHttp ||
+        (h.address(crop, 'sensor').isEmpty &&
+            h.address(crop, 'camera').isEmpty)) {
+      _secondaryPage(4);
+      return;
+    }
+    final selected = crop;
+    await _saveAction(() async {
+      if (h.address(selected, 'sensor').isNotEmpty) {
+        await h.refresh(selected);
+      }
+      final camera = h.address(selected, 'camera');
+      if (camera.isNotEmpty) {
+        try {
+          // Decode the JPEG too: a responding server alone is not a camera check.
+          await compute(previewPhoto, await h.capture(selected));
+          _cameraChecks[selected] =
+              'Photo received. Tap Connect to check again.';
+        } catch (_) {
+          _cameraChecks[selected] =
+              'Unavailable. Check camera power and Wi-Fi.';
+        }
+        _checkedCameraAddresses[selected] = camera;
+      }
+      if (h.fresh(selected) && !h.polling) await h.startMonitoring(selected);
+    }, fallback: AppIssue.connection);
+  }
+
+  final List<int> _pageHistory = [];
+  void _back() {
+    if (locked) return;
+    setState(() => page = _pageHistory.isEmpty ? 0 : _pageHistory.removeLast());
+  }
+
+  void _secondaryPage(int destination) {
+    if (locked || page == destination) return;
+    setState(() {
+      _pageHistory.add(page);
+      page = destination;
+    });
+  }
+
+  List<Widget> _settings() => [
+    const Text(
+      'Everyday controls stay on Home and Camera. Set up your kit here.',
+    ),
+    const SizedBox(height: 16),
+    Card(
+      child: ListTile(
+        leading: const Icon(Icons.router_outlined),
+        title: const Text('Device setup'),
+        subtitle: const Text('Saved boards and local Wi-Fi access'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: locked ? null : () => _secondaryPage(4),
+      ),
+    ),
+    const SizedBox(height: 12),
+    Card(
+      child: ListTile(
+        leading: const Icon(Icons.tune),
+        title: const Text('Monitoring & Auto Scan'),
+        subtitle: const Text(
+          'Alerts, presets and existing automatic capture rules',
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: locked
+            ? null
+            : () => _openSettings(
+                MonitoringSettingsScreen(hardware: h, crop: crop),
+              ),
+      ),
+    ),
+    const SizedBox(height: 12),
+    const Panel(
+      child: Text(
+        'Time-of-day snapshots and camera movement need compatible firmware. They are not enabled by this app update.',
+      ),
+    ),
+    const SizedBox(height: 12),
+    OutlinedButton.icon(
+      onPressed: locked ? null : _help,
+      icon: const Icon(Icons.help_outline),
+      label: const Text('Help & troubleshooting'),
+    ),
+  ];
 
   List<Widget> _devices() => [
     Text(
@@ -679,18 +821,19 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     Text(modelStatus(crop)),
   ];
 
-  Widget _connectionRow(IconData icon, String name, bool assigned) => Row(
+  Widget _connectionRow(
+    IconData icon,
+    String name,
+    String status,
+    bool connected,
+  ) => Row(
     children: [
-      Icon(icon, color: assigned ? accent : muted),
+      Icon(icon, color: connected ? accent : muted),
       const SizedBox(width: 12),
-      Expanded(
-        child: Text(
-          '$name: ${assigned ? 'assigned to ${crop.label}' : 'not assigned'}',
-        ),
-      ),
+      Expanded(child: Text('$name: $status')),
       Icon(
-        assigned ? Icons.link : Icons.link_off,
-        color: assigned ? accent : muted,
+        connected ? Icons.check_circle_outline : Icons.info_outline,
+        color: connected ? accent : muted,
         size: 18,
       ),
     ],
@@ -1074,103 +1217,121 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ? filteredAlerts.length + filteredPhotos.length
         : filteredReadings.length;
     return [
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (var i = 0; i < 3; i++)
-            ChoiceChip(
-              label: Text(const ['Scans', 'Alerts', 'Readings'][i]),
-              selected: historyCategory == i,
-              onSelected: (_) => setState(() {
-                historyCategory = i;
-                historyLimit = 50;
-              }),
-            ),
+      DropdownButtonFormField<int>(
+        initialValue: historyCategory,
+        decoration: const InputDecoration(labelText: 'Show'),
+        items: const [
+          DropdownMenuItem(value: 0, child: Text('Leaf checks')),
+          DropdownMenuItem(value: 1, child: Text('Alerts')),
+          DropdownMenuItem(value: 2, child: Text('Readings')),
         ],
+        onChanged: (value) {
+          if (value == null) return;
+          setState(() {
+            historyCategory = value;
+            historyLimit = 50;
+            scanFilter = 'All results';
+            historyQuery = '';
+            historySearch.clear();
+          });
+        },
       ),
       const SizedBox(height: 16),
-      TextField(
-        controller: historySearch,
-        decoration: InputDecoration(
-          labelText: 'Search records',
-          hintText: 'Disease, date, record ID or sensor value',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: historyQuery.isEmpty
-              ? null
-              : IconButton(
-                  tooltip: 'Clear search',
-                  icon: const Icon(Icons.close),
-                  onPressed: () => setState(() {
-                    historySearch.clear();
-                    historyQuery = '';
-                    historyLimit = 50;
-                  }),
-                ),
+      ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        title: const Text('Search & filters'),
+        subtitle: Text(
+          historyQuery.isNotEmpty ||
+                  historyDates != null ||
+                  scanFilter != 'All results' ||
+                  oldestFirst
+              ? 'Filters applied'
+              : 'Optional',
         ),
-        onChanged: (value) => setState(() {
-          historyQuery = value;
-          historyLimit = 50;
-        }),
-      ),
-      const SizedBox(height: 12),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
         children: [
-          OutlinedButton.icon(
-            onPressed: _chooseHistoryDates,
-            icon: const Icon(Icons.date_range),
-            label: Text(
-              historyDates == null
-                  ? 'Date range'
-                  : '${dateLabel(historyDates!.start).split(' ').first} – ${dateLabel(historyDates!.end).split(' ').first}',
+          TextField(
+            controller: historySearch,
+            decoration: InputDecoration(
+              labelText: 'Search records',
+              hintText: 'Search by result or date',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: historyQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        historySearch.clear();
+                        historyQuery = '';
+                        historyLimit = 50;
+                      }),
+                    ),
             ),
-          ),
-          TextButton.icon(
-            onPressed: () => setState(() {
-              oldestFirst = !oldestFirst;
+            onChanged: (value) => setState(() {
+              historyQuery = value;
               historyLimit = 50;
             }),
-            icon: const Icon(Icons.sort),
-            label: Text(oldestFirst ? 'Oldest first' : 'Newest first'),
           ),
-          if (historyDates != null ||
-              historyQuery.isNotEmpty ||
-              scanFilter != 'All results')
-            TextButton(
-              onPressed: () => setState(() {
-                historyDates = null;
-                historyQuery = '';
-                historySearch.clear();
-                scanFilter = 'All results';
-                historyLimit = 50;
-              }),
-              child: const Text('Clear filters'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _chooseHistoryDates,
+                icon: const Icon(Icons.date_range),
+                label: Text(
+                  historyDates == null
+                      ? 'Date range'
+                      : '${dateLabel(historyDates!.start).split(' ').first} – ${dateLabel(historyDates!.end).split(' ').first}',
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  oldestFirst = !oldestFirst;
+                  historyLimit = 50;
+                }),
+                icon: const Icon(Icons.sort),
+                label: Text(oldestFirst ? 'Oldest first' : 'Newest first'),
+              ),
+              if (historyDates != null ||
+                  historyQuery.isNotEmpty ||
+                  scanFilter != 'All results')
+                TextButton(
+                  onPressed: () => setState(() {
+                    historyDates = null;
+                    historyQuery = '';
+                    historySearch.clear();
+                    scanFilter = 'All results';
+                    historyLimit = 50;
+                  }),
+                  child: const Text('Clear filters'),
+                ),
+            ],
+          ),
+          if (historyCategory == 0)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final filter in [
+                  'All results',
+                  'Healthy',
+                  'Other results',
+                  'Uncertain',
+                ])
+                  ChoiceChip(
+                    label: Text(filter),
+                    selected: scanFilter == filter,
+                    onSelected: (_) => setState(() {
+                      scanFilter = filter;
+                      historyLimit = 50;
+                    }),
+                  ),
+              ],
             ),
         ],
       ),
-      if (historyCategory == 0)
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final filter in [
-              'All results',
-              'Healthy',
-              'Other results',
-              'Uncertain',
-            ])
-              ChoiceChip(
-                label: Text(filter),
-                selected: scanFilter == filter,
-                onSelected: (_) => setState(() {
-                  scanFilter = filter;
-                  historyLimit = 50;
-                }),
-              ),
-          ],
-        ),
       const SizedBox(height: 20),
       if (count == 0 &&
           (historyQuery.isNotEmpty ||
@@ -1182,14 +1343,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ),
       if (historyCategory == 0) ...[
         Text(
-          '${filteredScans.length} saved scans',
+          '${filteredScans.length} saved leaf checks',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 12),
         if (results.isEmpty && historyQuery.isEmpty && historyDates == null)
           const EmptyState(
-            'No saved scans',
-            'Scan a leaf to save a result for this crop.',
+            'No saved leaf checks',
+            'Open Camera to check a leaf or choose a photo.',
           ),
         for (final result in filteredScans.take(historyLimit)) ...[
           _scanTile(result),
@@ -1287,88 +1448,120 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         _scanRevision = h.revision;
       }
       final results = scans.where((s) => s.crop == crop).toList();
-      return Scaffold(
-        appBar: AppBar(
-          title: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('AgriSense'),
-              Text(
-                'No More GuessPlant',
-                style: TextStyle(fontSize: 12, color: muted),
+      return PopScope(
+        canPop: page < 3 && !locked,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && !locked && page >= 3) {
+            _back();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            leading: page >= 3
+                ? BackButton(onPressed: locked ? null : _back)
+                : null,
+            title: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('AgriSense'),
+                Text(
+                  'No More GuessPlant',
+                  style: TextStyle(fontSize: 12, color: muted),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton.icon(
+                onPressed: locked ? null : () => _secondaryPage(3),
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Settings'),
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              tooltip: 'Help & troubleshooting',
-              onPressed: locked ? null : _help,
-              icon: const Icon(Icons.help_outline),
-            ),
-            IconButton(
-              tooltip: 'Scan leaf',
-              onPressed: locked ? null : _scan,
-              icon: const Icon(Icons.document_scanner_outlined),
-            ),
-          ],
-        ),
-        body: PageBody(
-          children: [
-            if (page != 0)
-              Text(
-                tabs[page],
-                style: Theme.of(context).textTheme.headlineLarge,
-              ),
-            AbsorbPointer(
-              absorbing: locked,
-              child: CropPicker(value: crop, onChanged: _crop),
-            ),
-            const SizedBox(height: 20),
-            if (locked) ...[
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              const Text('Completing your request…'),
-              const SizedBox(height: 16),
-            ],
-            if (error != null || h.error != null)
-              IssueCard(
-                issue: error != null
-                    ? actionIssue ??
-                          AppIssue.from(
-                            FormatException(error!),
-                            fallback: error!.contains('Saved scans')
-                                ? AppIssue.history
-                                : AppIssue.settings,
-                          )
-                    : h.issue ?? AppIssue.connection,
-                onSettings: locked ? null : () => setState(() => page = 2),
-                onRetry: locked
-                    ? null
-                    : error?.contains('Saved scans') == true
-                    ? () => setState(() {
-                        error = null;
-                        _loadScans();
-                      })
-                    : error == null &&
-                          h.allowLocalHttp &&
-                          h.address(crop, 'sensor').isNotEmpty
-                    ? () => h.refresh(crop)
-                    : null,
-              ),
-            if (page == 0) ..._dashboard(results),
-            if (page == 1) ..._trends(),
-            if (page == 2) ..._devices(),
-            if (page == 3) ..._history(results),
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: page,
-          onDestinationSelected: (v) => setState(() => page = v),
-          destinations: [
-            for (var i = 0; i < tabs.length; i++)
-              NavigationDestination(icon: Icon(icons[i]), label: tabs[i]),
-          ],
+          body: page == 1
+              ? TomatoScanScreen(
+                  key: ValueKey(crop),
+                  store: widget.scans,
+                  hardware: h,
+                  initialCrop: crop,
+                  embedded: true,
+                  onCropChanged: _crop,
+                  onBusyChanged: (value) {
+                    if (mounted && cameraBusy != value) {
+                      setState(() => cameraBusy = value);
+                    }
+                  },
+                )
+              : PageBody(
+                  key: ValueKey(page),
+                  children: [
+                    if (page != 0)
+                      Text(
+                        tabs[page],
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                    AbsorbPointer(
+                      absorbing: locked,
+                      child: CropPicker(value: crop, onChanged: _crop),
+                    ),
+                    const SizedBox(height: 20),
+                    if (locked) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      const Text('Completing your request…'),
+                      const SizedBox(height: 16),
+                    ],
+                    if (error != null || h.error != null)
+                      IssueCard(
+                        issue: error != null
+                            ? actionIssue ??
+                                  AppIssue.from(
+                                    FormatException(error!),
+                                    fallback: error!.contains('Saved scans')
+                                        ? AppIssue.history
+                                        : AppIssue.settings,
+                                  )
+                            : h.issue ?? AppIssue.connection,
+                        onSettings: locked ? null : () => _secondaryPage(4),
+                        onRetry: locked
+                            ? null
+                            : error?.contains('Saved scans') == true
+                            ? () => setState(() {
+                                error = null;
+                                _loadScans();
+                              })
+                            : error == null &&
+                                  h.allowLocalHttp &&
+                                  h.address(crop, 'sensor').isNotEmpty
+                            ? () => h.refresh(crop)
+                            : null,
+                      ),
+                    if (page == 0) ..._dashboard(results),
+                    if (page == 2) ..._history(results),
+                    if (page == 3) ..._settings(),
+                    if (page == 4) ..._devices(),
+                    if (page == 5) ..._trends(),
+                  ],
+                ),
+          bottomNavigationBar: page >= 3
+              ? null
+              : NavigationBar(
+                  selectedIndex: page,
+                  onDestinationSelected: locked
+                      ? null
+                      : (v) => setState(() {
+                          page = v;
+                          _loadScans();
+                        }),
+                  destinations: [
+                    for (var i = 0; i < 3; i++)
+                      NavigationDestination(
+                        icon: Icon(icons[i]),
+                        label: tabs[i],
+                      ),
+                  ],
+                ),
         ),
       );
     },
