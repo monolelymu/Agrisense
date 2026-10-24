@@ -55,6 +55,8 @@ class HardwareController extends ChangeNotifier {
   bool backgroundEnabled = false;
   int _pollingPauses = 0;
   final Map<Crop, Map<String, String>> assignments = {};
+  Crop? _sensorCrop;
+  DailyPhotoSchedule? _sharedSchedule;
   final List<HardwareSample> samples = [];
   final List<AlertPhoto> alertPhotos = [];
   final Map<Crop, String> status = {};
@@ -69,7 +71,7 @@ class HardwareController extends ChangeNotifier {
   final Map<Crop, DailyPhotoSchedule> photoSchedules = {};
   final Map<Crop, String> cameraStatus = {};
   final Map<Crop, DateTime> _cameraRetryAt = {};
-  final Map<Crop, String> _lastCaptureSlot = {};
+  String? _lastKitCaptureSlot;
   final Set<String> _scheduleAttempts = {};
   String? automaticStatus;
   bool allowLocalHttp = false;
@@ -123,7 +125,11 @@ class HardwareController extends ChangeNotifier {
         box.get('allow-local-hardware-http', defaultValue: true) == true;
     _scheduleAttempts.addAll(
       (box.get('daily-photo-attempts-v1', defaultValue: []) as List)
-          .whereType<String>(),
+          .whereType<String>()
+          .map(
+            (key) =>
+                key.replaceFirst(RegExp(r'^(tomato|chili|eggplant)-'), 'kit-'),
+          ),
     );
     final raw =
         box.get('hardware-nodes-v1', defaultValue: <String, dynamic>{}) as Map;
@@ -131,6 +137,61 @@ class HardwareController extends ChangeNotifier {
       assignments[crop] = Map<String, String>.from(
         raw[crop.name] as Map? ?? {},
       );
+    }
+    final shared = box.get('shared-kit-v1');
+    if (shared is Map) {
+      _sensorCrop = Crop.values.byName(shared['sensorCrop'] as String);
+      final nodes = Map<String, String>.from(shared['nodes'] as Map);
+      for (final crop in Crop.values) {
+        assignments[crop] = Map.of(nodes);
+      }
+    } else {
+      // Preserve legacy entries on disk; use one kit consistently from now on.
+      final owner = Crop.values.firstWhere(
+        (c) => assignments[c]?['sensor']?.isNotEmpty == true,
+        orElse: () => Crop.tomato,
+      );
+      _sensorCrop = assignments[owner]?['sensor']?.isNotEmpty == true
+          ? owner
+          : null;
+      final nodes = Map<String, String>.of(assignments[owner] ?? {});
+      for (final entry in assignments.values) {
+        if (nodes['camera']?.isNotEmpty != true &&
+            entry['camera']?.isNotEmpty == true) {
+          nodes['camera'] = entry['camera']!;
+        }
+      }
+      for (final crop in Crop.values) {
+        assignments[crop] = Map.of(nodes);
+      }
+    }
+    final savedSchedule = box.get('shared-daily-photos-v1');
+    if (savedSchedule is Map) {
+      try {
+        _sharedSchedule = DailyPhotoSchedule.fromJson(savedSchedule);
+      } catch (_) {
+        _sharedSchedule = const DailyPhotoSchedule();
+        automaticStatus = 'Photo times could not be loaded. Please edit times.';
+      }
+    } else {
+      final candidates = photoSchedules.values
+          .where((s) => s.minutes.isNotEmpty)
+          .toList();
+      _sharedSchedule = candidates.isEmpty
+          ? const DailyPhotoSchedule()
+          : candidates.first;
+      if (candidates.any(
+        (s) =>
+            s.enabled != _sharedSchedule!.enabled ||
+            !listEquals(
+              s.minutes.toList()..sort(),
+              _sharedSchedule!.minutes.toList()..sort(),
+            ),
+      )) {
+        _sharedSchedule = DailyPhotoSchedule(minutes: candidates.first.minutes);
+        automaticStatus =
+            'Different photo times were saved for each crop. Edit times to confirm one shared schedule.';
+      }
     }
     samples.addAll(
       (box.get(_historyKey, defaultValue: []) as List).map(
@@ -141,6 +202,19 @@ class HardwareController extends ChangeNotifier {
   }
 
   String address(Crop crop, String kind) => assignments[crop]?[kind] ?? '';
+  Future<void> _saveSharedKit(Crop crop) async {
+    final nodes = Map<String, String>.of(assignments[crop] ?? {});
+    final sensorCrop = _sensorCrop ?? crop;
+    await box.put('shared-kit-v1', {
+      'sensorCrop': sensorCrop.name,
+      'nodes': nodes,
+    });
+    _sensorCrop = sensorCrop;
+    for (final item in Crop.values) {
+      assignments[item] = Map.of(nodes);
+    }
+  }
+
   List<HardwareSample> readings(Crop crop) =>
       samples.where((r) => r.crop == crop).toList();
 
@@ -159,7 +233,11 @@ class HardwareController extends ChangeNotifier {
   }
 
   HardwareSample? latest(Crop crop) {
-    final items = readings(crop);
+    final items = samples
+        .where((s) => s.deviceId == assignments[crop]?['sensorId'])
+        .toList();
+    if (items.isEmpty) return readings(crop).lastOrNull;
+    items.sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
     return items.isEmpty ? null : items.last;
   }
 
@@ -215,43 +293,36 @@ class HardwareController extends ChangeNotifier {
     });
   }
 
-  Future<void> assign(
-    Crop crop,
-    String kind,
-    String input,
-  ) => withPollingPaused(() async {
-    _requireIdle();
-    if (kind != 'camera' && kind != 'sensor') {
-      throw const FormatException('Unknown device type.');
-    }
-    final value = input.trim().isEmpty ? '' : hardwareAddress(input).toString();
-    if (value != address(crop, kind)) await _stopAutomaticFor({crop});
-    if (value.isNotEmpty &&
-        assignments.entries.any(
-          (entry) => entry.key != crop && entry.value.values.contains(value),
-        )) {
-      throw const FormatException(
-        'This board is assigned to another crop. Clear that assignment first.',
-      );
-    }
-    final next = {
-      for (final entry in assignments.entries)
-        entry.key: Map<String, String>.of(entry.value),
-    };
-    next.putIfAbsent(crop, () => {})[kind] = value;
-    if (kind == 'sensor' && value != address(crop, kind)) {
-      next[crop]!.remove('sensorId');
-      next[crop]!.remove('pairingCode');
-    }
-    await box.put('hardware-nodes-v1', {
-      for (final e in next.entries) e.key.name: e.value,
-    });
-    assignments
-      ..clear()
-      ..addAll(next);
-    status.remove(crop);
-    notifyListeners();
-  });
+  Future<void> assign(Crop crop, String kind, String input) =>
+      withPollingPaused(() async {
+        _requireIdle();
+        if (kind != 'camera' && kind != 'sensor') {
+          throw const FormatException('Unknown device type.');
+        }
+        final value = input.trim().isEmpty
+            ? ''
+            : hardwareAddress(input).toString();
+        if (value != address(crop, kind)) await _stopAutomaticFor({crop});
+        final next = {
+          for (final entry in assignments.entries)
+            entry.key: Map<String, String>.of(entry.value),
+        };
+        next.putIfAbsent(crop, () => {})[kind] = value;
+        if (kind == 'sensor' && value != address(crop, kind)) {
+          next[crop]!.remove('sensorId');
+          next[crop]!.remove('pairingCode');
+        }
+        await box.put('hardware-nodes-v1', {
+          for (final e in next.entries) e.key.name: e.value,
+        });
+        assignments
+          ..clear()
+          ..addAll(next);
+        if (kind == 'sensor') _sensorCrop = crop;
+        await _saveSharedKit(crop);
+        status.remove(crop);
+        notifyListeners();
+      });
 
   /// Forget only this phone's endpoint, even when the board is unreachable.
   /// Retain identity/pairing for re-adding the same sensor; no board command.
@@ -272,6 +343,7 @@ class HardwareController extends ChangeNotifier {
         assignments
           ..clear()
           ..addAll(next);
+        await _saveSharedKit(crop);
         status.remove(crop);
         if (kind == 'sensor') _alertTrackers[crop]?.reset();
         error = null;
@@ -385,6 +457,8 @@ class HardwareController extends ChangeNotifier {
       assignments
         ..clear()
         ..addAll(next);
+      _sensorCrop = crop;
+      await _saveSharedKit(crop);
       status.clear();
       status[crop] = 'Crop confirmed: ${crop.label}';
     } catch (e) {
@@ -429,6 +503,7 @@ class HardwareController extends ChangeNotifier {
       assignments
         ..clear()
         ..addAll(next);
+      await _saveSharedKit(crop);
       notifyListeners();
     },
   );
@@ -443,7 +518,7 @@ class HardwareController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final reading = await client.read(endpoint, crop);
+      final reading = await client.read(endpoint, _sensorCrop ?? crop);
       final expectedId = assignments[crop]?['sensorId'];
       if (expectedId != null && reading.deviceId != expectedId) {
         throw const FormatException(
@@ -451,11 +526,11 @@ class HardwareController extends ChangeNotifier {
         );
       }
       if (_disposed) return;
-      if (!samples.any((r) => r.crop == crop && r.id == reading.id)) {
+      if (!samples.any((r) => r.crop == reading.crop && r.id == reading.id)) {
         final next = [...samples, reading];
         // Bound storage, keeping the most recent 5,000 samples per crop.
-        while (next.where((r) => r.crop == crop).length > 5000) {
-          next.removeAt(next.indexWhere((r) => r.crop == crop));
+        while (next.where((r) => r.crop == reading.crop).length > 5000) {
+          next.removeAt(next.indexWhere((r) => r.crop == reading.crop));
         }
         try {
           await box.put(_historyKey, next.map((r) => r.toJson()).toList());
@@ -468,7 +543,7 @@ class HardwareController extends ChangeNotifier {
       }
       status[crop] = 'Received';
       try {
-        await _notifyReading(crop, reading);
+        await _notifyReading(reading.crop, reading);
       } catch (_) {
         notificationIssue = AppIssue.write;
         notificationStatus =
@@ -588,7 +663,7 @@ class HardwareController extends ChangeNotifier {
 
   // An old board must stop triggering before its local mapping is removed/moved.
   Future<void> _stopAutomaticFor(Set<Crop> crops) async {
-    for (final crop in crops) {
+    for (final crop in {if (crops.isNotEmpty) _sensorCrop ?? crops.first}) {
       if (assignments[crop]?['sensorId'] == null ||
           address(crop, 'sensor').isEmpty) {
         continue;
@@ -602,6 +677,7 @@ class HardwareController extends ChangeNotifier {
   // Caller owns the request lock. Overrides are used only after matching the
   // saved sensor identity at its new address.
   Future<void> _stopAutomaticAt(Crop crop, String sensor) async {
+    crop = _sensorCrop ?? crop;
     final code = assignments[crop]?['pairingCode'] ?? '';
     final current = await client.automaticConfiguration(sensor, code);
     if (current == null) return;
@@ -625,7 +701,7 @@ class HardwareController extends ChangeNotifier {
       _requireHttp();
       final endpoint = address(crop, 'camera');
       if (endpoint.isEmpty) throw AppIssue.assignment;
-      _lastCaptureSlot[crop] = _slot(crop, _clock());
+      _lastKitCaptureSlot = _slot(crop, _clock());
       try {
         final bytes = await _capture(endpoint);
         cameraStatus[crop] = 'Received';
@@ -695,6 +771,8 @@ class HardwareController extends ChangeNotifier {
     if (address(crop, 'sensor').isEmpty && address(crop, 'camera').isEmpty) {
       throw AppIssue.assignment;
     }
+    await _saveSharedKit(crop);
+    await box.put('shared-daily-photos-v1', schedule(crop).toJson());
     if (backgroundEnabled) await _startService(crop);
     startPolling(crop);
     notifyListeners();
@@ -879,17 +957,20 @@ class HardwareController extends ChangeNotifier {
   }
 
   DailyPhotoSchedule schedule(Crop crop) =>
-      photoSchedules[crop] ?? const DailyPhotoSchedule();
+      _sharedSchedule ?? photoSchedules[crop] ?? const DailyPhotoSchedule();
 
   Future<void> saveSchedule(Crop crop, DailyPhotoSchedule value) async {
     value.validate();
-    await box.put('daily-photos-v1-${crop.name}', value.toJson());
-    photoSchedules[crop] = value;
+    await box.put('shared-daily-photos-v1', value.toJson());
+    _sharedSchedule = value;
+    for (final item in Crop.values) {
+      photoSchedules[item] = value;
+    }
     notifyListeners();
   }
 
   String _slot(Crop crop, DateTime at) =>
-      '${crop.name}-${at.year}-${at.month}-${at.day}-${at.hour * 60 + at.minute}';
+      'kit-${at.year}-${at.month}-${at.day}-${at.hour * 60 + at.minute}';
 
   void _cameraFailed(Crop crop) {
     cameraStatus[crop] = 'Unavailable';
@@ -953,7 +1034,7 @@ class HardwareController extends ChangeNotifier {
     if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
       return;
     }
-    if (due && _slot(crop, _clock()) == key && _lastCaptureSlot[crop] != key) {
+    if (due && _slot(crop, _clock()) == key && _lastKitCaptureSlot != key) {
       await _scheduledPhoto(crop, key);
     } else if (cameraStatus[crop] == 'Unavailable' &&
         !_clock().isBefore(_cameraRetryAt[crop] ?? now)) {
@@ -968,7 +1049,7 @@ class HardwareController extends ChangeNotifier {
     backgroundWork = true;
     _idle = Completer<void>();
     automaticStatus = 'Checking your plant…';
-    _lastCaptureSlot[crop] = id;
+    _lastKitCaptureSlot = id;
     notifyListeners();
     var stage = 'capture';
     final rawKey = 'scheduled-original-v1/$id';
@@ -1074,7 +1155,7 @@ class HardwareController extends ChangeNotifier {
       return;
     }
     if (_scheduleAttempts.contains(_slot(crop, now)) &&
-        _lastCaptureSlot[crop] == _slot(crop, now)) {
+        _lastKitCaptureSlot == _slot(crop, now)) {
       await _saveAlert(alert.change('alert_only'));
       return;
     }
@@ -1091,7 +1172,9 @@ class HardwareController extends ChangeNotifier {
       (allowLocalHttp || (manual && !capture)) &&
       (_foreground || backgroundActive) &&
       _run == run &&
-      (manual || _requestedPollingCrop == alert.crop);
+      (manual ||
+          (_requestedPollingCrop != null &&
+              (_sensorCrop ?? _requestedPollingCrop) == alert.crop));
 
   Future<void> _processAlert(
     MonitoringAlert initial, {
@@ -1123,7 +1206,7 @@ class HardwareController extends ChangeNotifier {
           await _saveAlert(alert.change('interrupted'));
           return;
         }
-        _lastCaptureSlot[alert.crop] = _slot(alert.crop, _clock());
+        _lastKitCaptureSlot = _slot(alert.crop, _clock());
         bytes = await client.capture(alert.camera);
         // Validate originals before storage and inference. Do not resize model input here.
         await compute(previewPhoto, bytes);

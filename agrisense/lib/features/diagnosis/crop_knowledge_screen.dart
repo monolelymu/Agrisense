@@ -5,6 +5,7 @@ import 'eggplant_knowledge.dart';
 import 'chili_knowledge.dart';
 import 'tomato_knowledge.dart';
 import 'tomato_context_widgets.dart';
+import 'tomato_scan.dart';
 
 /// Offline reference access also works while a crop's classifier is unavailable.
 class CropKnowledgeScreen extends StatelessWidget {
@@ -19,7 +20,7 @@ class CropKnowledgeScreen extends StatelessWidget {
       Crop.chili => chiliKnowledge,
     };
     return Scaffold(
-      appBar: AppBar(title: Text('${crop.label} knowledge & care')),
+      appBar: AppBar(title: Text('${crop.label} Knowledge & Care')),
       body: PageBody(
         children: [
           const Text(
@@ -30,8 +31,8 @@ class CropKnowledgeScreen extends StatelessWidget {
           for (final entry in entries.values)
             ExpansionTile(
               key: ValueKey(entry.label),
-              title: Text(entry.label.replaceAll('_', ' ')),
-              subtitle: Text(entry.category),
+              title: Text(diseaseDisplayName(entry.label)),
+              subtitle: Text(diseaseDisplayName(entry.category)),
               children: [
                 Align(
                   alignment: Alignment.centerLeft,

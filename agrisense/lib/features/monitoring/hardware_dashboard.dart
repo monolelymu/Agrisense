@@ -81,6 +81,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   bool saving = false;
   bool cameraBusy = false;
   bool _askedForNotifications = false;
+  String? connectionNotice;
   int _scanRevision = -1;
   HardwareController get h => widget.hardware;
   bool get locked => saving || h.userBusy || cameraBusy;
@@ -284,7 +285,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           content: Text(
             answer.$1.trim().isEmpty
                 ? 'Saved IP cleared from this phone. History and pairing are kept. Board automatic capture is not stopped.'
-                : '${selected.label} $kind assigned. Saved history is unchanged.',
+                : 'Kit $kind saved for all crops. Saved history is unchanged.',
           ),
         ),
       );
@@ -488,6 +489,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 ),
               ),
               const SizedBox(height: 16),
+              if (connectionNotice != null) ...[
+                Text(connectionNotice!),
+                const SizedBox(height: 12),
+              ],
               _connectionRow(
                 Icons.sensors,
                 'Sensor',
@@ -612,12 +617,22 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   // Reuse the installed firmware's existing endpoints. Discovery is not assumed.
   Future<void> _connect() async {
-    if (!h.allowLocalHttp ||
-        (h.address(crop, 'sensor').isEmpty &&
-            h.address(crop, 'camera').isEmpty)) {
-      _secondaryPage(4);
+    if (!h.allowLocalHttp) {
+      setState(
+        () => connectionNotice =
+            'Local hardware access is off. Enable it in Settings to connect.',
+      );
       return;
     }
+    if (h.address(crop, 'sensor').isEmpty &&
+        h.address(crop, 'camera').isEmpty) {
+      setState(
+        () => connectionNotice =
+            'Your kit connection has not been configured yet. Automatic device discovery is not available in this version.',
+      );
+      return;
+    }
+    setState(() => connectionNotice = null);
     final selected = crop;
     await _saveAction(() async {
       if (h.backgroundEnabled && !_askedForNotifications) {
@@ -709,10 +724,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   ];
 
   List<Widget> _devices() => [
-    Text(
-      '${crop.label} devices',
-      style: Theme.of(context).textTheme.headlineSmall,
-    ),
+    Text('Kit devices', style: Theme.of(context).textTheme.headlineSmall),
     const Text(
       'Connect your phone and boards to the same trusted Wi-Fi. Enter the IP printed by each board in Serial Monitor.',
     ),
@@ -742,7 +754,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       const SizedBox(height: 12),
     ],
     const Text(
-      'Select the crop above, then edit its sensor or camera. Assigning an existing board moves it from its previous crop. The sensor confirms and remembers its crop; saved history stays unchanged.',
+      'This camera and sensor connection is shared across all crops. Changing the crop on Home does not change the sensor firmware configuration. Saved history stays unchanged.',
     ),
     const SizedBox(height: 16),
     Text('Connection tests', style: Theme.of(context).textTheme.titleLarge),
@@ -821,32 +833,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     ],
   );
 
-  Future<void> _resetTrends() async {
-    final selected = crop;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Reset ${selected.label} graph?'),
-        content: const Text(
-          'Start all sensor graphs fresh from now. Older readings stay in History. You can restore them to the graph at any time.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset view'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      await _saveAction(() => h.resetTrendView(selected));
-    }
-  }
-
   double? _value(HardwareSample r) => switch (metric) {
     'Humidity' => r.humidity,
     'Soil moisture' => r.soil,
@@ -864,17 +850,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   List<Widget> _trends() {
     final now = DateTime.now();
-    final reset = h.trendStart(crop);
     final cutoff = now.subtract(Duration(days: trendDays));
     final readings =
-        h
-            .readings(crop)
+        h.samples
             .where(
               (r) =>
                   _value(r)?.isFinite == true &&
                   !r.receivedAt.isAfter(now) &&
-                  (trendDays == 0 || !r.receivedAt.isBefore(cutoff)) &&
-                  (reset == null || !r.receivedAt.isBefore(reset)),
+                  (trendDays == 0 || !r.receivedAt.isBefore(cutoff)),
             )
             .toList()
           ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
@@ -895,73 +878,37 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     );
     final yStep = _tickStep((high - low + padding * 2) / 4);
     return [
-      const SectionTitle(
-        'Growing patterns',
-        'Review your saved sensor readings over time.',
+      DropdownButtonFormField<String>(
+        initialValue: metric,
+        decoration: const InputDecoration(labelText: 'Reading'),
+        items: [
+          for (final name in ['Temperature', 'Humidity', 'Soil moisture'])
+            DropdownMenuItem(value: name, child: Text(name)),
+        ],
+        onChanged: (value) {
+          if (value != null) setState(() => metric = value);
+        },
       ),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
+      const SizedBox(height: 12),
+      DropdownButtonFormField<int>(
+        initialValue: trendDays,
+        decoration: const InputDecoration(labelText: 'Period'),
+        items: [
           for (final entry in const {
-            1: '24 hours',
-            7: '7 days',
-            30: '30 days',
+            1: 'Last 24 hours',
+            7: 'Last 7 days',
+            30: 'Last 30 days',
             0: 'All time',
           }.entries)
-            ChoiceChip(
-              label: Text(entry.value),
-              selected: trendDays == entry.key,
-              onSelected: (_) => setState(() => trendDays = entry.key),
-            ),
+            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
         ],
+        onChanged: (value) {
+          if (value != null) setState(() => trendDays = value);
+        },
       ),
-      const SizedBox(height: 12),
-      Wrap(
-        spacing: 8,
-        children: [
-          for (final name in [
-            'Temperature',
-            'Humidity',
-            'Soil moisture',
-            'Gas raw',
-          ])
-            ChoiceChip(
-              label: Text(name),
-              selected: metric == name,
-              onSelected: (_) => setState(() => metric = name),
-            ),
-        ],
-      ),
-      const SizedBox(height: 20),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          OutlinedButton.icon(
-            onPressed: locked ? null : _resetTrends,
-            icon: const Icon(Icons.restart_alt),
-            label: const Text('Reset view'),
-          ),
-          if (reset != null)
-            TextButton(
-              onPressed: locked
-                  ? null
-                  : () => _saveAction(() => h.restoreTrendView(crop)),
-              child: const Text('Restore older readings'),
-            ),
-        ],
-      ),
-      if (reset != null)
-        Text(
-          'Graph restarted ${dateLabel(reset)}. Older records remain in History.',
-        ),
       const SizedBox(height: 12),
       if (readings.isEmpty)
-        const EmptyState(
-          'No readings for this metric',
-          'Read your sensor in Devices. Soil percentages require device calibration.',
-        )
+        const EmptyState('No readings yet', 'Connect AgriSense to start.')
       else
         Panel(
           padding: 16,
@@ -1095,9 +1042,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
         ),
       const SizedBox(height: 12),
-      const Text(
-        'Tap a point for its value and time. Gaps over 30 minutes are left disconnected. Gas is an uncalibrated raw reading. Up to 5,000 readings per crop are saved.',
-      ),
+      const Text('Tap a point to see its reading and time.'),
     ];
   }
 
@@ -1651,10 +1596,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                         tabs[page],
                         style: Theme.of(context).textTheme.headlineLarge,
                       ),
-                    AbsorbPointer(
-                      absorbing: locked,
-                      child: CropPicker(value: crop, onChanged: _crop),
-                    ),
+                    if (page != 5 && page != 3 && page != 4)
+                      AbsorbPointer(
+                        absorbing: locked,
+                        child: CropPicker(value: crop, onChanged: _crop),
+                      ),
                     const SizedBox(height: 20),
                     if (locked) ...[
                       const LinearProgressIndicator(),

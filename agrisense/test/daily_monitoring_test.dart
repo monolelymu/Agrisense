@@ -137,6 +137,83 @@ void main() {
       h.withPollingPaused(() => h.startMonitoring(Crop.tomato));
 
   test(
+    'legacy kit and times become shared without changing saved history or rules',
+    () async {
+      await box.put('hardware-nodes-v1', {
+        'eggplant': {
+          'sensor': 'http://192.168.1.20',
+          'sensorId': 'sensor-one',
+          'camera': 'http://192.168.1.21',
+        },
+      });
+      await box.put('daily-photos-v1-eggplant', {
+        'enabled': true,
+        'minutes': [480],
+      });
+      final restored = HardwareController(
+        box,
+        client: boards,
+        service: _Service(),
+        clock: () => now,
+      )..load();
+      for (final crop in Crop.values) {
+        expect(restored.address(crop, 'sensor'), 'http://192.168.1.20');
+        expect(restored.address(crop, 'camera'), 'http://192.168.1.21');
+        expect(restored.schedule(crop).minutes, [480]);
+      }
+      await restored.refresh(Crop.chili);
+      expect(restored.samples.single.crop, Crop.eggplant);
+      expect(restored.latest(Crop.chili)?.deviceId, 'sensor-one');
+      await restored.saveSchedule(
+        Crop.chili,
+        const DailyPhotoSchedule(enabled: true, minutes: [600]),
+      );
+      final reloaded = HardwareController(box)..load();
+      expect(reloaded.schedule(Crop.tomato).minutes, [600]);
+      expect((box.get('daily-photos-v1-eggplant') as Map)['minutes'], [480]);
+      expect(reloaded.samples.single.crop, Crop.eggplant);
+      restored.dispose();
+      reloaded.dispose();
+    },
+  );
+
+  test(
+    'conflicting legacy schedules require explicit shared confirmation',
+    () async {
+      await box.put('daily-photos-v1-tomato', {
+        'enabled': true,
+        'minutes': [480],
+      });
+      await box.put('daily-photos-v1-chili', {
+        'enabled': true,
+        'minutes': [600],
+      });
+      final restored = HardwareController(box)..load();
+      expect(restored.schedule(Crop.tomato).enabled, isFalse);
+      expect(restored.automaticStatus, contains('Edit times'));
+      expect((box.get('daily-photos-v1-chili') as Map)['minutes'], [600]);
+      restored.dispose();
+    },
+  );
+
+  test(
+    'switching crop does not capture the same scheduled minute twice',
+    () async {
+      await h.saveSchedule(
+        Crop.tomato,
+        const DailyPhotoSchedule(enabled: true, minutes: [480]),
+      );
+      await start();
+      await h.monitorTick(Crop.tomato);
+      await h.withPollingPaused(() => h.startMonitoring(Crop.chili));
+      await h.monitorTick(Crop.chili);
+      expect(boards.captures, 1);
+      expect(h.address(Crop.chili, 'camera'), 'http://192.168.1.21');
+      expect(h.scanStore.load().single.crop, Crop.tomato);
+    },
+  );
+
+  test(
     'hardware access defaults on, explicit opt-out is retained, schedules start empty',
     () async {
       expect(h.allowLocalHttp, isTrue);

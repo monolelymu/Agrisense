@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:agrisense/core/hardware_controller.dart';
+import 'package:agrisense/core/widgets.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
@@ -100,7 +101,7 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('trends break long gaps and reset hides older samples', (
+  testWidgets('trends use compact dropdowns and retain long gaps', (
     tester,
   ) async {
     final now = DateTime.now();
@@ -120,15 +121,17 @@ void main() {
     final chart = tester.widget<LineChart>(find.byType(LineChart));
     expect(chart.data.lineBarsData.single.spots, hasLength(3));
     expect(chart.data.lineBarsData.single.spots[1], FlSpot.nullSpot);
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Reset view'));
+    expect(find.text('Reset view'), findsNothing);
+    expect(find.text('Gas raw'), findsNothing);
+    expect(find.byType(CropPicker), findsNothing);
+    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<int>), findsOneWidget);
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Reset view'));
-    await tester.pumpAndSettle();
-    expect(find.byType(LineChart), findsNothing);
-    expect(h.readings(Crop.tomato), hasLength(2));
-    await tester.tap(find.text('Restore older readings'));
+    await tester.tap(find.text('Humidity').last);
     await tester.pumpAndSettle();
     expect(find.byType(LineChart), findsOneWidget);
+    expect(h.readings(Crop.tomato), hasLength(2));
     await tester.pumpWidget(const SizedBox.shrink());
     h.dispose();
   });

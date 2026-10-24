@@ -51,9 +51,9 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
       animation: hardware,
       builder: (context, _) => PageBody(
         children: [
-          SectionTitle(
-            '${crop.label} monitoring',
-            'Choose how to monitor your crops.',
+          const SectionTitle(
+            'Kit monitoring',
+            'Connection and daily photo times are shared across crops.',
           ),
           Panel(
             child: Column(
@@ -68,24 +68,13 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                   'Monitoring pauses on this screen. Enable background operation below to continue from Home when minimized or screen-locked.',
                 ),
                 const SizedBox(height: 12),
-                SwitchListTile(
+                const ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Monitor sensors every 10 seconds'),
-                  value: hardware.polling,
-                  onChanged:
-                      working ||
-                          hardware.busy ||
-                          (!hardware.polling &&
-                              (!hardware.allowLocalHttp ||
-                                  hardware.address(crop, 'sensor').isEmpty))
-                      ? null
-                      : (value) => _run(() async {
-                          if (value) {
-                            await hardware.startMonitoring(crop);
-                          } else {
-                            hardware.stopPolling();
-                          }
-                        }),
+                  title: Text('Monitor sensors every 10 seconds'),
+                  subtitle: Text(
+                    'Starts automatically when you connect on Home.',
+                  ),
+                  trailing: Icon(Icons.check_circle_outline),
                 ),
                 if (!hardware.allowLocalHttp ||
                     hardware.address(crop, 'sensor').isEmpty)

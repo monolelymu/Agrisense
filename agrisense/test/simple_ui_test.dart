@@ -53,6 +53,9 @@ class _ExistingBoards extends HardwareClient {
 class _MonitoringController extends HardwareController {
   _MonitoringController(super.box, {required super.client});
   final started = Completer<void>();
+  @override
+  DailyPhotoSchedule schedule(Crop crop) =>
+      photoSchedules[crop] ?? super.schedule(crop);
   // Real persistence is covered by daily_monitoring_test; keep UI animations
   // independent of operating-system file events in the widget-test clock.
   @override
@@ -132,11 +135,13 @@ void main() {
     await tester.ensureVisible(find.text('Connect AgriSense'));
     await tester.tap(find.text('Connect AgriSense'));
     await tester.pumpAndSettle();
-    expect(find.text('Allow local hardware access'), findsOneWidget);
+    expect(
+      find.textContaining('Your kit connection has not been configured'),
+      findsOneWidget,
+    );
+    expect(find.text('Allow local hardware access'), findsNothing);
     expect(client.reads + client.photos, 0);
     expect(hardware.allowLocalHttp, isTrue);
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());

@@ -234,7 +234,7 @@ class TomatoExplanation extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        Text(entry.category),
+        Text(diseaseDisplayName(entry.category)),
         const SizedBox(height: 12),
         Text(entry.explanation),
         ExpansionTile(
