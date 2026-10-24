@@ -852,7 +852,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     final now = DateTime.now();
     final cutoff = now.subtract(Duration(days: trendDays));
     final readings =
-        h.samples
+        h
+            .readings(crop)
             .where(
               (r) =>
                   _value(r)?.isFinite == true &&
@@ -1042,7 +1043,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
         ),
       const SizedBox(height: 12),
-      const Text('Tap a point to see its reading and time.'),
+      if (readings.isNotEmpty)
+        const Text('Tap a point to see its reading and time.'),
     ];
   }
 
@@ -1576,7 +1578,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           ),
           body: page == 1
               ? TomatoScanScreen(
-                  key: ValueKey(crop),
                   store: widget.scans,
                   hardware: h,
                   initialCrop: crop,
@@ -1596,7 +1597,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                         tabs[page],
                         style: Theme.of(context).textTheme.headlineLarge,
                       ),
-                    if (page != 5 && page != 3 && page != 4)
+                    if (page == 0 || page == 5) ...[
+                      Text(
+                        'Choose crop',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (page != 3 && page != 4)
                       AbsorbPointer(
                         absorbing: locked,
                         child: CropPicker(value: crop, onChanged: _crop),

@@ -8,6 +8,7 @@ import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/data/daily_photo_schedule.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
+import 'package:agrisense/features/diagnosis/tomato_scan_screen.dart';
 import 'package:agrisense/features/monitoring/hardware_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,6 +122,10 @@ void main() {
     await show(tester, largeText: true);
     expect(find.byType(NavigationDestination), findsNWidgets(3));
     expect(find.text('No More GuessPlant'), findsOneWidget);
+    expect(find.text('Choose crop'), findsOneWidget);
+    for (final icon in ['🍅', '🌶️', '🍆']) {
+      expect(find.text(icon), findsOneWidget);
+    }
     expect(find.byTooltip('Scan leaf'), findsNothing);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
@@ -187,6 +192,34 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
     variant: TargetPlatformVariant({TargetPlatform.linux}),
+  );
+
+  testWidgets(
+    'camera crop changes stay quiet and keep the same screen state',
+    (tester) async {
+      await show(tester);
+      await openSimplePage(tester, 'Camera');
+      final before = tester.state(find.byType(TomatoScanScreen));
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      for (final name in ['Chili', 'Eggplant', 'Tomato']) {
+        await tester.ensureVisible(find.text(name));
+        await tester.tap(find.text(name));
+        await tester.pump();
+        expect(find.byType(LinearProgressIndicator), findsNothing);
+        expect(
+          find.textContaining('Checking for an interrupted'),
+          findsNothing,
+        );
+        expect(
+          identical(tester.state(find.byType(TomatoScanScreen)), before),
+          isTrue,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+    variant: TargetPlatformVariant({TargetPlatform.android}),
   );
 
   testWidgets(

@@ -131,7 +131,21 @@ class CropPicker extends StatelessWidget {
     children: [
       for (final crop in Crop.values)
         ChoiceChip(
-          label: Text(crop.label),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ExcludeSemantics(
+                child: Text(switch (crop) {
+                  Crop.tomato => '🍅',
+                  Crop.chili => '🌶️',
+                  Crop.eggplant => '🍆',
+                }),
+              ),
+              const SizedBox(width: 6),
+              Text(crop.label),
+            ],
+          ),
+          showCheckmark: true,
           selected: value == crop,
           onSelected: (_) => onChanged(crop),
         ),

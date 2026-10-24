@@ -94,6 +94,8 @@ class TomatoScan {
 /// Separate keys keep real scans out of simulated history and demo resets.
 class TomatoScanStore {
   TomatoScanStore(this.box);
+  // Session-only: Android picker recovery must not repeat on crop/tab changes.
+  bool photoRecoveryChecked = false;
   final Box<dynamic> box;
   static const prefix = 'tomato-photo-v1/';
   bool bookmarked(String id) =>

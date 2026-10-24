@@ -88,6 +88,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   String? error;
   AppIssue? issue;
   String activity = '';
+  Future<void>? _recoveryCheck;
   bool get supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
@@ -103,19 +104,26 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       error =
           'Saved scans could not be read. Existing records have not been removed.';
     }
-    if (supported) _recoverPhoto();
+    if (supported && !widget.store.photoRecoveryChecked) {
+      widget.store.photoRecoveryChecked = true;
+      if (widget.store.box.containsKey('pending-photo-crop-v1')) {
+        _recoveryCheck = _recoverPhoto();
+      }
+    }
   }
 
   Future<void> _recoverPhoto() async {
-    setState(() {
-      busy = true;
-      activity = 'Checking for an interrupted photo selection…';
-    });
+    var restoring = false;
     try {
       final lost = await picker.retrieveLostData();
       if (!mounted) return;
       if (lost.exception != null) throw lost.exception!;
       if (lost.files?.isNotEmpty ?? false) {
+        restoring = true;
+        setState(() {
+          busy = true;
+          activity = 'Restoring selected photo…';
+        });
         final pendingCrop = widget.store.box.get('pending-photo-crop-v1');
         final matches = Crop.values.where((c) => c.name == pendingCrop);
         if (matches.isEmpty || !classifier.supports(matches.first)) {
@@ -136,7 +144,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted && restoring) setState(() => busy = false);
     }
   }
 
@@ -148,6 +156,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         });
 
   Future<void> _choosePhoto() async {
+    await _recoveryCheck;
+    if (!mounted) return;
     if (!canScan) return;
     final selectedCrop = crop;
     setState(() {
@@ -206,6 +216,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         });
 
   Future<void> _captureAndAnalyze() async {
+    await _recoveryCheck;
+    if (!mounted) return;
     if (!canScan || widget.hardware == null) return;
     final selectedCrop = crop;
     setState(() {
@@ -297,6 +309,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
   }
 
   Future<void> _previewCamera() async {
+    await _recoveryCheck;
+    if (!mounted) return;
     if (busy || widget.hardware == null) return;
     setState(() {
       busy = true;

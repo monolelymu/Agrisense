@@ -123,7 +123,7 @@ void main() {
     expect(chart.data.lineBarsData.single.spots[1], FlSpot.nullSpot);
     expect(find.text('Reset view'), findsNothing);
     expect(find.text('Gas raw'), findsNothing);
-    expect(find.byType(CropPicker), findsNothing);
+    expect(find.byType(CropPicker), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<int>), findsOneWidget);
     await tester.tap(find.byType(DropdownButtonFormField<String>));
@@ -131,6 +131,13 @@ void main() {
     await tester.tap(find.text('Humidity').last);
     await tester.pumpAndSettle();
     expect(find.byType(LineChart), findsOneWidget);
+    expect(h.readings(Crop.tomato), hasLength(2));
+    await tester.ensureVisible(find.text('Eggplant'));
+    await tester.tap(find.text('Eggplant'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LineChart), findsNothing);
+    expect(find.text('No readings yet'), findsOneWidget);
+    expect(find.text('Tap a point to see its reading and time.'), findsNothing);
     expect(h.readings(Crop.tomato), hasLength(2));
     await tester.pumpWidget(const SizedBox.shrink());
     h.dispose();
