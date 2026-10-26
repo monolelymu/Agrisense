@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'models.dart';
 import 'automatic_capture.dart';
 import 'board_discovery.dart';
+import 'camera_stream.dart';
 
 class HardwareHttpException extends FormatException {
   const HardwareHttpException(this.status, super.message);
@@ -171,6 +172,84 @@ class HardwareClient {
   HardwareClient({HttpClient Function()? httpClientFactory})
     : _httpClientFactory = httpClientFactory ?? HttpClient.new;
   final HttpClient Function() _httpClientFactory;
+
+  CameraFrameConnection cameraStream(String address) {
+    final base = hardwareAddress(address);
+    if (base.port >= 65535) throw const FormatException('Invalid stream port.');
+    return CameraFrameConnection(
+      base.replace(port: base.port + 1, path: '/stream'),
+      factory: _httpClientFactory,
+    );
+  }
+
+  Future<void> panTilt(
+    String address, {
+    required String deviceId,
+    required String requestId,
+    required String action,
+  }) async {
+    if (!['up', 'down', 'left', 'right', 'center'].contains(action)) {
+      throw const FormatException('Invalid movement.');
+    }
+    final bytes = await _request(
+      address,
+      '/pan-tilt',
+      'application/json',
+      2048,
+      timeout: const Duration(seconds: 3),
+      form: {
+        'version': '1',
+        'device_id': deviceId,
+        'request_id': requestId,
+        'action': action,
+      },
+    );
+    final json = jsonDecode(utf8.decode(bytes));
+    if (json is! Map ||
+        json['version'] != 1 ||
+        json['device_id'] != deviceId ||
+        json['request_id'] != requestId ||
+        json['ready'] != true ||
+        json['pan'] is! int ||
+        json['tilt'] is! int ||
+        json['pan'] < 0 ||
+        json['pan'] > 180 ||
+        json['tilt'] < 0 ||
+        json['tilt'] > 180) {
+      throw const FormatException(
+        'Movement was not confirmed by the intended board.',
+      );
+    }
+  }
+
+  Future<void> appStatus(
+    String address, {
+    required String deviceId,
+    required String sessionId,
+    required bool cameraReady,
+    required String cameraId,
+  }) async {
+    final bytes = await _request(
+      address,
+      '/app-status',
+      'application/json',
+      2048,
+      timeout: const Duration(seconds: 3),
+      form: {
+        'version': '1',
+        'device_id': deviceId,
+        'session_id': sessionId,
+        'camera_ready': cameraReady ? '1' : '0',
+        'camera_device_id': cameraId,
+      },
+    );
+    final json = jsonDecode(utf8.decode(bytes));
+    if (json is! Map || json['version'] != 1 || json['device_id'] != deviceId) {
+      throw const FormatException(
+        'Status was not accepted by the intended board.',
+      );
+    }
+  }
 
   Future<Uint8List> _request(
     String address,

@@ -5,6 +5,7 @@ import '../data/hardware_client.dart';
 import '../data/board_discovery.dart';
 import '../data/app_alert_event.dart';
 import 'app_alerts_bridge.dart';
+import 'camera_live_controller.dart';
 import 'dart:io';
 import '../data/models.dart';
 import '../data/automatic_capture.dart';
@@ -48,6 +49,135 @@ class HardwareController extends ChangeNotifier {
   Future<void>? _alertSync;
   (Uint8List, DateTime)? lastCameraPhoto;
   Uint8List? lastCameraOriginal;
+  CameraLiveController? _live;
+  CameraLiveController get live => _live ??= CameraLiveController(
+    open: (endpoint) async {
+      final expected = _verified['camera'];
+      if (expected == null) throw AppIssue.identity;
+      final identity = await client.identity(endpoint);
+      if (identity.kitId != demoKitId ||
+          identity.role != 'camera' ||
+          identity.deviceId != expected.deviceId ||
+          !identity.ready ||
+          !identity.capabilities.contains('stream')) {
+        throw AppIssue.camera;
+      }
+      return client.cameraStream(endpoint);
+    },
+    clock: _clock,
+  );
+  final Set<Object> _cameraViews = {};
+  final Map<String, BoardIdentity> _verified = {};
+  DateTime? _cameraVerifiedAt;
+  String? movementStatus;
+  int _moveSequence = 0;
+  final String _controlSession = DateTime.now().microsecondsSinceEpoch
+      .toRadixString(16);
+  bool get canStream =>
+      allowLocalHttp &&
+      _verified['camera']?.ready == true &&
+      _verified['camera']!.capabilities.contains('stream');
+  bool get canMoveCamera =>
+      allowLocalHttp &&
+      _verified['sensor']?.ready == true &&
+      _verified['sensor']!.capabilities.contains('pan_tilt_v1');
+  void cameraView(Object owner, bool visible) {
+    if (_disposed) return;
+    if (visible) {
+      _cameraViews.add(owner);
+    } else {
+      _cameraViews.remove(owner);
+    }
+    _syncLive();
+  }
+
+  void _syncLive() {
+    if (_live == null && _cameraViews.isEmpty) return;
+    final nodes = assignments.values.where(
+      (nodes) => nodes['camera']?.isNotEmpty == true,
+    );
+    live.configure(
+      address: canStream && nodes.isNotEmpty ? nodes.first['camera'] : null,
+      visible: _cameraViews.isNotEmpty,
+      foreground: _foreground,
+      allowed: allowLocalHttp && canStream,
+    );
+  }
+
+  Future<void> moveCameraDirection(Crop crop, String action) =>
+      withPollingPaused(() async {
+        await waitForIdle();
+        _requireIdle();
+        _requireHttp();
+        if (!canMoveCamera ||
+            !['up', 'down', 'left', 'right', 'center'].contains(action)) {
+          throw AppIssue.unsupported;
+        }
+        final expected = assignments[crop]?['sensorId'];
+        if (expected == null) throw AppIssue.identity;
+        busy = true;
+        movementStatus = 'Moving camera…';
+        _idle = Completer<void>();
+        notifyListeners();
+        try {
+          final endpoint = address(crop, 'sensor');
+          final identity = await client.identity(endpoint);
+          if (identity.kitId != demoKitId ||
+              identity.deviceId != expected ||
+              identity.role != 'sensor' ||
+              !identity.ready ||
+              !identity.capabilities.contains('pan_tilt_v1')) {
+            throw AppIssue.identity;
+          }
+          final request = '$_controlSession-${++_moveSequence}';
+          await client.panTilt(
+            endpoint,
+            deviceId: expected,
+            requestId: request,
+            action: action,
+          );
+          movementStatus = action == 'center'
+              ? 'Camera returned to center.'
+              : 'Camera movement confirmed.';
+        } catch (_) {
+          movementStatus =
+              'Movement not confirmed. Check the board before trying again.';
+          rethrow; // Never automatically repeat a physical movement.
+        } finally {
+          busy = false;
+          _idle?.complete();
+          _idle = null;
+          if (!_disposed) notifyListeners();
+        }
+      });
+  Future<void> _sendAppStatus(Crop crop) async {
+    final identity = _verified['sensor'];
+    if (identity == null ||
+        !identity.capabilities.contains('app_status_v1') ||
+        !fresh(crop)) {
+      return;
+    }
+    final at = _clock();
+    bool recent(DateTime? date) =>
+        date != null &&
+        !at.isBefore(date) &&
+        at.difference(date).inSeconds < 30;
+    final ready =
+        _live?.fresh == true ||
+        recent(lastCameraPhoto?.$2) ||
+        recent(_cameraVerifiedAt);
+    try {
+      await client.appStatus(
+        address(crop, 'sensor'),
+        deviceId: identity.deviceId,
+        sessionId: _controlSession,
+        cameraReady: ready,
+        cameraId: assignments[crop]?['cameraId'] ?? '',
+      );
+    } catch (_) {
+      /* A missed heartbeat expires naturally; never interrupt monitoring. */
+    }
+  }
 
   Future<void> initializeAppAlerts() async {
     appAlerts.listen(syncAppAlerts);
@@ -257,6 +387,14 @@ class HardwareController extends ChangeNotifier {
         }
       }
       for (final role in ['sensor', 'camera']) {
+        if (found.containsKey(role)) {
+          _verified[role] = found[role]!.$2;
+        } else {
+          _verified.remove(role);
+        }
+      }
+      _cameraVerifiedAt = _verified['camera']?.ready == true ? _clock() : null;
+      for (final role in ['sensor', 'camera']) {
         final identity = found[role]?.$2;
         if (identity != null && identity.ready ||
             legacy.contains(role) && !conflicts.contains(role)) {
@@ -290,11 +428,14 @@ class HardwareController extends ChangeNotifier {
       backgroundWork = false;
       _idle?.complete();
       _idle = null;
+      _syncLive();
       if (!_disposed) notifyListeners();
     }
   }
 
-  Future<Uint8List> _cameraBytes(Crop crop) async {
+  Future<Uint8List> _cameraBytes(Crop crop) =>
+      live.withPaused(() => _stillBytes(crop));
+  Future<Uint8List> _stillBytes(Crop crop) async {
     if (_blockedRoles.contains('camera')) throw AppIssue.camera;
     final expected = assignments[crop]?['cameraId'];
     if (expected != null) {
@@ -1173,6 +1314,7 @@ class HardwareController extends ChangeNotifier {
 
   void setForeground(bool active, {bool resetDuration = false}) {
     _foreground = active;
+    _syncLive();
     if (active || backgroundActive) {
       _resumePolling();
     } else {
@@ -1400,6 +1542,24 @@ class HardwareController extends ChangeNotifier {
         ].contains(cameraStatus[crop]) &&
         !_clock().isBefore(_cameraRetryAt[crop] ?? now)) {
       await checkCamera(crop, quietly: true);
+    }
+    if (!_disposed &&
+        pollingActive &&
+        _requestedPollingCrop == crop &&
+        !busy &&
+        _verified['sensor']?.capabilities.contains('app_status_v1') == true) {
+      // Use the same operation lock as sampling/capture for the status heartbeat.
+      busy = true;
+      backgroundWork = true;
+      _idle = Completer<void>();
+      try {
+        await _sendAppStatus(crop);
+      } finally {
+        busy = false;
+        backgroundWork = false;
+        _idle?.complete();
+        _idle = null;
+      }
     }
   }
 
@@ -1740,6 +1900,7 @@ class HardwareController extends ChangeNotifier {
     if (busy) throw StateError('Wait for the current request to finish.');
     await box.put('allow-local-hardware-http', value);
     allowLocalHttp = value;
+    _syncLive();
     if (!value) {
       unawaited(discovery.cancel());
       stopPolling();
@@ -1751,6 +1912,8 @@ class HardwareController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _live?.dispose();
+    _cameraViews.clear();
     unawaited(discovery.cancel());
     stopPolling();
     super.dispose();

@@ -16,7 +16,8 @@ import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
 import 'crop_knowledge_screen.dart';
 import 'photo_processing.dart';
-import 'camera_photo_preview.dart';
+import 'camera_live_panel.dart';
+import 'camera_gamepad.dart';
 import 'simple_result_card.dart';
 import '../help/help_screen.dart';
 
@@ -457,30 +458,16 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (hardware.lastCameraPhoto != null) ...[
-                CameraPhotoPreview(
-                  bytes: hardware.lastCameraPhoto!.$1,
-                  at: hardware.lastCameraPhoto!.$2,
-                ),
-              ] else
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    children: [
-                      Icon(Icons.camera_alt_outlined, size: 48, color: accent),
-                      SizedBox(height: 12),
-                      Text('Your plant will appear here.'),
-                    ],
-                  ),
-                ),
+              CameraLivePanel(hardware: hardware),
               const SizedBox(height: 16),
               const Text('Move camera', textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              const Center(child: _CameraGamepad()),
-              const SizedBox(height: 8),
-              const Text(
-                'Camera movement unavailable.',
-                textAlign: TextAlign.center,
+              Center(
+                child: CameraGamepad(
+                  hardware: hardware,
+                  crop: crop,
+                  blocked: busy,
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -879,60 +866,6 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             ),
     );
   }
-}
-
-class _CameraGamepad extends StatelessWidget {
-  const _CameraGamepad();
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: muted.withValues(alpha: .35), width: 2),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton.filledTonal(
-          tooltip: 'Move camera left',
-          onPressed: null,
-          iconSize: 36,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(60, 60),
-            shape: BeveledRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          icon: const Icon(Icons.chevron_left_rounded),
-        ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          tooltip: 'Center camera',
-          onPressed: null,
-          iconSize: 28,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(56, 56),
-            shape: const CircleBorder(),
-          ),
-          icon: const Icon(Icons.my_location),
-        ),
-        const SizedBox(width: 8),
-        IconButton.filledTonal(
-          tooltip: 'Move camera right',
-          onPressed: null,
-          iconSize: 36,
-          style: IconButton.styleFrom(
-            minimumSize: const Size(60, 60),
-            shape: BeveledRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-      ],
-    ),
-  );
 }
 
 class TomatoResultCard extends StatelessWidget {

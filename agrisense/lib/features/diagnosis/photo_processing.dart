@@ -38,6 +38,9 @@ Uint8List leafPreview(img.Image image) {
 }
 
 Uint8List previewPhoto(Uint8List bytes) => leafPreview(decodeLeafPhoto(bytes));
+void validateCameraFrame(Uint8List bytes) {
+  decodeLeafPhoto(bytes);
+}
 
 /// Bound snapshot storage while retaining more detail than the list preview.
 Uint8List alertSnapshot(Uint8List bytes) {
