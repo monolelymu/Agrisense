@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'models.dart';
 import 'automatic_capture.dart';
+import 'board_discovery.dart';
 
 class HardwareHttpException extends FormatException {
   const HardwareHttpException(this.status, super.message);
@@ -178,6 +179,7 @@ class HardwareClient {
     int limit, {
     Map<String, String>? form,
     String? pairingCode,
+    Duration timeout = const Duration(seconds: 12),
   }) async {
     final uri = hardwareAddress(address).replace(path: path);
     final client = _httpClientFactory()
@@ -229,7 +231,7 @@ class HardwareClient {
           data.add(chunk);
         }
         return data.takeBytes();
-      })().timeout(const Duration(seconds: 12));
+      })().timeout(timeout);
     } finally {
       client.close(force: true);
     }
@@ -289,6 +291,21 @@ class HardwareClient {
       throw const FormatException('Invalid sensor JSON.');
     }
     return HardwareSample.fromDevice(json, crop);
+  }
+
+  Future<BoardIdentity> identity(String address) async {
+    final bytes = await _request(
+      address,
+      '/identity',
+      'application/json',
+      4096,
+      timeout: const Duration(seconds: 3),
+    );
+    final json = jsonDecode(utf8.decode(bytes));
+    if (json is! Map<String, dynamic>) {
+      throw const FormatException('Invalid device identity.');
+    }
+    return BoardIdentity.fromJson(json);
   }
 
   Future<Uint8List> capture(String address) =>

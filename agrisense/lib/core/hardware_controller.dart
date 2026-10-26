@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 import '../data/hardware_client.dart';
+import '../data/board_discovery.dart';
 import '../data/models.dart';
 import '../data/automatic_capture.dart';
 import '../data/daily_photo_schedule.dart';
@@ -25,19 +26,192 @@ class HardwareController extends ChangeNotifier {
     TomatoScanStore? scanStore,
     MonitoringAlertStore? alertStore,
     MonitoringServiceBridge? service,
+    BoardDiscovery? discovery,
   }) : client = client ?? HardwareClient(),
        notifications = notifications ?? SensorNotifications(),
        _clock = clock ?? DateTime.now,
        classifier = classifier ?? TomatoClassifier(),
        scanStore = scanStore ?? TomatoScanStore(box),
        alertStore = alertStore ?? MonitoringAlertStore(box),
-       service = service ?? MonitoringServiceBridge();
+       service = service ?? MonitoringServiceBridge(),
+       discovery = discovery ?? BoardDiscovery();
   final Box<dynamic> box;
   final HardwareClient client;
   final TomatoClassifier classifier;
   final TomatoScanStore scanStore;
   final MonitoringAlertStore alertStore;
   final MonitoringServiceBridge service;
+  final BoardDiscovery discovery;
+  Future<void>? _connecting;
+  bool _autoDiscovery = false;
+  DateTime? _nextDiscovery;
+  final Set<String> _blockedRoles = {};
+  String? connectionStatus;
+
+  Future<void> connectKit(Crop crop, {bool quietly = false}) {
+    return _connecting ??= _connectKit(
+      crop,
+      quietly: quietly,
+    ).whenComplete(() => _connecting = null);
+  }
+
+  Future<void> _connectKit(Crop crop, {required bool quietly}) async {
+    await waitForIdle();
+    if (_disposed) return;
+    _requireHttp();
+    _autoDiscovery = true;
+    _nextDiscovery = _clock().add(const Duration(seconds: 30));
+    busy = true;
+    backgroundWork = quietly;
+    _idle = Completer<void>();
+    connectionStatus = 'Looking for your AgriSense kit…';
+    notifyListeners();
+    final found = <String, (String, BoardIdentity)>{};
+    final legacy = <String>{};
+    final conflicts = <String>{};
+    final checked = <String>{};
+    final candidates = <String, Map<String, (String, BoardIdentity)>>{};
+    try {
+      for (final role in ['sensor', 'camera']) {
+        final saved = address(crop, role);
+        if (saved.isEmpty) continue;
+        try {
+          final identity = await client.identity(saved);
+          checked.add(saved);
+          final expected = assignments[crop]?['${role}Id'];
+          if (identity.kitId == demoKitId &&
+              identity.role == role &&
+              (expected == null || expected == identity.deviceId)) {
+            found[role] = (saved, identity);
+          }
+        } on HardwareHttpException catch (error) {
+          // Existing manually configured firmware remains usable, but is never
+          // automatically assigned from an unverified discovery advertisement.
+          if (error.status == 404 || error.status == 405) legacy.add(role);
+        } catch (_) {
+          /* Discovery can recover an address changed by DHCP. */
+        }
+      }
+      var discoveryFailed = false;
+      if (found.length < 2 && discovery.supported) {
+        try {
+          final addresses = await discovery.discover();
+          for (final candidate in addresses.toSet()) {
+            if (_disposed || !allowLocalHttp) return;
+            String normalized;
+            try {
+              normalized = hardwareAddress(candidate).toString();
+            } catch (_) {
+              continue;
+            }
+            if (checked.contains(normalized)) continue;
+            try {
+              final identity = await client.identity(normalized);
+              if (identity.kitId != demoKitId) continue;
+              final expected = assignments[crop]?['${identity.role}Id'];
+              if (expected != null && expected != identity.deviceId) {
+                if (!found.containsKey(identity.role)) {
+                  conflicts.add(identity.role);
+                }
+                continue;
+              }
+              candidates.putIfAbsent(
+                identity.role,
+                () => {},
+              )[identity.deviceId] = (
+                normalized,
+                identity,
+              );
+            } catch (_) {
+              /* Reject unreachable or malformed candidates. */
+            }
+          }
+          for (final role in ['sensor', 'camera']) {
+            final matches = candidates[role];
+            if (matches == null || matches.isEmpty) continue;
+            if (matches.length > 1 ||
+                (found[role] != null &&
+                    !matches.containsKey(found[role]!.$2.deviceId))) {
+              conflicts.add(role);
+              found.remove(role);
+            } else {
+              found[role] = matches.values.single;
+              conflicts.remove(role);
+            }
+          }
+        } catch (_) {
+          discoveryFailed = true;
+        }
+      }
+      if (_disposed || !allowLocalHttp) return;
+      final next = Map<String, String>.of(assignments[crop] ?? {});
+      var sensorCrop = _sensorCrop ?? crop;
+      for (final entry in found.entries) {
+        next[entry.key] = entry.value.$1;
+        next['${entry.key}Id'] = entry.value.$2.deviceId;
+        if (entry.key == 'sensor') sensorCrop = entry.value.$2.sensorCrop!;
+      }
+      if (found.isNotEmpty) {
+        await box.put('shared-kit-v1', {
+          'sensorCrop': sensorCrop.name,
+          'nodes': next,
+        });
+        _sensorCrop = sensorCrop;
+        for (final value in Crop.values) {
+          assignments[value] = Map.of(next);
+        }
+      }
+      for (final role in ['sensor', 'camera']) {
+        final identity = found[role]?.$2;
+        if (identity != null && identity.ready ||
+            legacy.contains(role) && !conflicts.contains(role)) {
+          _blockedRoles.remove(role);
+        } else {
+          _blockedRoles.add(role);
+        }
+        if (role == 'camera') {
+          cameraStatus[crop] = identity?.ready == true
+              ? 'Received'
+              : 'Unavailable';
+        } else if (identity == null || !identity.ready) {
+          status[crop] = 'Unavailable';
+        }
+      }
+      connectionStatus = conflicts.isNotEmpty
+          ? 'Conflicting ${conflicts.join(' and ')} identities. Keep only your intended kit powered and retry.'
+          : found.isEmpty && legacy.isEmpty
+          ? discoveryFailed
+                ? 'Discovery could not run. Check phone Wi-Fi and local network permissions, then retry.'
+                : 'No kit found. Power both boards and join the same pocket Wi-Fi, then retry.'
+          : found.length == 2 && _blockedRoles.isEmpty
+          ? 'Kit found. Monitoring will continue automatically.'
+          : legacy.isNotEmpty
+          ? 'Using saved board addresses. Flash the discovery firmware for automatic address recovery.'
+          : 'Kit partly connected. Missing or unready boards will be retried automatically.';
+    } finally {
+      busy = false;
+      backgroundWork = false;
+      _idle?.complete();
+      _idle = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  Future<Uint8List> _cameraBytes(Crop crop) async {
+    if (_blockedRoles.contains('camera')) throw AppIssue.camera;
+    final expected = assignments[crop]?['cameraId'];
+    if (expected != null) {
+      final identity = await client.identity(address(crop, 'camera'));
+      if (identity.deviceId != expected ||
+          identity.kitId != demoKitId ||
+          identity.role != 'camera' ||
+          !identity.ready) {
+        throw AppIssue.camera;
+      }
+    }
+    return client.capture(address(crop, 'camera'));
+  }
+
   final List<MonitoringAlert> alerts = [];
   final Map<String, TomatoScan> _pendingResults = {};
   int _run = 0;
@@ -512,6 +686,10 @@ class HardwareController extends ChangeNotifier {
     if (busy || _disposed || !allowLocalHttp) return;
     final endpoint = address(crop, 'sensor');
     if (endpoint.isEmpty) return;
+    if (_blockedRoles.contains('sensor')) {
+      status[crop] = 'Unavailable';
+      return;
+    }
     busy = true;
     backgroundWork = true;
     _idle = Completer<void>();
@@ -709,7 +887,7 @@ class HardwareController extends ChangeNotifier {
       if (endpoint.isEmpty) throw AppIssue.assignment;
       _lastKitCaptureSlot = _slot(crop, _clock());
       try {
-        final bytes = await _capture(endpoint);
+        final bytes = await _capture(crop);
         cameraStatus[crop] = 'Received';
         return bytes;
       } catch (_) {
@@ -719,11 +897,11 @@ class HardwareController extends ChangeNotifier {
     });
   }
 
-  Future<Uint8List> _capture(String endpoint) async {
+  Future<Uint8List> _capture(Crop crop) async {
     busy = true;
     notifyListeners();
     try {
-      return await client.capture(endpoint);
+      return await _cameraBytes(crop);
     } finally {
       busy = false;
       if (!_disposed) notifyListeners();
@@ -774,7 +952,9 @@ class HardwareController extends ChangeNotifier {
     await waitForIdle();
     _requireIdle();
     _requireHttp();
-    if (address(crop, 'sensor').isEmpty && address(crop, 'camera').isEmpty) {
+    if (!_autoDiscovery &&
+        address(crop, 'sensor').isEmpty &&
+        address(crop, 'camera').isEmpty) {
       throw AppIssue.assignment;
     }
     await _saveSharedKit(crop);
@@ -811,7 +991,9 @@ class HardwareController extends ChangeNotifier {
         _pollingPauses > 0 ||
         !allowLocalHttp ||
         crop == null ||
-        (address(crop, 'sensor').isEmpty && address(crop, 'camera').isEmpty) ||
+        (!_autoDiscovery &&
+            address(crop, 'sensor').isEmpty &&
+            address(crop, 'camera').isEmpty) ||
         _timer != null) {
       return;
     }
@@ -1004,10 +1186,7 @@ class HardwareController extends ChangeNotifier {
     _idle = Completer<void>();
     if (!_disposed) notifyListeners();
     try {
-      await compute(
-        previewPhoto,
-        await client.capture(address(crop, 'camera')),
-      );
+      await compute(previewPhoto, await _cameraBytes(crop));
       cameraStatus[crop] = 'Received';
       if (automaticStatus?.startsWith('Camera reconnecting') == true) {
         automaticStatus = 'Camera reconnected. Scheduled checks will continue.';
@@ -1027,6 +1206,16 @@ class HardwareController extends ChangeNotifier {
   Future<void> monitorTick(Crop crop) async {
     if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
       return;
+    }
+    if (_autoDiscovery &&
+        !(_clock().isBefore(_nextDiscovery ?? _clock())) &&
+        (address(crop, 'sensor').isEmpty ||
+            address(crop, 'camera').isEmpty ||
+            status[crop] == 'Unavailable' ||
+            cameraStatus[crop] == 'Unavailable' ||
+            _blockedRoles.isNotEmpty)) {
+      await connectKit(crop, quietly: true);
+      if (_disposed || !pollingActive || _requestedPollingCrop != crop) return;
     }
     final now = _clock();
     final key = _slot(crop, now);
@@ -1069,7 +1258,7 @@ class HardwareController extends ChangeNotifier {
     var stage = 'capture';
     final rawKey = 'scheduled-original-v1/$id';
     try {
-      final bytes = await client.capture(endpoint);
+      final bytes = await _cameraBytes(crop);
       final capturedAt = _clock();
       await compute(previewPhoto, bytes);
       cameraStatus[crop] = 'Received';
@@ -1221,7 +1410,7 @@ class HardwareController extends ChangeNotifier {
           return;
         }
         _lastKitCaptureSlot = _slot(alert.crop, _clock());
-        bytes = await client.capture(alert.camera);
+        bytes = await _cameraBytes(alert.crop);
         // Validate originals before storage and inference. Do not resize model input here.
         await compute(previewPhoto, bytes);
         cameraStatus[alert.crop] = 'Received';
@@ -1362,6 +1551,7 @@ class HardwareController extends ChangeNotifier {
     await box.put('allow-local-hardware-http', value);
     allowLocalHttp = value;
     if (!value) {
+      unawaited(discovery.cancel());
       stopPolling();
       status.clear();
     }
@@ -1371,6 +1561,7 @@ class HardwareController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(discovery.cancel());
     stopPolling();
     super.dispose();
   }

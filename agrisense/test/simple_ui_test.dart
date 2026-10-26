@@ -7,6 +7,7 @@ import 'package:agrisense/core/theme.dart';
 import 'package:agrisense/core/widgets.dart';
 import 'package:agrisense/features/monitoring/notification_settings_screen.dart';
 import 'package:agrisense/data/hardware_client.dart';
+import 'package:agrisense/data/board_discovery.dart';
 import 'package:agrisense/data/models.dart';
 import 'package:agrisense/data/daily_photo_schedule.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
@@ -25,6 +26,16 @@ class _ExistingBoards extends HardwareClient {
   int reads = 0, photos = 0;
   bool badPhoto = false;
   Completer<void>? readGate;
+
+  @override
+  Future<BoardIdentity> identity(String address) async => BoardIdentity(
+    kitId: demoKitId,
+    deviceId: address.endsWith('.20') ? 'sensor-one' : '001122334455',
+    role: address.endsWith('.20') ? 'sensor' : 'camera',
+    ready: address.endsWith('.20') || !badPhoto,
+    capabilities: [address.endsWith('.20') ? 'readings' : 'capture'],
+    sensorCrop: address.endsWith('.20') ? Crop.tomato : null,
+  );
 
   @override
   Future<HardwareSample> read(String address, Crop crop) async {
@@ -173,12 +184,12 @@ void main() {
       background,
     );
     await tester.ensureVisible(find.text('Connect AgriSense'));
-    await tester.tap(find.text('Connect AgriSense'));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Connect AgriSense'));
+      await hardware.started.future.timeout(const Duration(seconds: 10));
+    });
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Your kit connection has not been configured'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('No kit found'), findsOneWidget);
     expect(find.text('Allow local hardware access'), findsNothing);
     expect(client.reads + client.photos, 0);
     expect(hardware.allowLocalHttp, isTrue);
@@ -602,37 +613,38 @@ void main() {
   });
 
   for (final badPhoto in [false, true]) {
-    testWidgets('Connect checks saved legacy boards; invalid photo=$badPhoto', (
-      tester,
-    ) async {
-      hardware.allowLocalHttp = true;
-      hardware.assignments[Crop.tomato] = {
-        'sensor': 'http://192.168.1.20',
-        'sensorId': 'sensor-one',
-        'camera': 'http://192.168.1.21',
-      };
-      client.badPhoto = badPhoto;
-      await show(tester);
-      expect(find.text('Sensor: Not checked. Tap Connect.'), findsOneWidget);
-      await tester.runAsync(() async {
-        await tester.tap(find.text('Connect AgriSense'));
-        await hardware.started.future.timeout(const Duration(seconds: 10));
-      });
-      await tester.pumpAndSettle();
-      expect(client.photos, 1);
-      expect(client.reads, greaterThanOrEqualTo(1));
-      expect(hardware.polling, isTrue);
-      expect(find.text('Sensor: Receiving readings'), findsOneWidget);
-      expect(
-        find.textContaining(
-          badPhoto
-              ? 'Camera: Reconnecting…'
-              : 'Camera: Photo connection checked',
-        ),
-        findsOneWidget,
-      );
-      expect(hardware.address(Crop.tomato, 'camera'), 'http://192.168.1.21');
-      await tester.pumpWidget(const SizedBox.shrink());
-    });
+    testWidgets(
+      'Connect verifies saved boards without capture; unready=$badPhoto',
+      (tester) async {
+        hardware.allowLocalHttp = true;
+        hardware.assignments[Crop.tomato] = {
+          'sensor': 'http://192.168.1.20',
+          'sensorId': 'sensor-one',
+          'camera': 'http://192.168.1.21',
+        };
+        client.badPhoto = badPhoto;
+        await show(tester);
+        expect(find.text('Sensor: Not checked. Tap Connect.'), findsOneWidget);
+        await tester.runAsync(() async {
+          await tester.tap(find.text('Connect AgriSense'));
+          await hardware.started.future.timeout(const Duration(seconds: 10));
+        });
+        await tester.pumpAndSettle();
+        expect(client.photos, 0);
+        expect(client.reads, greaterThanOrEqualTo(1));
+        expect(hardware.polling, isTrue);
+        expect(find.text('Sensor: Receiving readings'), findsOneWidget);
+        expect(
+          find.textContaining(
+            badPhoto
+                ? 'Camera: Reconnecting…'
+                : 'Camera: Photo connection checked',
+          ),
+          findsOneWidget,
+        );
+        expect(hardware.address(Crop.tomato, 'camera'), 'http://192.168.1.21');
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+    );
   }
 }

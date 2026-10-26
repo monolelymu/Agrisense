@@ -24,6 +24,15 @@ class AgriSenseApplication : Application() {
         sharedEngine?.let { return it }
         val engine = FlutterEngine(this)
         sharedEngine = engine
+        val discovery = KitDiscovery(this)
+        MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/discovery")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "discover" -> discovery.discover(result)
+                    "cancel" -> { discovery.cancel(); result.success(null) }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/external_links")
             .setMethodCallHandler { call, result ->
                 if (call.method != "open") {

@@ -490,6 +490,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 Text(connectionNotice!),
                 const SizedBox(height: 12),
               ],
+              if (h.connectionStatus != null) ...[
+                Text(h.connectionStatus!),
+                const SizedBox(height: 12),
+              ],
               _connectionRow(
                 Icons.sensors,
                 'Sensor',
@@ -545,7 +549,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (r == null)
         const EmptyState(
           'No sensor readings yet',
-          'Tap Connect to check your saved sensor. First time? Open Device setup.',
+            'Power your kit, join the same pocket Wi-Fi, then tap Connect.',
         )
       else ...[
         Tag(h.fresh(crop) ? 'RECENT SENSOR READING' : 'SAVED SENSOR READING'),
@@ -612,20 +616,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     ];
   }
 
-  // Reuse the installed firmware's existing endpoints. Discovery is not assumed.
+  // Verify saved identities first; discover missing/moved boards on this Wi-Fi.
   Future<void> _connect() async {
     if (!h.allowLocalHttp) {
       setState(
         () => connectionNotice =
             'Local hardware access is off. Enable it in Settings to connect.',
-      );
-      return;
-    }
-    if (h.address(crop, 'sensor').isEmpty &&
-        h.address(crop, 'camera').isEmpty) {
-      setState(
-        () => connectionNotice =
-            'Your kit connection has not been configured yet. Automatic device discovery is not available in this version.',
       );
       return;
     }
@@ -640,11 +636,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           /* Monitoring can run if notifications are declined. */
         }
       }
+      await h.connectKit(selected);
       if (h.address(selected, 'sensor').isNotEmpty) {
         await h.refresh(selected);
       }
       final camera = h.address(selected, 'camera');
-      if (camera.isNotEmpty) {
+      if (camera.isNotEmpty && h.assignments[selected]?['cameraId'] == null) {
         await h.checkCamera(selected);
       }
       if (!h.polling) await h.startMonitoring(selected);
