@@ -46,7 +46,7 @@ void main() {
     expect(legacy.capturePhoto, isTrue);
   });
   test(
-    'Sensitive baseline is fixed, clamped, and excludes missing/uncalibrated metrics',
+    'Sensitive baseline is fixed and clamped; soil uses raw changes without inventing percentages',
     () {
       final now = DateTime(2026);
       final sensitive = SensorAlertSettings.sensitive(
@@ -58,10 +58,12 @@ void main() {
       expect(sensitive.rules[0].maximum, 80);
       expect(sensitive.rules[1].minimum, 0);
       expect(sensitive.rules[1].maximum, 7);
-      expect(sensitive.rules[2].enabled, isFalse);
-      expect(sensitive.repeat, isTrue);
+      expect(sensitive.rules[2].enabled, isTrue);
+      expect(sensitive.soilRaw, isTrue);
+      expect(sensitive.rules[2].minimum, 850);
+      expect(sensitive.repeat, isFalse);
       expect(sensitive.duration, 10);
-      expect(sensitive.cooldown, 30);
+      expect(sensitive.cooldown, 60);
       expect(
         SensorAlertSettings.fromJson(sensitive.toJson()).baseline!['sample_id'],
         '1',
@@ -73,13 +75,12 @@ void main() {
         ),
         throwsFormatException,
       );
-      expect(
-        () => SensorAlertSettings.sensitive(
-          reading('1', now, temp: null, humidity: null, calibrated: false),
-          now,
-        ),
-        throwsFormatException,
+      final soilOnly = SensorAlertSettings.sensitive(
+        reading('2', now, temp: null, humidity: null, calibrated: false),
+        now,
       );
+      expect(soilOnly.baseline!.containsKey('metric_0'), isFalse);
+      expect(soilOnly.baseline!.containsKey('metric_2'), isTrue);
     },
   );
   test(
@@ -137,7 +138,7 @@ void main() {
   test(
     'alerts persist, retain newest 500, and do not touch old scans',
     () async {
-      final dir = await Directory.systemTemp.createTemp('monitoring-alert-');
+      final dir = await Directory('test').createTemp('monitoring-alert-');
       Hive.init(dir.path);
       final box = await Hive.openBox<dynamic>('events');
       try {

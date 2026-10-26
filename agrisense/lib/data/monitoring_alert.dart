@@ -29,6 +29,9 @@ class MonitoringAlert {
       const ['pending', 'capturing', 'analyzing', 'saving'].contains(state);
   String get reason => metrics
       .map((i) {
+        if (i == 2 && settings.soilRaw) {
+          return 'Soil moisture changed. Check your plant’s soil.';
+        }
         final value = [sample.temperature, sample.humidity, sample.soil][i];
         final rule = settings.rules[i];
         return '${const ['Temperature', 'Humidity', 'Soil moisture'][i]} ${value?.toStringAsFixed(1) ?? 'unavailable'} '

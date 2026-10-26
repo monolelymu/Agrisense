@@ -15,6 +15,7 @@ Future<void> main() async {
     final hardware = HardwareController(box)..load();
     await hardware.reconcileAlerts();
     hardware.bindService();
+    await hardware.initializeAppAlerts();
     runApp(HardwareApp(scans: TomatoScanStore(box), hardware: hardware));
   } catch (error) {
     runApp(

@@ -182,7 +182,7 @@ void main() {
     late ReadingStub client;
     late DateTime now;
     setUp(() async {
-      dir = await Directory.systemTemp.createTemp('agrisense-notifications-');
+      dir = await Directory('test').createTemp('agrisense-notifications-');
       Hive.init(dir.path);
       box = await Hive.openBox<dynamic>('notifications');
       notifications = NotificationStub();
@@ -357,7 +357,7 @@ void main() {
         expect(client.captures, 0);
         expect(
           notifications.messages.single,
-          contains('Tomato: sensor limit exceeded'),
+          contains('Tomato: sensor warning'),
         );
         await h.refresh(Crop.tomato);
         expect(notifications.messages.length, 1);

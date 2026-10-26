@@ -124,7 +124,7 @@ void main() {
     rules: rules,
   );
   setUp(() async {
-    dir = await Directory.systemTemp.createTemp('auto-diagnosis-');
+    dir = await Directory('test').createTemp('auto-diagnosis-');
     Hive.init(dir.path);
     box = await Hive.openBox<dynamic>('diagnosis');
     now = DateTime(2026);

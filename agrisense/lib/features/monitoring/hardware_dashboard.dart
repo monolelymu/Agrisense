@@ -1,7 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../core/hardware_controller.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
@@ -10,7 +9,6 @@ import '../../data/models.dart';
 import '../../data/alert_photo.dart';
 import '../diagnosis/tomato_scan.dart';
 import '../diagnosis/tomato_scan_screen.dart';
-import '../diagnosis/photo_processing.dart';
 import 'monitoring_settings_screen.dart';
 import 'notification_settings_screen.dart';
 import '../help/help_screen.dart';
@@ -22,6 +20,12 @@ import '../diagnosis/crop_knowledge_screen.dart';
 import '../diagnosis/simple_result_card.dart';
 import '../../data/daily_photo_schedule.dart';
 import 'photo_times_sheet.dart';
+import 'app_alerts_screen.dart';
+import 'watering_reminder_card.dart';
+import '../../data/app_alert_event.dart';
+import '../diagnosis/camera_photo_preview.dart';
+import 'dart:async';
+import 'dart:typed_data';
 
 class HardwareApp extends StatelessWidget {
   const HardwareApp({
@@ -82,6 +86,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   bool saving = false;
   bool cameraBusy = false;
   bool _askedForNotifications = false;
+  bool _openingAlert = false;
   String? connectionNotice;
   int _scanRevision = -1;
   HardwareController get h => widget.hardware;
@@ -183,12 +188,32 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(h.syncAppAlerts());
     h.setForeground(
       state == AppLifecycleState.resumed,
       resetDuration:
           state == AppLifecycleState.paused ||
           state == AppLifecycleState.hidden,
     );
+  }
+
+  Future<void> _alerts([AlertTarget? target]) async {
+    if (_openingAlert || !mounted) return;
+    _openingAlert = true;
+    try {
+      if (target != null) {
+        setState(() => page = 0);
+        await h.acknowledgeAlertTarget(target.token);
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AppAlertsScreen(hardware: h, initialTarget: target),
+        ),
+      );
+    } finally {
+      _openingAlert = false;
+    }
   }
 
   @override
@@ -328,7 +353,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     final selected = crop;
     Uint8List? preview;
     final success = await _saveAction(() async {
-      preview = await compute(previewPhoto, await h.capture(selected));
+      preview = await h.capture(selected);
     }, fallback: AppIssue.camera);
     if (!success || !mounted) return;
     await showDialog<void>(
@@ -338,7 +363,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.memory(preview!, height: 240, fit: BoxFit.contain),
+            CameraPhotoPreview(bytes: preview!, at: h.lastCameraPhoto!.$2),
             const Text(
               'Connection test only. This photo has not been diagnosed or saved.',
             ),
@@ -479,7 +504,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                         ? 'Checking your devices…'
                         : h.polling &&
                               (h.status[crop] == 'Unavailable' ||
-                                  h.cameraStatus[crop] == 'Unavailable')
+                                  const [
+                                    'Unavailable',
+                                    'Unreachable',
+                                    'Timed out',
+                                    'Camera unavailable',
+                                    'Capture failed',
+                                  ].contains(h.cameraStatus[crop]))
                         ? 'Retry connection'
                         : 'Connect AgriSense',
                   ),
@@ -512,11 +543,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                 'Camera',
                 h.address(crop, 'camera').isEmpty
                     ? 'Not set up'
-                    : h.cameraStatus[crop] == 'Received'
-                    ? 'Photo connection checked'
-                    : h.cameraStatus[crop] == 'Unavailable'
-                    ? 'Reconnecting…'
-                    : 'Not checked. Tap Connect.',
+                    : h.cameraMessage(crop),
                 h.cameraStatus[crop] == 'Received',
               ),
               const SizedBox(height: 8),
@@ -541,6 +568,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       const SizedBox(height: 24),
       _scheduleCard(),
       const SizedBox(height: 24),
+      WateringReminderCard(hardware: h),
+      const SizedBox(height: 24),
       Text(
         '${crop.label} overview',
         style: Theme.of(context).textTheme.titleLarge,
@@ -549,7 +578,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (r == null)
         const EmptyState(
           'No sensor readings yet',
-            'Power your kit, join the same pocket Wi-Fi, then tap Connect.',
+          'Power your kit, join the same pocket Wi-Fi, then tap Connect.',
         )
       else ...[
         Tag(h.fresh(crop) ? 'RECENT SENSOR READING' : 'SAVED SENSOR READING'),
@@ -565,11 +594,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             _metric(
               'Soil moisture',
               !r.soilCalibrated
-                  ? 'Not calibrated'
+                  ? 'Monitoring'
                   : r.soil == null
                   ? 'Unavailable'
                   : '${r.soil!.toStringAsFixed(0)}%',
-              r.soilCalibrated ? 'Calibrated by device' : 'Needs calibration',
+              r.soilCalibrated ? 'Soil moisture' : 'Warnings track changes',
             ),
             _metric(
               'Temperature',
@@ -1145,7 +1174,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           const SizedBox(height: 12),
           Text(
             h.notificationSettings[crop]?.awaitingLimits == true
-                ? 'Sensor photos: waiting for alert limits.'
+                ? 'Sensor alerts are on. Waiting for the first fresh readings.'
                 : h.notificationSettings[crop]?.enabled == true
                 ? 'Sensor alerts are on.'
                 : 'Sensor alerts are off.',
@@ -1559,6 +1588,13 @@ class _HardwareDashboardState extends State<HardwareDashboard>
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: h,
     builder: (context, _) {
+      if (h.alertTarget != null && !_openingAlert && !locked) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !locked && h.alertTarget != null) {
+            unawaited(_alerts(h.alertTarget));
+          }
+        });
+      }
       if (_scanRevision != h.revision) {
         _loadScans();
         _scanRevision = h.revision;
@@ -1575,7 +1611,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           appBar: AppBar(
             leading: page >= 3
                 ? BackButton(onPressed: locked ? null : _back)
-                : null,
+                : IconButton(
+                    tooltip: 'Alerts',
+                    onPressed: () => _alerts(),
+                    icon: const Icon(Icons.notifications_outlined),
+                  ),
             title: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

@@ -5,14 +5,26 @@ import '../data/automatic_capture.dart';
 import '../data/hardware_client.dart';
 
 class SensorAlertSettings {
-  // New configurations request automatic checks, but disabled measurements
-  // cannot trigger until the user saves valid limits.
+  // Fresh valid readings initialize new warning limits without a setup wizard.
   static const initial = SensorAlertSettings(
     enabled: true,
     capturePhoto: true,
     analyzePhoto: true,
+    autoBaseline: true,
+    soilRaw: true,
+    duration: 10,
+    cooldown: 60,
+    preset: 'sensitive',
+    rules: [
+      CaptureRule(true, -40, 80),
+      CaptureRule(true, 0, 100),
+      CaptureRule(true, 0, 4095),
+    ],
   );
-  bool get awaitingLimits => enabled && !rules.any((rule) => rule.enabled);
+  bool get awaitingLimits =>
+      enabled &&
+      ((autoBaseline && baseline == null) ||
+          !rules.any((rule) => rule.enabled));
   const SensorAlertSettings({
     this.enabled = false,
     this.capturePhoto = false,
@@ -21,6 +33,9 @@ class SensorAlertSettings {
     this.repeat = false,
     this.preset = 'custom',
     this.baseline,
+    this.autoBaseline = false,
+    this.soilRaw = false,
+    this.soilDelta = 150,
     this.duration = 30,
     this.cooldown = 300,
     this.rules = const [
@@ -31,6 +46,8 @@ class SensorAlertSettings {
   });
   final bool enabled, capturePhoto, analyzePhoto, showNotifications, repeat;
   final String preset;
+  final bool autoBaseline, soilRaw;
+  final double soilDelta;
   final Map<String, dynamic>? baseline;
   final int duration, cooldown;
   final List<CaptureRule> rules;
@@ -45,7 +62,20 @@ class SensorAlertSettings {
       );
     }
     for (var i = 0; i < rules.length; i++) {
-      rules[i].validate(i);
+      if (i == 2 && soilRaw) {
+        if (!rules[i].minimum.isFinite ||
+            !rules[i].maximum.isFinite ||
+            rules[i].minimum < 0 ||
+            rules[i].maximum > 4095 ||
+            rules[i].minimum >= rules[i].maximum) {
+          throw const FormatException('Check soil warning sensitivity.');
+        }
+      } else {
+        rules[i].validate(i);
+      }
+    }
+    if (!soilDelta.isFinite || soilDelta < 25 || soilDelta > 1000) {
+      throw const FormatException('Check soil warning sensitivity.');
     }
     if (enabled && !rules.any((r) => r.enabled)) {
       throw const FormatException('Select at least one measurement.');
@@ -60,6 +90,67 @@ class SensorAlertSettings {
     }
   }
 
+  SensorAlertSettings initializeFrom(HardwareSample sample) {
+    final saved = Map<String, dynamic>.from(baseline ?? sample.toJson());
+    final values = [
+      sample.temperature,
+      sample.humidity,
+      soilRaw
+          ? sample.soilRaw.toDouble()
+          : sample.soilCalibrated
+          ? sample.soil
+          : null,
+    ];
+    final next = List<CaptureRule>.of(rules);
+    var changed = false;
+    for (var i = 0; i < 3; i++) {
+      if (saved.containsKey('metric_$i') || saved['manual_$i'] == true) {
+        continue;
+      }
+      final value = values[i];
+      final low = i == 0 ? -40.0 : 0.0,
+          high = i == 0
+              ? 80.0
+              : i == 2 && soilRaw
+              ? 4095.0
+              : 100.0;
+      if (value == null || !value.isFinite || value < low || value > high) {
+        continue;
+      }
+      final offset = i == 0
+          ? 1.0
+          : i == 1
+          ? 5.0
+          : soilRaw
+          ? soilDelta
+          : 5.0;
+      next[i] = CaptureRule(
+        rules[i].enabled,
+        math.max(low, value - offset),
+        math.min(high, value + offset),
+      );
+      saved['metric_$i'] = value;
+      changed = true;
+    }
+    if (!changed) return this;
+    saved['received_at'] = sample.receivedAt.toIso8601String();
+    return SensorAlertSettings(
+      enabled: enabled,
+      capturePhoto: capturePhoto,
+      analyzePhoto: analyzePhoto,
+      showNotifications: showNotifications,
+      repeat: repeat,
+      preset: preset,
+      autoBaseline: autoBaseline,
+      soilRaw: soilRaw,
+      soilDelta: soilDelta,
+      baseline: saved,
+      duration: duration,
+      cooldown: cooldown,
+      rules: next,
+    );
+  }
+
   static SensorAlertSettings sensitive(HardwareSample sample, DateTime now) {
     final age = now.difference(sample.receivedAt);
     if (age.isNegative || age.inSeconds > 30) {
@@ -67,40 +158,19 @@ class SensorAlertSettings {
         'Read a fresh sensor sample before applying Sensitive.',
       );
     }
-    final values = [
-      sample.temperature,
-      sample.humidity,
-      sample.soilCalibrated ? sample.soil : null,
-    ];
-    final rules = <CaptureRule>[];
-    for (var i = 0; i < 3; i++) {
-      final value = values[i];
-      final lower = i == 0 ? -40.0 : 0.0, upper = i == 0 ? 80.0 : 100.0;
-      final valid =
-          value != null && value.isFinite && value >= lower && value <= upper;
-      final offset = i == 0 ? 1.0 : 5.0;
-      rules.add(
-        CaptureRule(
-          valid,
-          valid ? math.max(lower, value - offset) : lower,
-          valid ? math.min(upper, value + offset) : upper,
-        ),
-      );
-    }
-    if (!rules.any((r) => r.enabled)) {
-      throw const FormatException(
-        'No usable measurements for Sensitive. Read sensors again.',
-      );
-    }
-    return SensorAlertSettings(
+    return const SensorAlertSettings(
       enabled: true,
-      duration: 10,
-      cooldown: 30,
-      repeat: true,
       preset: 'sensitive',
-      baseline: sample.toJson(),
-      rules: rules,
-    );
+      autoBaseline: true,
+      soilRaw: true,
+      duration: 10,
+      cooldown: 60,
+      rules: [
+        CaptureRule(true, -40, 80),
+        CaptureRule(true, 0, 100),
+        CaptureRule(true, 0, 4095),
+      ],
+    ).initializeFrom(sample);
   }
 
   Map<String, dynamic> toJson() => {
@@ -110,6 +180,9 @@ class SensorAlertSettings {
     'show_notifications': showNotifications,
     'repeat': repeat,
     'preset': preset,
+    'auto_baseline': autoBaseline,
+    'soil_raw': soilRaw,
+    'soil_delta': soilDelta,
     if (baseline != null) 'baseline': baseline,
     'duration': duration,
     'cooldown': cooldown,
@@ -126,6 +199,9 @@ class SensorAlertSettings {
       showNotifications: value['show_notifications'] as bool? ?? true,
       repeat: value['repeat'] as bool? ?? false,
       preset: value['preset'] as String? ?? 'custom',
+      autoBaseline: value['auto_baseline'] == true,
+      soilRaw: value['soil_raw'] == true,
+      soilDelta: (value['soil_delta'] as num?)?.toDouble() ?? 150,
       baseline: value['baseline'] == null
           ? null
           : Map<String, dynamic>.from(value['baseline'] as Map),
@@ -195,17 +271,29 @@ class SensorAlertTracker {
     final values = [
       sample.temperature,
       sample.humidity,
-      sample.soilCalibrated ? sample.soil : null,
+      settings.soilRaw
+          ? sample.soilRaw.toDouble()
+          : sample.soilCalibrated
+          ? sample.soil
+          : null,
     ];
     final ready = <int>[];
     for (var i = 0; i < 3; i++) {
       final value = values[i], rule = settings.rules[i];
       final outside =
           rule.enabled &&
+          (!settings.autoBaseline ||
+              settings.baseline?.containsKey('metric_$i') == true ||
+              settings.baseline?['manual_$i'] == true) &&
           value != null &&
           value.isFinite &&
           value >= (i == 0 ? -40 : 0) &&
-          value <= (i == 0 ? 80 : 100) &&
+          value <=
+              (i == 0
+                  ? 80
+                  : i == 2 && settings.soilRaw
+                  ? 4095
+                  : 100) &&
           (value < rule.minimum || value > rule.maximum);
       if (!outside) {
         since[i] = null;

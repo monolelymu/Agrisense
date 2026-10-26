@@ -35,7 +35,7 @@ void main() {
   late FakeService service;
   late HardwareController h;
   setUp(() async {
-    dir = await Directory.systemTemp.createTemp('background-monitoring-');
+    dir = await Directory('test').createTemp('background-monitoring-');
     Hive.init(dir.path);
     box = await Hive.openBox<dynamic>('background');
     service = FakeService();

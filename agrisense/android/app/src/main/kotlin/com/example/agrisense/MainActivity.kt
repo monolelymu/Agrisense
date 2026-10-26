@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
+import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +16,16 @@ class MainActivity : FlutterActivity() {
     private val permissionRequest = 7041
     var isResumedForMonitoring = false
         private set
+    override fun onCreate(savedInstanceState: Bundle?) {
+        AppAlerts(this).acceptTap(intent)
+        super.onCreate(savedInstanceState)
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        AppAlerts(this).acceptTap(intent)
+        app.alertsChannel?.invokeMethod("changed", null)
+    }
     override fun provideFlutterEngine(context: Context): FlutterEngine = app.engine()
     override fun shouldDestroyEngineWithHost(): Boolean = false
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

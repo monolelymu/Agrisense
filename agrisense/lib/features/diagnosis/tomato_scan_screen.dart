@@ -16,6 +16,7 @@ import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
 import 'crop_knowledge_screen.dart';
 import 'photo_processing.dart';
+import 'camera_photo_preview.dart';
 import 'simple_result_card.dart';
 import '../help/help_screen.dart';
 
@@ -86,7 +87,6 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     }
   }
 
-  Uint8List? cameraPreview;
   String? error;
   AppIssue? issue;
   String activity = '';
@@ -164,7 +164,6 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
     crop = value;
     error = null;
     issue = null;
-    cameraPreview = null;
     result = widget.store.unsavedResults[value];
     saved = false;
     activity = '';
@@ -261,12 +260,16 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       setState(() => activity = 'Analyzing camera photo…');
       await _analyzeCameraOriginal(original);
     } catch (e) {
-      issue = AppIssue.from(
-        e,
-        fallback: activity.startsWith('Analyzing')
-            ? AppIssue.model
-            : AppIssue.camera,
-      );
+      issue =
+          !activity.startsWith('Analyzing') &&
+              widget.hardware!.cameraStatus[selectedCrop] != 'Received'
+          ? AppIssue.fromCamera(e)
+          : AppIssue.from(
+              e,
+              fallback: activity.startsWith('Analyzing')
+                  ? AppIssue.model
+                  : AppIssue.camera,
+            );
       if (mounted) {
         setState(
           () => error =
@@ -378,19 +381,15 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       busy = true;
       error = null;
       issue = null;
-      cameraPreview = null;
       activity = 'Getting a camera photo…';
     });
     try {
-      final photo = await widget.hardware!.capture(crop);
-      final preview = await compute(previewPhoto, photo);
-      if (mounted) setState(() => cameraPreview = preview);
+      await widget.hardware!.capture(crop);
     } catch (e) {
       if (mounted) {
         setState(() {
-          issue = AppIssue.from(e, fallback: AppIssue.camera);
-          error =
-              'Camera unavailable. Check its power and Wi-Fi, then try again.';
+          issue = AppIssue.fromCamera(e);
+          error = widget.hardware!.cameraMessage(crop);
         });
       }
     } finally {
@@ -458,10 +457,11 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (cameraPreview != null) ...[
-                Image.memory(cameraPreview!, height: 220, fit: BoxFit.contain),
-                const SizedBox(height: 8),
-                const Text('Last photo • not live'),
+              if (hardware.lastCameraPhoto != null) ...[
+                CameraPhotoPreview(
+                  bytes: hardware.lastCameraPhoto!.$1,
+                  at: hardware.lastCameraPhoto!.$2,
+                ),
               ] else
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:agrisense/core/hardware_controller.dart';
+import 'package:agrisense/core/sensor_notifications.dart';
 import 'package:agrisense/core/theme.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
@@ -15,7 +16,7 @@ void main() {
       late Directory dir;
       late Box<dynamic> box;
       await tester.runAsync(() async {
-        dir = await Directory.systemTemp.createTemp('preset-edit-');
+        dir = await Directory('test').createTemp('preset-edit-');
         Hive.init(dir.path);
         box = await Hive.openBox<dynamic>('preset');
       });
@@ -34,6 +35,12 @@ void main() {
         ),
       );
       h.status[Crop.tomato] = 'Received';
+      h.assignments[Crop.tomato] = {'camera': 'http://192.168.1.21'};
+      final sensitive = SensorAlertSettings.sensitive(
+        h.samples.single,
+        DateTime.now(),
+      );
+      h.notificationSettings[Crop.tomato] = sensitive;
       addTearDown(() async {
         h.dispose();
         await box.close();
@@ -86,7 +93,7 @@ void main() {
       final saved = h.notificationSettings[Crop.tomato]!;
       expect(saved.preset, 'custom');
       expect(saved.rules[0].maximum, 34.5);
-      expect(saved.cooldown, 30);
+      expect(saved.cooldown, 60);
       expect(saved.baseline!['sample_id'], 'fresh');
       await tester.pumpWidget(const SizedBox.shrink());
     },

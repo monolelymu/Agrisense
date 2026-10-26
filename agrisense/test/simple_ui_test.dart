@@ -382,7 +382,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(hardware.notificationSettings[Crop.tomato]!.awaitingLimits, isTrue);
+    expect(hardware.notificationSettings[Crop.tomato]!.awaitingLimits, isFalse);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -637,8 +637,8 @@ void main() {
         expect(
           find.textContaining(
             badPhoto
-                ? 'Camera: Reconnecting…'
-                : 'Camera: Photo connection checked',
+              ? 'Camera: Board reachable; camera unavailable'
+              : 'Camera: Camera ready',
           ),
           findsOneWidget,
         );

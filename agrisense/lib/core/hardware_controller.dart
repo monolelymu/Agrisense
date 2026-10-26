@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 import '../data/hardware_client.dart';
 import '../data/board_discovery.dart';
+import '../data/app_alert_event.dart';
+import 'app_alerts_bridge.dart';
+import 'dart:io';
 import '../data/models.dart';
 import '../data/automatic_capture.dart';
 import '../data/daily_photo_schedule.dart';
@@ -27,6 +30,7 @@ class HardwareController extends ChangeNotifier {
     MonitoringAlertStore? alertStore,
     MonitoringServiceBridge? service,
     BoardDiscovery? discovery,
+    AppAlertsBridge? appAlerts,
   }) : client = client ?? HardwareClient(),
        notifications = notifications ?? SensorNotifications(),
        _clock = clock ?? DateTime.now,
@@ -34,7 +38,98 @@ class HardwareController extends ChangeNotifier {
        scanStore = scanStore ?? TomatoScanStore(box),
        alertStore = alertStore ?? MonitoringAlertStore(box),
        service = service ?? MonitoringServiceBridge(),
-       discovery = discovery ?? BoardDiscovery();
+       discovery = discovery ?? BoardDiscovery(),
+       appAlerts = appAlerts ?? AppAlertsBridge();
+  final AppAlertsBridge appAlerts;
+  WateringReminder watering = const WateringReminder();
+  final List<AppAlertEvent> events = [];
+  AlertTarget? alertTarget;
+  String? remindersIssue;
+  Future<void>? _alertSync;
+  (Uint8List, DateTime)? lastCameraPhoto;
+  Uint8List? lastCameraOriginal;
+
+  Future<void> initializeAppAlerts() async {
+    appAlerts.listen(syncAppAlerts);
+    try {
+      await appAlerts.restore();
+      await syncAppAlerts();
+    } catch (_) {
+      remindersIssue = 'Reminder scheduling is unavailable. Please retry.';
+    }
+  }
+
+  Future<void> syncAppAlerts() =>
+      _alertSync ??= _syncAppAlerts().whenComplete(() => _alertSync = null);
+  Future<void> _syncAppAlerts() async {
+    if (!appAlerts.supported || _disposed) return;
+    try {
+      final value = await appAlerts.snapshot();
+      watering = WateringReminder.fromJson(value);
+      for (final item in value['events'] as List? ?? []) {
+        final event = AppAlertEvent.fromJson(item as Map);
+        await _storeEvent(event);
+      }
+      final tap = value['tap'];
+      if (tap is Map &&
+          ['sensor', 'scheduled', 'watering'].contains(tap['type']) &&
+          tap['target'] is String &&
+          tap['token'] is String) {
+        alertTarget = AlertTarget(tap['type'], tap['target'], tap['token']);
+      }
+      remindersIssue = null;
+    } catch (_) {
+      remindersIssue = 'Reminders could not be refreshed. Please retry.';
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> saveWatering(int? minute, bool enabled) async {
+    if (minute != null && (minute < 0 || minute > 1439) ||
+        enabled && minute == null) {
+      throw const FormatException('Choose a daily reminder time.');
+    }
+    if (!appAlerts.supported) throw AppIssue.unsupported;
+    if (enabled) await notifications.requestPermission();
+    watering = WateringReminder.fromJson(
+      await appAlerts.configure(minute, enabled),
+    );
+    remindersIssue = null;
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> allowPreciseReminders() => appAlerts.requestPrecise();
+  Future<void> acknowledgeAlertTarget(String token) async {
+    if (alertTarget?.token == token) alertTarget = null;
+    try {
+      await appAlerts.acknowledge(token);
+    } catch (_) {
+      remindersIssue = 'This alert could not be marked as opened.';
+    }
+  }
+
+  Future<void> _storeEvent(AppAlertEvent event) async {
+    if (events.any((e) => e.id == event.id)) return;
+    await box.put('app-alert-v1/${event.id}', event.toJson());
+    events.add(event);
+    events.sort((a, b) => b.at.compareTo(a.at));
+    while (events.length > 500) {
+      await box.delete('app-alert-v1/${events.last.id}');
+      events.removeLast();
+    }
+  }
+
+  Future<void> _announce(AppAlertEvent event, {bool post = true}) async {
+    await _storeEvent(event);
+    if (post) {
+      final posted = appAlerts.supported
+          ? await appAlerts.post(event.toJson())
+          : await notifications.show(5000, event.title, event.body);
+      if (!posted) notificationIssue = AppIssue.permission;
+    }
+    if (!_disposed) notifyListeners();
+  }
+
   final Box<dynamic> box;
   final HardwareClient client;
   final TomatoClassifier classifier;
@@ -172,6 +267,8 @@ class HardwareController extends ChangeNotifier {
         if (role == 'camera') {
           cameraStatus[crop] = identity?.ready == true
               ? 'Received'
+              : identity != null
+              ? 'Camera unavailable'
               : 'Unavailable';
         } else if (identity == null || !identity.ready) {
           status[crop] = 'Unavailable';
@@ -256,6 +353,16 @@ class HardwareController extends ChangeNotifier {
   static const _historyKey = 'hardware-readings-v1';
 
   void load() {
+    for (final key in box.keys.whereType<String>().where(
+      (key) => key.startsWith('app-alert-v1/'),
+    )) {
+      try {
+        events.add(AppAlertEvent.fromJson(box.get(key) as Map));
+      } catch (_) {
+        /* Retain unreadable records unchanged. */
+      }
+    }
+    events.sort((a, b) => b.at.compareTo(a.at));
     backgroundEnabled =
         box.get(
           'background-monitoring-enabled-v1',
@@ -286,8 +393,16 @@ class HardwareController extends ChangeNotifier {
         photoSchedules[crop] = const DailyPhotoSchedule();
       }
       try {
-        notificationSettings[crop] = alerts[crop.name] is Map
-            ? SensorAlertSettings.fromJson(alerts[crop.name] as Map)
+        final saved = alerts[crop.name];
+        final unconfigured =
+            saved is Map &&
+            saved['enabled'] == true &&
+            saved['rules'] is List &&
+            !(saved['rules'] as List).any(
+              (r) => r is Map && r['enabled'] == true,
+            );
+        notificationSettings[crop] = saved is Map && !unconfigured
+            ? SensorAlertSettings.fromJson(saved)
             : SensorAlertSettings.initial;
       } catch (_) {
         notificationSettings[crop] = const SensorAlertSettings();
@@ -726,6 +841,18 @@ class HardwareController extends ChangeNotifier {
           ..addAll(next);
       }
       status[crop] = 'Received';
+      final currentRules = notificationSettings[crop];
+      if (currentRules?.autoBaseline == true) {
+        final initialized = currentRules!.initializeFrom(reading);
+        if (!identical(initialized, currentRules)) {
+          await box.put('foreground-notification-rules-v1', {
+            ...box.get('foreground-notification-rules-v1', defaultValue: {})
+                as Map,
+            crop.name: initialized.toJson(),
+          });
+          notificationSettings[crop] = initialized;
+        }
+      }
       try {
         await _notifyReading(crop, reading);
       } catch (_) {
@@ -890,8 +1017,8 @@ class HardwareController extends ChangeNotifier {
         final bytes = await _capture(crop);
         cameraStatus[crop] = 'Received';
         return bytes;
-      } catch (_) {
-        _cameraFailed(crop);
+      } catch (error) {
+        _cameraFailed(crop, error);
         rethrow;
       }
     });
@@ -901,7 +1028,11 @@ class HardwareController extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      return await _cameraBytes(crop);
+      final bytes = await _cameraBytes(crop);
+      lastCameraOriginal = bytes;
+      await compute(previewPhoto, bytes);
+      lastCameraPhoto = (bytes, _clock());
+      return bytes;
     } finally {
       busy = false;
       if (!_disposed) notifyListeners();
@@ -1169,10 +1300,26 @@ class HardwareController extends ChangeNotifier {
   String _slot(Crop crop, DateTime at) =>
       'kit-${at.year}-${at.month}-${at.day}-${at.hour * 60 + at.minute}';
 
-  void _cameraFailed(Crop crop) {
-    cameraStatus[crop] = 'Unavailable';
+  void _cameraFailed(Crop crop, [Object? error]) {
+    cameraStatus[crop] = error is TimeoutException
+        ? 'Timed out'
+        : error is SocketException
+        ? 'Unreachable'
+        : error is HardwareHttpException && error.status == 503 ||
+              error == AppIssue.camera
+        ? 'Camera unavailable'
+        : 'Capture failed';
     _cameraRetryAt[crop] = _clock().add(const Duration(seconds: 30));
   }
+
+  String cameraMessage(Crop crop) => switch (cameraStatus[crop]) {
+    'Received' => 'Camera ready',
+    'Camera unavailable' => 'Board reachable; camera unavailable',
+    'Capture failed' => 'Photo capture failed. Try again.',
+    'Timed out' => 'Communication timed out. Retrying…',
+    'Unreachable' || 'Unavailable' => 'Board did not respond. Retrying…',
+    _ => 'Not checked. Tap Connect.',
+  };
 
   Future<void> checkCamera(Crop crop, {bool quietly = false}) async {
     if (busy ||
@@ -1191,8 +1338,8 @@ class HardwareController extends ChangeNotifier {
       if (automaticStatus?.startsWith('Camera reconnecting') == true) {
         automaticStatus = 'Camera reconnected. Scheduled checks will continue.';
       }
-    } catch (_) {
-      _cameraFailed(crop);
+    } catch (error) {
+      _cameraFailed(crop, error);
     } finally {
       busy = false;
       backgroundWork = false;
@@ -1212,7 +1359,11 @@ class HardwareController extends ChangeNotifier {
         (address(crop, 'sensor').isEmpty ||
             address(crop, 'camera').isEmpty ||
             status[crop] == 'Unavailable' ||
-            cameraStatus[crop] == 'Unavailable' ||
+            const [
+              'Unavailable',
+              'Unreachable',
+              'Timed out',
+            ].contains(cameraStatus[crop]) ||
             _blockedRoles.isNotEmpty)) {
       await connectKit(crop, quietly: true);
       if (_disposed || !pollingActive || _requestedPollingCrop != crop) return;
@@ -1240,7 +1391,13 @@ class HardwareController extends ChangeNotifier {
     }
     if (due && _slot(crop, _clock()) == key && _lastKitCaptureSlot != key) {
       await _scheduledPhoto(crop, key);
-    } else if (cameraStatus[crop] == 'Unavailable' &&
+    } else if (const [
+          'Unavailable',
+          'Unreachable',
+          'Timed out',
+          'Camera unavailable',
+          'Capture failed',
+        ].contains(cameraStatus[crop]) &&
         !_clock().isBefore(_cameraRetryAt[crop] ?? now)) {
       await checkCamera(crop, quietly: true);
     }
@@ -1293,13 +1450,41 @@ class HardwareController extends ChangeNotifier {
       });
       revision++;
       automaticStatus = '${crop.label} check saved.';
-    } catch (_) {
-      if (stage == 'capture') _cameraFailed(crop);
+      try {
+        await _announce(
+          AppAlertEvent(
+            id: 'scheduled-$id',
+            type: 'scheduled',
+            title: 'Scheduled photo',
+            body: '${crop.label}: photo checked and result saved.',
+            at: capturedAt,
+            target: 'scheduled-$id',
+          ),
+        );
+      } catch (_) {
+        notificationIssue = AppIssue.permission;
+      }
+    } catch (error) {
+      if (stage == 'capture') _cameraFailed(crop, error);
       automaticStatus = stage == 'capture'
-          ? 'Camera reconnecting… The next scheduled check will run when connected.'
+          ? 'Photo capture failed. The next scheduled check will be attempted.'
           : stage == 'analysis'
           ? 'Photo saved. Analysis could not finish.'
           : 'Could not save this check. Please check phone storage.';
+      try {
+        await _announce(
+          AppAlertEvent(
+            id: 'scheduled-$id',
+            type: 'scheduled',
+            title: 'Scheduled photo',
+            body: automaticStatus!,
+            at: _clock(),
+            target: 'scheduled-$id',
+          ),
+        );
+      } catch (_) {
+        notificationIssue = AppIssue.write;
+      }
     } finally {
       busy = false;
       backgroundWork = false;
@@ -1342,17 +1527,20 @@ class HardwareController extends ChangeNotifier {
       now,
     ); // Acceptance, independent of notification delivery.
     notificationIssue = null;
-    if (settings.showNotifications) {
-      try {
-        final posted = await notifications.show(
-          5000 + crop.index,
-          '${crop.label}: sensor limit exceeded',
-          alert.reason,
-        );
-        if (!posted) notificationIssue = AppIssue.permission;
-      } catch (e) {
-        notificationIssue = AppIssue.from(e, fallback: AppIssue.permission);
-      }
+    try {
+      await _announce(
+        AppAlertEvent(
+          id: alert.id,
+          type: 'sensor',
+          title: '${crop.label}: sensor warning',
+          body: alert.reason,
+          at: now,
+          target: alert.id,
+        ),
+        post: settings.showNotifications,
+      );
+    } catch (e) {
+      notificationIssue = AppIssue.from(e, fallback: AppIssue.permission);
     }
     notificationStatus = '${crop.label} sensor alert saved.';
     if (!settings.capturePhoto) {
@@ -1494,15 +1682,17 @@ class HardwareController extends ChangeNotifier {
       _pendingResults.remove(alert.id);
       notificationStatus = '${alert.crop.label} automatic scan saved.';
     } catch (e) {
-      if (stage == 'capture_failed') _cameraFailed(alert.crop);
-      final issue = AppIssue.from(
-        e,
-        fallback: switch (stage) {
-          'save_failed' || 'photo_save_failed' => AppIssue.write,
-          'analysis_failed' => AppIssue.model,
-          _ => AppIssue.camera,
-        },
-      );
+      if (stage == 'capture_failed') _cameraFailed(alert.crop, e);
+      final issue = stage == 'capture_failed'
+          ? AppIssue.fromCamera(e)
+          : AppIssue.from(
+              e,
+              fallback: switch (stage) {
+                'save_failed' || 'photo_save_failed' => AppIssue.write,
+                'analysis_failed' => AppIssue.model,
+                _ => AppIssue.camera,
+              },
+            );
       notificationIssue = issue;
       notificationStatus =
           'Alert saved. Open History to review or retry the failed step.';

@@ -15,6 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 class AgriSenseApplication : Application() {
     private var sharedEngine: FlutterEngine? = null
     var activity: MainActivity? = null
+    var alertsChannel: MethodChannel? = null
+        private set
     var serviceChannel: MethodChannel? = null
         private set
     private var pendingStart: MethodChannel.Result? = null
@@ -24,6 +26,22 @@ class AgriSenseApplication : Application() {
         sharedEngine?.let { return it }
         val engine = FlutterEngine(this)
         sharedEngine = engine
+        val alerts = AppAlerts(this)
+        alertsChannel = MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/app_alerts").apply {
+            setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "snapshot" -> result.success(alerts.snapshot())
+                        "configure" -> result.success(alerts.configure(call.argument<Int>("minute"), call.argument<Boolean>("enabled") == true))
+                        "precise" -> { alerts.requestPrecise(); result.success(null) }
+                        "restore" -> { alerts.reschedule(); result.success(null) }
+                        "acknowledge" -> { alerts.acknowledge(call.argument<String>("token") ?: ""); result.success(null) }
+                        "post" -> result.success(alerts.post(call.arguments as Map<String, Any?>))
+                        else -> result.notImplemented()
+                    }
+                } catch (_: Exception) { result.error("alerts_unavailable", "Could not update reminders or alerts. Please retry.", null) }
+            }
+        }
         val discovery = KitDiscovery(this)
         MethodChannel(engine.dartExecutor.binaryMessenger, "agrisense/discovery")
             .setMethodCallHandler { call, result ->

@@ -69,6 +69,8 @@ class _NotificationSettingsScreenState
 
   String preset = 'custom';
   Map<String, dynamic>? baseline;
+  bool soilRaw = false, autoBaseline = false;
+  double soilDelta = 150;
   String get baselineTime {
     final at = DateTime.tryParse('${baseline?['received_at']}');
     return at == null ? 'Saved reading' : dateLabel(at.toLocal());
@@ -87,6 +89,9 @@ class _NotificationSettingsScreenState
     repeat = saved.repeat;
     preset = saved.preset;
     baseline = saved.baseline;
+    soilRaw = saved.soilRaw;
+    autoBaseline = saved.autoBaseline;
+    soilDelta = saved.soilDelta;
     duration.text = '${saved.duration}';
     cooldown.text = '${saved.cooldown}';
     for (var i = 0; i < 3; i++) {
@@ -161,6 +166,9 @@ class _NotificationSettingsScreenState
           repeat: repeat,
           preset: preset,
           baseline: baseline,
+          autoBaseline: autoBaseline,
+          soilRaw: soilRaw,
+          soilDelta: soilDelta,
           duration: int.parse(duration.text.trim()),
           cooldown: int.parse(cooldown.text.trim()),
           rules: rules,
@@ -211,19 +219,21 @@ class _NotificationSettingsScreenState
         applyingPreset = true;
         if (proposal != null) {
           baseline = proposal.baseline;
+          soilRaw = proposal.soilRaw;
+          autoBaseline = proposal.autoBaseline;
+          soilDelta = proposal.soilDelta;
           for (var i = 0; i < 3; i++) {
             selected[i] = proposal.rules[i].enabled;
             minimum[i].text = '${proposal.rules[i].minimum}';
             maximum[i].text = '${proposal.rules[i].maximum}';
           }
           duration.text = '10';
-          cooldown.text = '30';
-          repeat = true;
+          cooldown.text = '60';
+          repeat = false;
         } else if (name == 'standard') {
           duration.text = '30';
           cooldown.text = '300';
           repeat = false;
-          baseline = null;
         }
         preset = name;
         dirty = true;
@@ -237,48 +247,53 @@ class _NotificationSettingsScreenState
     }
   }
 
-  Widget _number(TextEditingController controller, String label) =>
-      TextFormField(
-        key: ValueKey('notification-$label'),
-        controller: controller,
-        validator: (text) {
-          if (controller == duration) {
-            return validateSeconds(text, minimum: 10, maximum: 3600);
-          }
-          if (controller == cooldown) {
-            return validateSeconds(text, minimum: 30, maximum: 86400);
-          }
-          final i = minimum.contains(controller)
-              ? minimum.indexOf(controller)
-              : maximum.indexOf(controller);
-          final error = validateLimit(
-            text,
-            minimum: i == 0 ? -40 : 0,
-            maximum: i == 0 ? 80 : 100,
-          );
-          if (error != null) return error;
-          if (maximum.contains(controller) &&
-              double.parse(text!.trim()) <=
-                  (double.tryParse(minimum[i].text.trim()) ??
-                      double.negativeInfinity)) {
-            return 'Maximum must be higher than minimum.';
-          }
-          return null;
-        },
-        enabled: !busy,
-        keyboardType: const TextInputType.numberWithOptions(
-          decimal: true,
-          signed: true,
-        ),
-        decoration: InputDecoration(
-          labelText: label,
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
-          ),
-        ),
+  Widget _number(
+    TextEditingController controller,
+    String label,
+  ) => TextFormField(
+    key: ValueKey('notification-$label'),
+    controller: controller,
+    onChanged: (_) {
+      final i = minimum.contains(controller)
+          ? minimum.indexOf(controller)
+          : maximum.indexOf(controller);
+      if (i >= 0 && autoBaseline) baseline = {...?baseline, 'manual_$i': true};
+    },
+    validator: (text) {
+      if (controller == duration) {
+        return validateSeconds(text, minimum: 10, maximum: 3600);
+      }
+      if (controller == cooldown) {
+        return validateSeconds(text, minimum: 30, maximum: 86400);
+      }
+      final i = minimum.contains(controller)
+          ? minimum.indexOf(controller)
+          : maximum.indexOf(controller);
+      final error = validateLimit(
+        text,
+        minimum: i == 0 ? -40 : 0,
+        maximum: i == 0 ? 80 : 100,
       );
+      if (error != null) return error;
+      if (maximum.contains(controller) &&
+          double.parse(text!.trim()) <=
+              (double.tryParse(minimum[i].text.trim()) ??
+                  double.negativeInfinity)) {
+        return 'Maximum must be higher than minimum.';
+      }
+      return null;
+    },
+    enabled: !busy,
+    keyboardType: const TextInputType.numberWithOptions(
+      decimal: true,
+      signed: true,
+    ),
+    decoration: InputDecoration(
+      labelText: label,
+      floatingLabelBehavior: FloatingLabelBehavior.always,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+    ),
+  );
 
   Widget _measurement(int i) => Panel(
     padding: 16,
@@ -289,7 +304,11 @@ class _NotificationSettingsScreenState
           key: ValueKey('notification-metric-$i'),
           contentPadding: EdgeInsets.zero,
           title: Text(
-            ['Temperature (°C)', 'Humidity (%)', 'Soil moisture (%)'][i],
+            [
+              'Temperature (°C)',
+              'Humidity (%)',
+              soilRaw ? 'Soil moisture' : 'Soil moisture (%)',
+            ][i],
             style: Theme.of(context).textTheme.titleMedium,
           ),
           value: selected[i],
@@ -301,12 +320,38 @@ class _NotificationSettingsScreenState
                   preset = 'custom';
                 }),
         ),
-        if (i == 2)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: Text('Requires calibrated soil readings.'),
+        if (i == 2 && soilRaw && selected[i]) ...[
+          const Text(
+            'Warn when soil moisture changes from its starting reading.',
           ),
-        if (selected[i]) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<double>(
+            isExpanded: true,
+            initialValue: [75.0, 150.0, 300.0, 600.0].contains(soilDelta)
+                ? soilDelta
+                : 150,
+            decoration: const InputDecoration(
+              labelText: 'Soil warning sensitivity',
+            ),
+            items: const [
+              DropdownMenuItem(value: 75, child: Text('Very sensitive')),
+              DropdownMenuItem(value: 150, child: Text('Sensitive')),
+              DropdownMenuItem(value: 300, child: Text('Moderate')),
+              DropdownMenuItem(value: 600, child: Text('Larger changes')),
+            ],
+            onChanged: busy
+                ? null
+                : (value) => setState(() {
+                    soilDelta = value!;
+                    final start = (baseline?['metric_2'] as num?)?.toDouble();
+                    if (start != null) {
+                      minimum[2].text = '${(start - value).clamp(0, 4095)}';
+                      maximum[2].text = '${(start + value).clamp(0, 4095)}';
+                    }
+                    dirty = true;
+                  }),
+          ),
+        ] else if (selected[i]) ...[
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -374,7 +419,7 @@ class _NotificationSettingsScreenState
                 const SizedBox(height: 20),
                 if (enabled && !selected.any((value) => value)) ...[
                   const Text(
-                    'Waiting for alert limits. Choose measurements and limits, or connect your sensor and choose Sensitive. Save to start alerts.',
+                    'Connect your sensor to initialize the warning settings automatically.',
                   ),
                   const SizedBox(height: 12),
                 ],

@@ -56,8 +56,41 @@ class AppIssue {
   static const camera = AppIssue(
     'CAM-001',
     'Camera capture failed',
-    'Test the camera in Settings → Device setup. Check its power, Wi-Fi and IP address, then retry capture.',
+    'Try Refresh photo. If it keeps failing, check camera power and that the phone and kit use the same Wi-Fi.',
   );
+  static const cameraUnavailable = AppIssue(
+    'CAM-002',
+    'Board reachable; camera unavailable',
+    'The board responded, but its camera is not ready. Check the camera connection and power, then retry.',
+  );
+  static const cameraTimeout = AppIssue(
+    'CAM-003',
+    'Camera communication timed out',
+    'The request did not finish in time. Retry the photo; use Retry connection if this continues.',
+  );
+  static const cameraConnection = AppIssue(
+    'CAM-004',
+    'Camera did not respond',
+    'Check camera power and the shared Wi-Fi, then tap Retry connection.',
+  );
+  static const cameraPhoto = AppIssue(
+    'CAM-005',
+    'Camera photo could not be read',
+    'Try Refresh photo again. The last readable photo is kept.',
+  );
+  static AppIssue fromCamera(Object error) {
+    if (error is TimeoutException) return cameraTimeout;
+    if (error is SocketException) return cameraConnection;
+    if (error is HardwareHttpException) {
+      if (error.status == 503) return cameraUnavailable;
+      if (error.status >= 500) return camera;
+    } else if (error is FormatException) {
+      return cameraPhoto;
+    }
+    if (error == camera) return cameraUnavailable;
+    return from(error, fallback: camera);
+  }
+
   static const model = AppIssue(
     'ML-001',
     'Model could not run',
@@ -134,6 +167,10 @@ class AppIssue {
     permission,
     photo,
     camera,
+    cameraUnavailable,
+    cameraTimeout,
+    cameraConnection,
+    cameraPhoto,
     model,
     unsupported,
     storage,

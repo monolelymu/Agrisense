@@ -341,7 +341,7 @@ void main() {
       await start();
       boards.cameraOffline = true;
       await h.monitorTick(Crop.tomato);
-      expect(h.cameraStatus[Crop.tomato], 'Unavailable');
+      expect(h.cameraStatus[Crop.tomato], 'Unreachable');
       boards.cameraOffline = false;
       now = DateTime(2026, 10, 24, 8, 1);
       await h.monitorTick(Crop.tomato);
