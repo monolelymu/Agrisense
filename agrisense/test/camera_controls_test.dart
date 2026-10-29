@@ -41,11 +41,12 @@ class _Connection extends CameraFrameConnection {
 
 class _Boards extends HardwareClient {
   bool servo = false, wrong = false, failMove = false;
-  int commands = 0, photos = 0;
+  int commands = 0, photos = 0, identityCalls = 0;
   final requests = <String>[];
   final connections = <_Connection>[];
   @override
   Future<BoardIdentity> identity(String address) async {
+    identityCalls++;
     final sensor = address.endsWith('.20');
     return BoardIdentity(
       kitId: demoKitId,
@@ -416,14 +417,16 @@ void main() {
       expect(boards.commands, 0);
     });
     test(
-      'five commands verify identity, use unique IDs, and never auto-repeat failures',
+      'movement reuses verified identity and rechecks after failure without auto-repeat',
       () async {
         boards.servo = true;
         await h.connectKit(Crop.tomato);
+        final connectedIdentityCalls = boards.identityCalls;
         for (final action in ['up', 'down', 'left', 'right', 'center']) {
           await h.moveCameraDirection(Crop.tomato, action);
         }
         expect(boards.commands, 5);
+        expect(boards.identityCalls, connectedIdentityCalls);
         expect(boards.requests.toSet(), hasLength(5));
         boards.failMove = true;
         await expectLater(
@@ -438,6 +441,7 @@ void main() {
           throwsA(AppIssue.identity),
         );
         expect(boards.commands, 6);
+        expect(boards.identityCalls, connectedIdentityCalls + 1);
       },
     );
     test(
@@ -453,6 +457,100 @@ void main() {
         await waitFor(() => boards.connections.length == 2);
         h.cameraView(owner, false);
         expect(boards.connections.last.closed, isTrue);
+      },
+    );
+    testWidgets('holding repeats, releasing stops, and Center stays one tap', (
+      tester,
+    ) async {
+      boards.servo = true;
+      await tester.runAsync(() => h.connectKit(Crop.tomato));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CameraGamepad(hardware: h, crop: Crop.tomato),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byTooltip('Move camera left')),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(boards.commands, inInclusiveRange(2, 3));
+      final held = boards.commands;
+      expect(h.cameraControlActive, isTrue);
+      expect(find.text('Moving camera…'), findsOneWidget);
+      expect(find.text('Camera movement confirmed.'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 320));
+      await tester.pump();
+      expect(boards.commands, greaterThan(held));
+      await gesture.up();
+      await tester.pump();
+      final released = boards.commands;
+      expect(h.cameraControlActive, isFalse);
+      expect(find.text('Camera movement confirmed.'), findsNothing);
+      await tester.pump(const Duration(seconds: 1));
+      expect(boards.commands, released);
+      await tester.tap(find.byTooltip('Center camera'));
+      await tester.pump();
+      expect(boards.commands, released + 1);
+      await tester.pump(const Duration(seconds: 1));
+      expect(boards.commands, released + 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+    testWidgets('a failed hold command is never repeated', (tester) async {
+      boards.servo = true;
+      boards.failMove = true;
+      await tester.runAsync(() => h.connectKit(Crop.tomato));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CameraGamepad(hardware: h, crop: Crop.tomato),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byTooltip('Move camera up')),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+      expect(boards.commands, 1);
+      await tester.pump(const Duration(seconds: 1));
+      expect(boards.commands, 1);
+      await gesture.up();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+    testWidgets(
+      'backgrounding cancels holding and does not restart on resume',
+      (tester) async {
+        boards.servo = true;
+        await tester.runAsync(() => h.connectKit(Crop.tomato));
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: CameraGamepad(hardware: h, crop: Crop.tomato),
+            ),
+          ),
+        );
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byTooltip('Move camera down')),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump();
+        final beforeBackground = boards.commands;
+        expect(beforeBackground, inInclusiveRange(2, 3));
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        expect(boards.commands, beforeBackground);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump(const Duration(seconds: 1));
+        expect(boards.commands, beforeBackground);
+        await gesture.up();
+        await tester.pumpWidget(const SizedBox.shrink());
       },
     );
     testWidgets(

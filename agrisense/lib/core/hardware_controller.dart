@@ -70,6 +70,17 @@ class HardwareController extends ChangeNotifier {
   final Map<String, BoardIdentity> _verified = {};
   DateTime? _cameraVerifiedAt;
   String? movementStatus;
+  String? _movementVerifiedAddress;
+  bool cameraControlActive = false;
+  void setCameraControlActive(bool active) {
+    if (_disposed || cameraControlActive == active) return;
+    cameraControlActive = active;
+    // A hold can end during a widget rebuild; notify after that build completes.
+    scheduleMicrotask(() {
+      if (!_disposed) notifyListeners();
+    });
+  }
+
   int _moveSequence = 0;
   final String _controlSession = DateTime.now().microsecondsSinceEpoch
       .toRadixString(16);
@@ -121,14 +132,18 @@ class HardwareController extends ChangeNotifier {
         notifyListeners();
         try {
           final endpoint = address(crop, 'sensor');
-          final identity = await client.identity(endpoint);
-          if (identity.kitId != demoKitId ||
+          final identity = _movementVerifiedAddress == endpoint
+              ? _verified['sensor']
+              : await client.identity(endpoint);
+          if (identity == null ||
+              identity.kitId != demoKitId ||
               identity.deviceId != expected ||
               identity.role != 'sensor' ||
               !identity.ready ||
               !identity.capabilities.contains('pan_tilt_v1')) {
             throw AppIssue.identity;
           }
+          _movementVerifiedAddress = endpoint;
           final request = '$_controlSession-${++_moveSequence}';
           await client.panTilt(
             endpoint,
@@ -140,6 +155,8 @@ class HardwareController extends ChangeNotifier {
               ? 'Camera returned to center.'
               : 'Camera movement confirmed.';
         } catch (_) {
+          _movementVerifiedAddress =
+              null; // Reverify before the next deliberate command.
           movementStatus =
               'Movement not confirmed. Check the board before trying again.';
           rethrow; // Never automatically repeat a physical movement.
@@ -393,6 +410,7 @@ class HardwareController extends ChangeNotifier {
           _verified.remove(role);
         }
       }
+      _movementVerifiedAddress = found['sensor']?.$1;
       _cameraVerifiedAt = _verified['camera']?.ready == true ? _clock() : null;
       for (final role in ['sensor', 'camera']) {
         final identity = found[role]?.$2;

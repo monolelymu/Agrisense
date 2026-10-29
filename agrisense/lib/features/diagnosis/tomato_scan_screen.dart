@@ -74,7 +74,8 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       supported &&
       classifier.supports(crop) &&
       !busy &&
-      widget.hardware?.userBusy != true;
+      widget.hardware?.userBusy != true &&
+      widget.hardware?.cameraControlActive != true;
   List<TomatoScan> get cropHistory =>
       history.where((s) => s.crop == crop).toList();
   bool _busy = false, saved = false;
@@ -477,7 +478,11 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: !busy && !hardware.userBusy && cameraReady
+                onPressed:
+                    !busy &&
+                        !hardware.userBusy &&
+                        !hardware.cameraControlActive &&
+                        cameraReady
                     ? _previewCamera
                     : null,
                 icon: const Icon(Icons.refresh),
