@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 import '../data/hardware_client.dart';
+import '../data/firebase_cloud_client.dart';
 import '../data/soil_calibration.dart';
 import '../data/board_discovery.dart';
 import '../data/app_alert_event.dart';
@@ -34,7 +35,13 @@ class HardwareController extends ChangeNotifier {
     MonitoringServiceBridge? service,
     BoardDiscovery? discovery,
     AppAlertsBridge? appAlerts,
-  }) : client = client ?? HardwareClient(),
+  }) : client = client ??
+           HardwareClient(
+             cloud: FirebaseCloudClient(
+               box: box,
+               clock: clock ?? DateTime.now,
+             ),
+           ),
        notifications = notifications ?? SensorNotifications(),
        _clock = clock ?? DateTime.now,
        classifier = classifier ?? TomatoClassifier(),
@@ -170,6 +177,7 @@ class HardwareController extends ChangeNotifier {
       .toRadixString(16);
   bool get canStream =>
       allowLocalHttp &&
+      address(_sensorCrop ?? Crop.tomato, 'camera') != 'cloud://camera' &&
       _verified['camera']?.ready == true &&
       _verified['camera']!.capabilities.contains('stream');
   bool get canMoveCamera =>
@@ -252,6 +260,8 @@ class HardwareController extends ChangeNotifier {
         }
       });
   Future<void> _sendAppStatus(Crop crop) async {
+    final sensorEndpoint = address(crop, 'sensor');
+    if (sensorEndpoint.startsWith('cloud://')) return;
     final identity = _verified['sensor'];
     if (identity == null ||
         !identity.capabilities.contains('app_status_v1') ||
@@ -469,6 +479,20 @@ class HardwareController extends ChangeNotifier {
           discoveryFailed = true;
         }
       }
+      if (found.length < 2 && allowLocalHttp && !_disposed) {
+        for (final role in ['sensor', 'camera']) {
+          if (!found.containsKey(role)) {
+            final cloudAddr = 'cloud://$role';
+            try {
+              final identity = await client.identity(cloudAddr);
+              if (identity.kitId == demoKitId && identity.role == role) {
+                found[role] = (cloudAddr, identity);
+                conflicts.remove(role);
+              }
+            } catch (_) {}
+          }
+        }
+      }
       if (_disposed || !allowLocalHttp) return;
       final next = Map<String, String>.of(assignments[crop] ?? {});
       var sensorCrop = _sensorCrop ?? crop;
@@ -523,7 +547,9 @@ class HardwareController extends ChangeNotifier {
                 ? 'Cannot find the kit. Check Wi-Fi and app permissions, then retry.'
                 : 'No kit found. Turn on the kit and use the same Wi-Fi, then retry.'
           : found.length == 2 && _blockedRoles.isEmpty
-          ? 'Kit connected. Readings will update automatically.'
+          ? (found.values.any((e) => e.$1.startsWith('cloud://'))
+                ? 'Kit connected via Cloud. Readings will update automatically.'
+                : 'Kit connected. Readings will update automatically.')
           : legacy.isNotEmpty
           ? 'Using the saved kit connection.'
           : 'Kit partly connected. Retrying the missing device…';
@@ -541,6 +567,14 @@ class HardwareController extends ChangeNotifier {
       live.withPaused(() => _stillBytes(crop));
   Future<Uint8List> _stillBytes(Crop crop) async {
     if (_blockedRoles.contains('camera')) throw AppIssue.camera;
+    final cameraAddress = address(crop, 'camera');
+    if (cameraAddress.startsWith('cloud://')) {
+      final expected = assignments[crop]?['cameraId'] ?? '';
+      if (expected.isNotEmpty) {
+        client.cloud.lastVerifiedCameraId = expected;
+      }
+      return client.capture(cameraAddress);
+    }
     final expected = assignments[crop]?['cameraId'];
     if (expected != null) {
       final identity = await client.identity(address(crop, 'camera'));

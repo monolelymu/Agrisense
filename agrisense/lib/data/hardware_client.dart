@@ -8,6 +8,8 @@ import 'automatic_capture.dart';
 import 'kit_warning.dart';
 import 'board_discovery.dart';
 import 'camera_stream.dart';
+import 'firebase_cloud_client.dart';
+import '../core/firebase_config.dart';
 
 class HardwareHttpException extends FormatException {
   const HardwareHttpException(this.status, super.message);
@@ -17,6 +19,12 @@ class HardwareHttpException extends FormatException {
 /// Only explicitly assigned private IPv4 nodes; no DNS, redirects or proxies.
 Uri hardwareAddress(String value) {
   final text = value.trim();
+  if (text == FirebaseConfig.cloudSensorAddress ||
+      text == FirebaseConfig.cloudCameraAddress ||
+      text == 'cloud://sensor' ||
+      text == 'cloud://camera') {
+    return Uri.parse(text);
+  }
   final uri = Uri.tryParse(text.contains('://') ? text : 'http://$text');
   if (uri == null ||
       uri.scheme != 'http' ||
@@ -178,9 +186,16 @@ class HardwareSample {
 }
 
 class HardwareClient {
-  HardwareClient({HttpClient Function()? httpClientFactory})
-    : _httpClientFactory = httpClientFactory ?? HttpClient.new;
+  HardwareClient({
+    HttpClient Function()? httpClientFactory,
+    FirebaseCloudClient? cloud,
+  })  : _httpClientFactory = httpClientFactory ?? HttpClient.new,
+        _explicitCloud = cloud;
   final HttpClient Function() _httpClientFactory;
+  FirebaseCloudClient? _explicitCloud;
+  FirebaseCloudClient get cloud => _explicitCloud ??= FirebaseCloudClient(
+        httpClientFactory: _httpClientFactory,
+      );
 
   CameraFrameConnection cameraStream(String address) {
     final base = hardwareAddress(address);
@@ -197,6 +212,13 @@ class HardwareClient {
     required String requestId,
     required String action,
   }) async {
+    if (address.startsWith('cloud://')) {
+      return cloud.sendPanTilt(
+        deviceId: deviceId,
+        requestId: requestId,
+        action: action,
+      );
+    }
     if (!['up', 'down', 'left', 'right', 'center'].contains(action)) {
       throw const FormatException('Invalid movement.');
     }
@@ -368,6 +390,9 @@ class HardwareClient {
   }
 
   Future<HardwareSample> read(String address, Crop crop) async {
+    if (address.startsWith('cloud://')) {
+      return cloud.readSample(crop);
+    }
     final bytes = await _request(
       address,
       '/readings',
@@ -382,6 +407,14 @@ class HardwareClient {
   }
 
   Future<BoardIdentity> identity(String address) async {
+    if (address.startsWith('cloud://')) {
+      final role = address.replaceFirst('cloud://', '');
+      final id = await cloud.readIdentity(role);
+      if (id == null) {
+        throw const FormatException('Cloud board identity not available.');
+      }
+      return id;
+    }
     final bytes = await _request(
       address,
       '/identity',
@@ -396,10 +429,15 @@ class HardwareClient {
     return BoardIdentity.fromJson(json);
   }
 
-  Future<Uint8List> capture(String address) =>
-      _request(address, '/capture', 'image/jpeg', 15 * 1024 * 1024);
+  Future<Uint8List> capture(String address) {
+    if (address.startsWith('cloud://')) {
+      return cloud.requestSnapshot();
+    }
+    return _request(address, '/capture', 'image/jpeg', 15 * 1024 * 1024);
+  }
 
   Future<KitWarning?> warningConfiguration(String address, String code) async {
+    if (address.startsWith('cloud://')) return null;
     final bytes = await _request(
       address,
       '/warnings',
@@ -418,6 +456,7 @@ class HardwareClient {
     String code,
     KitWarning settings,
   ) async {
+    if (address.startsWith('cloud://')) return;
     final bytes = await _request(
       address,
       '/warnings',
@@ -437,6 +476,7 @@ class HardwareClient {
     String address,
     String code,
   ) async {
+    if (address.startsWith('cloud://')) return null;
     try {
       final bytes = await _request(
         address,
@@ -529,6 +569,12 @@ class HardwareClient {
   }
 
   Future<SensorConfiguration> configuration(String address) async {
+    if (address.startsWith('cloud://')) {
+      return const SensorConfiguration(
+        deviceId: 'cloud-sensor',
+        crop: Crop.tomato,
+      );
+    }
     final bytes = await _request(address, '/config', 'application/json', 4096);
     return _configuration(bytes);
   }
@@ -547,6 +593,9 @@ class HardwareClient {
     String deviceId,
     String pairingCode,
   ) async {
+    if (address.startsWith('cloud://')) {
+      return SensorConfiguration(deviceId: deviceId, crop: crop);
+    }
     if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(pairingCode)) {
       throw const FormatException(
         'Enter the 32-character pairing code from Serial Monitor.',

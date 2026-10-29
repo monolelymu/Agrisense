@@ -1,3 +1,5 @@
+import 'data/models.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'features/diagnosis/tomato_scan.dart';
@@ -16,6 +18,9 @@ Future<void> main() async {
     await hardware.reconcileAlerts();
     hardware.bindService();
     await hardware.initializeAppAlerts();
+    if (hardware.address(Crop.tomato, 'sensor').isEmpty) {
+      unawaited(hardware.connectKit(Crop.tomato, quietly: true));
+    }
     runApp(HardwareApp(scans: TomatoScanStore(box), hardware: hardware));
   } catch (error) {
     runApp(

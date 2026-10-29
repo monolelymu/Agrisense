@@ -11,8 +11,8 @@ The user requested this handoff be refreshed and both latest deliveries shown ag
 
 | Delivery | Current artifact | Verification | Next step |
 | --- | --- | --- | --- |
-| Android app v1.0.15e, build 21 | `AgriSense-v1.0.15e.apk` | 10 focused tests passed, Dart analysis clean, offline release build passed, manifest/signature checked | Install over current app and review Trends on the physical phone |
-| Firmware v1.0.15d-power, based on v15 | `AgriSense-Firmware-v1.0.15d-power.zip` | Five host suites passed; source/archive integrity checked | ESP32-compile and upload BOTH sketches, then test hardware/power |
+| Android app v1.0.16a-cloud, build 23 | `AgriSense-v1.0.16a-cloud.apk` | 49 Flutter tests passed, clean Dart analysis (0 issues), release APK built | Install over current app and verify cloud + local demo connection |
+| Firmware v1.0.16b-cloud, based on 15d-power | `AgriSense-Firmware-v1.0.16b-cloud.zip` | Six host suites passed (including actual sensor payload builder test in cloud_sync_test); source/archive integrity checked | Flash both ESP32 sketches with Wi-Fi credentials in secrets.h |
 
 App changes: shorter 24-hour line chart with small dots; readable time labels below the plot; daily low–high bars with average dots for 7/30 days; explicitly labeled multi-day aggregation for long all-time views; short summaries with fewer than three readings; latest recorded value/time and lowest/highest stats, with sample count/average in expandable details; tooltips constrained to chart bounds and no vertical touch stem. Gaps remain blank. Existing history/settings, all 32 reference images and all three models are retained.
 
@@ -23,9 +23,9 @@ Firmware changes: one bounded Wi-Fi association at a time with radio shutdown/re
 Firmware reduces overlapping demand but cannot guarantee stable voltage. The user's separate camera supply fixed the observed symptom; retain it. No ESP32 compilation, flashing, physical servo check or electrical measurement has been performed here. Manual streaming/capture and holding current can still overlap across boards. Brownout protection remains enabled.
 
 Integrity:
-- App SHA-256: `b017d90c5ad93c6ff15a8a01fa62f6c142e33b2e55da53ed714d0958d0ee1666` (155,160,806 bytes).
-- Firmware SHA-256: `50420c073537b062ae89f7c19369a53a83e08f266f0e0f4e69959a1bd6ce3a46` (85,424 bytes).
-- App signing certificate matches v1.0.15d; Android application ID remains `com.example.agrisense`. Keep older deliveries as rollback artifacts; do not uninstall merely to update.
+- App v1.0.16a-cloud SHA-256: `5681afdef9bcf9eb3e516b582a5576a8cbf13d365a6d5644ee211d1c53b0cf87` (154,724,986 bytes). Rollback v1.0.15e: `b017d90c5ad93c6ff15a8a01fa62f6c142e33b2e55da53ed714d0958d0ee1666`.
+- Firmware v1.0.16b-cloud SHA-256: `9cb57df49a1c525870af46dcf70802d120613ba4e935cea56a486011c145d4f7` (93,388 bytes). Earlier cloud firmware v1.0.16a-cloud: `60e116637f708b95fbe2ffd80df187e419bb3a8ac7ecd757862c161d31c56c0c` (91,165 bytes). Rollback v1.0.15d-power: `50420c073537b062ae89f7c19369a53a83e08f266f0e0f4e69959a1bd6ce3a46`.
+- App signing certificate matches v1.0.15e/d; Android application ID remains `com.example.agrisense`. Keep older deliveries as rollback artifacts; do not uninstall merely to update.
 
 Resume from device review or a concrete reported issue. Do not redo completed implementation or install dependencies without user confirmation. Preserve unrelated dirty work. Continue using the two-way protocol below when transferring between Codex and Argon.
 
@@ -87,7 +87,33 @@ Outgoing agent (Argon or Codex): update the continuation record below before han
 
 Returning Codex: read the latest continuation entry and verify its file/test evidence before resuming. Preserve Argon's changes and unrelated existing edits. Continue from the exact next action; do not reimplement completed changes. If the record conflicts with current files, inspect the discrepancy before proceeding.
 
-## Latest continuation checkpoint — implementation completed by Codex
+## Latest continuation checkpoint — Firmware Payload & Response Fix v1.0.16b-cloud completed by Argon
+
+- Updated date/time: 2026-10-30 03:09 (Asia/Manila), Gemini 4 Argon.
+- Next receiving agent: Codex or Argon.
+- Latest user instructions: Fix Codex's confirmed sensor telemetry JSON blocker in `firebase_sync.h`, test the actual firmware payload builder, check telemetry PUT responses, and package as a new firmware version (`v1.0.16b-cloud`) without overwriting earlier releases.
+- Task state: Source implemented, host-tested, and packaged; physical ESP32 compilation/flashing and live Firebase/kit verification remain pending.
+- Deliverables:
+  - Android App (unchanged from v1.0.16a-cloud): `AgriSense-v1.0.16a-cloud.apk` (version `1.0.16-a+23`, 154,724,986 bytes, SHA-256: `5681afdef9bcf9eb3e516b582a5576a8cbf13d365a6d5644ee211d1c53b0cf87`).
+  - Firmware Archive: `AgriSense-Firmware-v1.0.16b-cloud.zip` (93,388 bytes, SHA-256: `9cb57df49a1c525870af46dcf70802d120613ba4e935cea56a486011c145d4f7`). Earlier `AgriSense-Firmware-v1.0.16-cloud.zip` and `AgriSense-Firmware-v1.0.16a-cloud.zip` preserved intact.
+  - App Release Notes: `APP-UPDATE-v1.0.16-cloud.md`.
+  - Firmware Release Notes: `FIRMWARE-UPDATE-v1.0.16-cloud.md`.
+  - Codex Review Report: `CODEX-REVIEW-v1.0.16a-cloud.md`.
+- Completed fixes & consensus resolution:
+  1. Sensor Telemetry JSON Blocker Fixed (`v1.0.16b-cloud`): Extracted `buildOpenReadingsJson()`, `closeReadingsJson()`, and `buildSensorCloudPayload()` in `sensor_node_full/firebase_sync.h` (and called `buildOpenReadingsJson()` from `sensor_node_full.ino`). `closeReadingsJson()` closes `readings` with `}` after `dht_age_ms` and `age_ms`, and `buildSensorCloudPayload()` places `"uploaded_at_ms":{".sv":"timestamp"}` at the `/kits/demo/sensor` root before closing the outer JSON object (`}`).
+  2. Cloud HTTP Status Checking (`v1.0.16b-cloud`): Checked `PUT` and `GET` status codes in both `firebase_sync.h` and `firebase_camera_sync.h`, logging failures via `Serial.printf`, clearing cached auth tokens on `401`/`403`, and only marking camera snapshot requests executed when the snapshot `PUT` returns HTTP 200.
+  3. Actual Payload Builder Host Test (`v1.0.16b-cloud`): Updated `checks/cloud_sync_test.cpp` to call `buildOpenReadingsJson()`, `closeReadingsJson()`, and `buildSensorCloudPayload()` directly and verify balanced JSON, exact key depths (`identity`, `readings`, and `uploaded_at_ms` at depth 1; sensor fields and `age_ms`/`dht_age_ms` at depth 2), and `null` handling for uncalibrated soil / failed DHT reads.
+  4. Retained `v1.0.16a-cloud` Fixes: Camera `#include` order in `CameraWebServer/camera_main.h`; built-in Firebase URL/API Key defaults in byte-identical `demo_network.h`; `CloudDeduplicator` boot-time seeding and `device_id` validation; persistent TLS reuse (`setReuse(true)`, 1500 ms timeouts) with at most one HTTP request per `loop()` pass; persistent Hive auth cache + OAuth2 form-encoded token refresh + dual freshness check (`uploaded_at_ms` > 45s and `sample_id` > 30s) in Flutter app.
+  5. Verification:
+     - `python firmware/demo-pan-tilt/checks/run_host_checks.py`: All 6 host suites passed (`demo_controls_test`, `warning_config_test`, `network_test`, `network_empty_test`, `power_timing_test`, `cloud_sync_test`).
+     - `flutter test`: All 49 unit and regression tests passed across 6 test suites.
+     - `dart analyze`: Clean, 0 issues found.
+- Remaining Limitations & Hardware Verification Requirements:
+  - ESP32 compilation via Arduino IDE/CLI, flashing to both physical ESP32 boards, and live end-to-end verification of remote readings, pan/tilt commands, and snapshots against the physical kit and Firebase remain pending (no `arduino-cli` or physical boards attached in this environment).
+  - Accepted demo tradeoffs: `setInsecure()` TLS on ESP32, single primary controller phone, private scan history stored in local Hive.
+- Rollback baseline: Commit `071c218` on `v2-ui-simple`.
+
+## Previous continuation checkpoint (v1.0.15e Trends)
 
 Subsequent app task (2026-10-30): user requested and authorized a Trends UI redesign. Completed separately as app v1.0.15e (build 21), retaining compatibility and existing data. See `APP-UPDATE-v1.0.15e.md` and `AgriSense-v1.0.15e.apk`. Ten focused tests, analysis and release build passed; APK signature matches 15d. The firmware delivery below remains unchanged and still awaits ESP32/hardware verification. Do not confuse the newer app version with a new firmware revision.
 
