@@ -156,9 +156,10 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     label: 'early_blight',
     category: 'Fungal disease',
     explanation: 'Early blight damages foliage and may affect stems and fruit.',
-    symptoms: 'Brown spots with concentric rings, often on older lower leaves.',
+    symptoms:
+        'Look first at older, lower leaves for brown spots with rings like a target. Yellow tissue may surround the spots, and badly affected leaves can dry and fall.',
     inspect:
-        'Look for rings and yellow tissue around spots; compare with other leaf spots.',
+        'Compare the rings and yellow margins with other leaf spots. Yellowing alone does not identify early blight; inspect several leaves and the rest of the plant.',
     prevention:
         'Reduce soil splash with mulch, water at the base and remove crop debris.',
     environment:
@@ -193,7 +194,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     category: 'Oomycete disease',
     explanation: 'Late blight can spread rapidly through foliage and fruit.',
     symptoms:
-        'Water-soaked blotches that enlarge and turn brown; whitish growth may appear beneath leaves.',
+        'Small wet-looking patches can quickly become large purple-brown blotches with an oily appearance. Gray-white growth may occur around patches underneath leaves. Stems and firm brown fruit can also be affected.',
     inspect:
         'Check the undersides and nearby plants. Seek local agricultural advice promptly if symptoms spread rapidly.',
     prevention:
@@ -215,7 +216,8 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     label: 'leaf_miner',
     category: 'Pest damage',
     explanation: 'Leaf-mining larvae feed inside leaf tissue.',
-    symptoms: 'Pale winding or blotchy mines within leaves.',
+    symptoms:
+        'Look for pale winding trails or wider blotches inside the leaf tissue. Inspect a fresh trail closely for a larva; the generic label does not establish which insect made it.',
     inspect:
         'Look for active larvae in fresh mines; the generic label does not identify a pest species.',
     prevention:
@@ -232,7 +234,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Tomato leaf molds affect foliage, particularly in humid protected growing areas.',
     symptoms:
-        'Yellow patches above leaves and olive-brown velvety growth underneath can indicate common tomato leaf mold.',
+        'Compare yellow patches on the upper leaf surface with olive-brown, velvety growth underneath the same area. Inspect both surfaces; a yellow patch alone is not enough to identify common tomato leaf mold.',
     inspect:
         'Inspect both surfaces. Different leaf molds can look similar; the model label does not confirm a pathogen species.',
     prevention:

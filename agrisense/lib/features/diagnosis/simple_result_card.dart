@@ -115,6 +115,40 @@ class SimpleResultCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(scanSensorSummary(scan)),
           DiseaseExampleButton(scan: scan),
+          if (!scan.uncertain && scan.label != 'healthy' && entry != null)
+            ExpansionTile(
+              key: ValueKey('symptoms-${scan.crop.name}-${scan.label}'),
+              tilePadding: EdgeInsets.zero,
+              title: const Text('What to look for'),
+              childrenPadding: const EdgeInsets.only(bottom: 12),
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Typical signs',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(entry.symptoms),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Check similar symptoms',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(entry.inspect),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'These are reference signs to compare with your plant. The photo model does not verify each sign.',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 12),
           const Text(
             'Top model predictions',

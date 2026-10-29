@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/models.dart';
+import 'package:agrisense/data/automatic_capture.dart';
+import 'package:agrisense/data/kit_warning.dart';
 
 // In-memory HTTP doubles: these tests never open sockets or contact a board.
 class TestHeaders implements HttpHeaders {
@@ -120,6 +122,56 @@ List<List<int>> configurationBody() => [
 ];
 
 void main() {
+  test(
+    'warning endpoint authenticates fixed-length POST and verifies all returned limits',
+    () async {
+      const settings = KitWarning(
+        deviceId: 'aabbccddeeff',
+        crop: Crop.tomato,
+        soilRaw: true,
+        rules: [
+          CaptureRule(true, 18, 30),
+          CaptureRule(true, 40, 80),
+          CaptureRule(true, 1500, 2500),
+          CaptureRule(true, 0, 800),
+        ],
+      );
+      final response = {
+        'version': 1,
+        'configured': true,
+        'device_id': settings.deviceId,
+        'crop': 'tomato',
+        'soil_raw': true,
+        for (var i = 0; i < 4; i++) ...{
+          '${KitWarning.names[i]}_enabled': settings.rules[i].enabled,
+          '${KitWarning.names[i]}_min': settings.rules[i].minimum,
+          '${KitWarning.names[i]}_max': settings.rules[i].maximum,
+        },
+      };
+      final socket = TestClient(
+        TestResponse([utf8.encode(jsonEncode(response))]),
+      );
+      final client = HardwareClient(httpClientFactory: () => socket);
+      await client.setWarnings('192.168.1.50', 'a' * 32, settings);
+      expect(socket.request!.method, 'POST');
+      expect(socket.request!.uri.path, '/warnings');
+      expect(socket.request!.headers.values['X-AgriSense-Key'], 'a' * 32);
+      expect(socket.request!.followRedirects, false);
+      expect(
+        Uri.splitQueryString(socket.request!.body.toString()),
+        settings.form(),
+      );
+      response['gas_max'] = 900;
+      final wrong = HardwareClient(
+        httpClientFactory: () =>
+            TestClient(TestResponse([utf8.encode(jsonEncode(response))])),
+      );
+      await expectLater(
+        wrong.setWarnings('192.168.1.50', 'a' * 32, settings),
+        throwsFormatException,
+      );
+    },
+  );
   test(
     'crop command uses POST, form body, header authentication and no redirects/proxy',
     () async {

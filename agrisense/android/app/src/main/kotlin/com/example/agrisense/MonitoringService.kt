@@ -47,7 +47,7 @@ class MonitoringService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, "monitoring_active") else Notification.Builder(this)
             val notification = builder.setSmallIcon(R.drawable.ic_stat_leaf).setContentTitle("AgriSense monitoring active")
-                .setContentText("$crop · monitoring every 10 seconds").setContentIntent(open).setOngoing(true)
+                .setContentText("$crop · checking sensors every second").setContentIntent(open).setOngoing(true)
                 .setCategory(Notification.CATEGORY_SERVICE).setVisibility(Notification.VISIBILITY_PRIVATE)
                 .addAction(Notification.Action.Builder(null, "Open", open).build())
                 .addAction(Notification.Action.Builder(null, "Stop", stop).build()).build()

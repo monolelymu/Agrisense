@@ -39,7 +39,7 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     category: 'Bacterial disease',
     explanation: 'Bacterial spot can affect pepper foliage, stems and fruit.',
     symptoms:
-        'Small wet-looking spots can turn brown; fruit may develop raised, rough lesions.',
+        'Look underneath leaves for small, angular wet-looking spots that later turn brown. Stems may have raised lesions, and fruit spots can be brown, rough or cracked. Other leaf spots can look similar.',
     inspect:
         'Inspect both leaf surfaces, stems and fruit. Similar spotting needs expert confirmation.',
     prevention:
@@ -56,7 +56,7 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     category: 'Fungal disease',
     explanation: 'Cercospora-type leaf spotting can damage Chili foliage.',
     symptoms:
-        'Rounded brown spots may develop pale centers and darker edges, merge and precede leaf drop.',
+        'Look for round brown leaf spots with pale gray centers and dark brown edges. They can enlarge and join together. Similar marks on stems or pods may be more oval; severe spotting can lead to leaf drop.',
     inspect:
         'Compare spot centers and margins; inspect petioles, stems and pods. Ask a crop specialist to distinguish similar leaf spots.',
     prevention:
@@ -128,7 +128,7 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Pepper powdery mildew described by UC IPM is associated with Leveillula taurica.',
     symptoms:
-        'Pale powdery patches often occur underneath leaves, with discoloration above. Leaf loss can expose fruit to sun damage.',
+        'Look underneath leaves for white powdery patches, with yellowish or brownish areas above. Leaf edges may roll upward and leaves can fall, exposing fruit to sun damage. Check that the coating is growth rather than dust or spray residue.',
     inspect:
         'Examine leaf undersides and exposed fruit. Distinguish fungal growth from dust, residues and other disorders.',
     prevention:

@@ -24,10 +24,10 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
-  final minimum = List.generate(3, (_) => TextEditingController());
-  final maximum = List.generate(3, (_) => TextEditingController());
+  final minimum = List.generate(4, (_) => TextEditingController());
+  final maximum = List.generate(4, (_) => TextEditingController());
   final duration = TextEditingController(), cooldown = TextEditingController();
-  final selected = [false, false, false];
+  final selected = [false, false, false, false];
   bool enabled = false, busy = false, capturePhoto = false;
   String? message;
   AppIssue? issue;
@@ -94,6 +94,9 @@ class _NotificationSettingsScreenState
     soilDelta = saved.soilDelta;
     duration.text = '${saved.duration}';
     cooldown.text = '${saved.cooldown}';
+    selected[3] = saved.gasRule.enabled;
+    minimum[3].text = '${saved.gasRule.minimum}';
+    maximum[3].text = '${saved.gasRule.maximum}';
     for (var i = 0; i < 3; i++) {
       selected[i] = saved.rules[i].enabled;
       minimum[i].text = '${saved.rules[i].minimum}';
@@ -172,6 +175,11 @@ class _NotificationSettingsScreenState
           duration: int.parse(duration.text.trim()),
           cooldown: int.parse(cooldown.text.trim()),
           rules: rules,
+          gasRule: CaptureRule(
+            selected[3],
+            double.parse(minimum[3].text.trim()),
+            double.parse(maximum[3].text.trim()),
+          ),
         ),
       );
       dirty = false;
@@ -272,7 +280,11 @@ class _NotificationSettingsScreenState
       final error = validateLimit(
         text,
         minimum: i == 0 ? -40 : 0,
-        maximum: i == 0 ? 80 : 100,
+        maximum: i == 0
+            ? 80
+            : i == 3 || (i == 2 && soilRaw)
+            ? 4095
+            : 100,
       );
       if (error != null) return error;
       if (maximum.contains(controller) &&
@@ -308,6 +320,7 @@ class _NotificationSettingsScreenState
               'Temperature (°C)',
               'Humidity (%)',
               soilRaw ? 'Soil moisture' : 'Soil moisture (%)',
+              'Gas warning LED (raw units)',
             ][i],
             style: Theme.of(context).textTheme.titleMedium,
           ),
@@ -320,6 +333,10 @@ class _NotificationSettingsScreenState
                   preset = 'custom';
                 }),
         ),
+        if (i == 3)
+          const Text(
+            'Optional kit LED only. Raw readings are not ppm or an air-safety measurement. Does not trigger photos or phone alerts.',
+          ),
         if (i == 2 && soilRaw && selected[i]) ...[
           const Text(
             'Warn when soil moisture changes from its starting reading.',
@@ -545,6 +562,14 @@ class _NotificationSettingsScreenState
                   Text(message!),
                 ],
                 if (baseline != null) Text('Fixed baseline: $baselineTime'),
+                ListenableBuilder(
+                  listenable: widget.hardware,
+                  builder: (context, _) =>
+                      Text(widget.hardware.warningStatus(widget.crop)),
+                ),
+                const Text(
+                  'Kit LEDs keep using saved limits when the phone disconnects.',
+                ),
                 TextButton(
                   onPressed: busy
                       ? null
@@ -571,7 +596,7 @@ class _NotificationSettingsScreenState
                   'Enter suitable growing limits. Initial values are sensor bounds.',
                 ),
                 const SizedBox(height: 16),
-                for (var i = 0; i < 3; i++) ...[
+                for (var i = 0; i < 4; i++) ...[
                   _measurement(i),
                   const SizedBox(height: 16),
                 ],
@@ -579,6 +604,9 @@ class _NotificationSettingsScreenState
                 Text(
                   'Alert timing',
                   style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const Text(
+                  'Timing below applies to phone alerts and photos. Kit LEDs respond to each fresh reading.',
                 ),
                 const SizedBox(height: 16),
                 Panel(

@@ -60,7 +60,7 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Alternaria-type spotting can damage Eggplant leaves and fruit.',
     symptoms:
-        'Irregular brown lesions with rings may merge; damaged leaves can fall.',
+        'Look for irregular brown spots with rings inside them. Spots may crack or merge into larger damaged areas, and badly affected leaves can fall. Some Alternaria diseases also cause deep fruit spots.',
     inspect:
         'Check rings, both leaf surfaces and fruit. Similar spots need expert confirmation.',
     prevention:
@@ -143,7 +143,7 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Mosaic-like patterns can be associated with several Eggplant viruses.',
     symptoms:
-        'Light and dark green mottling, curled leaves or distorted fruit can occur.',
+        'Compare younger leaves for alternating light and dark green patches rather than a uniform color. Leaves may curl; fruit can become distorted or mottled. These signs do not identify a particular virus.',
     inspect:
         'Check younger leaves, nearby plants and possible vectors. Confirm the virus with professional testing where available.',
     prevention:
@@ -191,7 +191,8 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     category: 'Broad symptom category',
     explanation:
         'Wilting may reflect water stress, root problems or vascular diseases; this label does not identify the cause.',
-    symptoms: 'Drooping or yellowing may affect branches or the whole plant.',
+    symptoms:
+        'Look for leaves or branches that droop and may turn yellow, sometimes followed by wilting of the whole plant. Check watering and drainage; this appearance can have several causes.',
     inspect:
         'Check drainage, watering, roots and progression. Seek diagnosis for persistent wilt or plant collapse.',
     prevention:

@@ -43,6 +43,7 @@ class SensorAlertSettings {
       CaptureRule(false, 0, 100),
       CaptureRule(false, 0, 100),
     ],
+    this.gasRule = const CaptureRule(false, 0, 4095),
   });
   final bool enabled, capturePhoto, analyzePhoto, showNotifications, repeat;
   final String preset;
@@ -51,7 +52,17 @@ class SensorAlertSettings {
   final Map<String, dynamic>? baseline;
   final int duration, cooldown;
   final List<CaptureRule> rules;
+  final CaptureRule gasRule;
   void validate() {
+    if (!gasRule.minimum.isFinite ||
+        !gasRule.maximum.isFinite ||
+        gasRule.minimum < 0 ||
+        gasRule.maximum > 4095 ||
+        gasRule.minimum >= gasRule.maximum) {
+      throw const FormatException(
+        'Gas limits must be between 0 and 4095 raw units.',
+      );
+    }
     if (rules.length != 3 ||
         duration < 10 ||
         duration > 3600 ||
@@ -77,7 +88,7 @@ class SensorAlertSettings {
     if (!soilDelta.isFinite || soilDelta < 25 || soilDelta > 1000) {
       throw const FormatException('Check soil warning sensitivity.');
     }
-    if (enabled && !rules.any((r) => r.enabled)) {
+    if (enabled && !rules.any((r) => r.enabled) && !gasRule.enabled) {
       throw const FormatException('Select at least one measurement.');
     }
     if (analyzePhoto && !capturePhoto) {
@@ -148,6 +159,7 @@ class SensorAlertSettings {
       duration: duration,
       cooldown: cooldown,
       rules: next,
+      gasRule: gasRule,
     );
   }
 
@@ -183,6 +195,11 @@ class SensorAlertSettings {
     'auto_baseline': autoBaseline,
     'soil_raw': soilRaw,
     'soil_delta': soilDelta,
+    'gas_rule': {
+      'enabled': gasRule.enabled,
+      'min': gasRule.minimum,
+      'max': gasRule.maximum,
+    },
     if (baseline != null) 'baseline': baseline,
     'duration': duration,
     'cooldown': cooldown,
@@ -202,6 +219,13 @@ class SensorAlertSettings {
       autoBaseline: value['auto_baseline'] == true,
       soilRaw: value['soil_raw'] == true,
       soilDelta: (value['soil_delta'] as num?)?.toDouble() ?? 150,
+      gasRule: value['gas_rule'] is Map
+          ? CaptureRule(
+              value['gas_rule']['enabled'] as bool,
+              (value['gas_rule']['min'] as num).toDouble(),
+              (value['gas_rule']['max'] as num).toDouble(),
+            )
+          : const CaptureRule(false, 0, 4095),
       baseline: value['baseline'] == null
           ? null
           : Map<String, dynamic>.from(value['baseline'] as Map),

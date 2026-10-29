@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'models.dart';
 import 'automatic_capture.dart';
+import 'kit_warning.dart';
 import 'board_discovery.dart';
 import 'camera_stream.dart';
 
@@ -111,6 +112,10 @@ class HardwareSample {
     }
     final id = json['sample_id'];
     final age = json['age_ms'];
+    final dhtAge = json['dht_age_ms'];
+    if (dhtAge != null && (dhtAge is! int || dhtAge < 0)) {
+      throw const FormatException('Invalid temperature/humidity age.');
+    }
     if (id is! String ||
         id.isEmpty ||
         id.length > 100 ||
@@ -135,9 +140,13 @@ class HardwareSample {
     return HardwareSample(
       id: id,
       crop: crop,
-      receivedAt: now ?? DateTime.now(),
-      temperature: _number(json['temp_c'], -40, 80),
-      humidity: _number(json['humidity_pct'], 0, 100),
+      receivedAt: (now ?? DateTime.now()).subtract(Duration(milliseconds: age)),
+      temperature: dhtAge is int && dhtAge > 5000
+          ? null
+          : _number(json['temp_c'], -40, 80),
+      humidity: dhtAge is int && dhtAge > 5000
+          ? null
+          : _number(json['humidity_pct'], 0, 100),
       soil: calibrated ? soil : null,
       soilRaw: raw,
       gasRaw: gas,
@@ -389,6 +398,40 @@ class HardwareClient {
 
   Future<Uint8List> capture(String address) =>
       _request(address, '/capture', 'image/jpeg', 15 * 1024 * 1024);
+
+  Future<KitWarning?> warningConfiguration(String address, String code) async {
+    final bytes = await _request(
+      address,
+      '/warnings',
+      'application/json',
+      4096,
+      pairingCode: code,
+      timeout: const Duration(seconds: 3),
+    );
+    final value = jsonDecode(utf8.decode(bytes)) as Map;
+    if (value['configured'] == false && value['version'] == 1) return null;
+    return KitWarning.fromJson(value);
+  }
+
+  Future<void> setWarnings(
+    String address,
+    String code,
+    KitWarning settings,
+  ) async {
+    final bytes = await _request(
+      address,
+      '/warnings',
+      'application/json',
+      4096,
+      pairingCode: code,
+      form: settings.form(),
+      timeout: const Duration(seconds: 3),
+    );
+    final result = KitWarning.fromJson(jsonDecode(utf8.decode(bytes)) as Map);
+    if (!settings.matches(result)) {
+      throw const FormatException('Kit did not confirm the warning limits.');
+    }
+  }
 
   Future<AutomaticCapture?> automaticConfiguration(
     String address,

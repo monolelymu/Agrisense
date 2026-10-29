@@ -266,7 +266,7 @@ class _AutomaticCaptureScreenState extends State<AutomaticCaptureScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Outside range for (seconds)',
-                  helperText: '10–3600; readings are checked every 10 seconds.',
+                  helperText: '10–3600; checking speed depends on the sensor firmware.',
                 ),
               ),
               const SizedBox(height: 24),

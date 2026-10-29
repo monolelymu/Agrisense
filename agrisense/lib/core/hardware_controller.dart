@@ -9,6 +9,7 @@ import 'camera_live_controller.dart';
 import 'dart:io';
 import '../data/models.dart';
 import '../data/automatic_capture.dart';
+import '../data/kit_warning.dart';
 import '../data/daily_photo_schedule.dart';
 import 'sensor_notifications.dart';
 import 'app_issue.dart';
@@ -69,6 +70,88 @@ class HardwareController extends ChangeNotifier {
   final Set<Object> _cameraViews = {};
   final Map<String, BoardIdentity> _verified = {};
   DateTime? _cameraVerifiedAt;
+  DateTime? _lastAppHeartbeat;
+  bool _monitorTickActive = false;
+  final Map<Crop, HardwareSample> _liveReadings = {};
+  final Map<Crop, DateTime> _lastHistoryWrite = {};
+  final Map<Crop, String> warningSyncStatus = {};
+  String? _warningConfirmed;
+  DateTime? _warningCheckAt;
+
+  String warningStatus(Crop crop) =>
+      warningSyncStatus[crop] ?? 'Waiting to sync';
+
+  Future<void> _syncWarnings(Crop crop) async {
+    if (!allowLocalHttp || cameraControlActive || _disposed) return;
+    final nodes = assignments[crop];
+    final endpoint = address(crop, 'sensor');
+    final device = nodes?['sensorId'];
+    if (endpoint.isEmpty || device == null) return;
+    final settings = notificationSettings[crop] ?? SensorAlertSettings.initial;
+    final rules = [
+      for (var i = 0; i < 3; i++)
+        CaptureRule(
+          settings.enabled &&
+              settings.rules[i].enabled &&
+              (!settings.autoBaseline ||
+                  settings.baseline?['metric_$i'] != null ||
+                  settings.baseline?['manual_$i'] == true),
+          settings.rules[i].minimum,
+          settings.rules[i].maximum,
+        ),
+      CaptureRule(
+        settings.enabled && settings.gasRule.enabled,
+        settings.gasRule.minimum,
+        settings.gasRule.maximum,
+      ),
+    ];
+    final desired = KitWarning(
+      deviceId: device,
+      crop: _sensorCrop ?? crop,
+      soilRaw: settings.soilRaw,
+      rules: rules,
+    );
+    final fingerprint = '$endpoint:${desired.form()}';
+    if (_warningConfirmed != fingerprint) {
+      for (final key in warningSyncStatus.keys.toList()) {
+        if (key != crop && warningSyncStatus[key] == 'Saved to kit') {
+          warningSyncStatus[key] = 'Waiting to sync';
+        }
+      }
+      warningSyncStatus[crop] = 'Waiting to sync';
+    }
+    if (_warningCheckAt != null && _clock().isBefore(_warningCheckAt!)) return;
+    _warningCheckAt = _clock().add(const Duration(seconds: 10));
+    try {
+      final identity = _verified['sensor'] ?? await client.identity(endpoint);
+      if (identity.deviceId != device ||
+          identity.kitId != demoKitId ||
+          identity.role != 'sensor') {
+        throw const FormatException('Sensor identity changed.');
+      }
+      if (!identity.capabilities.contains('warning_leds_v1')) {
+        warningSyncStatus[crop] = 'Update sensor firmware to sync warning LEDs';
+        return;
+      }
+      final code = nodes?['pairingCode'] ?? '';
+      if (!RegExp(r'^[a-f0-9]{32}$').hasMatch(code)) {
+        warningSyncStatus[crop] =
+            'Waiting to sync · pair the sensor in Device setup';
+        return;
+      }
+      final actual = await client.warningConfiguration(endpoint, code);
+      if (actual == null || !desired.matches(actual)) {
+        await client.setWarnings(endpoint, code, desired);
+      }
+      _warningConfirmed = fingerprint;
+      warningSyncStatus[crop] = 'Saved to kit';
+      _warningCheckAt = _clock().add(const Duration(seconds: 30));
+    } catch (_) {
+      _warningConfirmed = null;
+      warningSyncStatus[crop] = 'Waiting to sync';
+    }
+  }
+
   String? movementStatus;
   String? _movementVerifiedAddress;
   bool cameraControlActive = false;
@@ -411,6 +494,8 @@ class HardwareController extends ChangeNotifier {
         }
       }
       _movementVerifiedAddress = found['sensor']?.$1;
+      _warningCheckAt = null;
+      _warningConfirmed = null;
       _cameraVerifiedAt = _verified['camera']?.ready == true ? _clock() : null;
       for (final role in ['sensor', 'camera']) {
         final identity = found[role]?.$2;
@@ -681,6 +766,12 @@ class HardwareController extends ChangeNotifier {
   }
 
   HardwareSample? latest(Crop crop) {
+    final live = _liveReadings[crop];
+    if (live != null &&
+        (assignments[crop]?['sensorId'] == null ||
+            live.deviceId == assignments[crop]?['sensorId'])) {
+      return live;
+    }
     final items = samples
         .where((s) => s.deviceId == assignments[crop]?['sensorId'])
         .toList();
@@ -711,7 +802,11 @@ class HardwareController extends ChangeNotifier {
       final device = assignments[scan.crop]?['sensorId'];
       if (device != null && device.isNotEmpty) {
         final candidates =
-            samples
+            [
+                  ...samples,
+                  if (_liveReadings[scan.crop] != null)
+                    _liveReadings[scan.crop]!,
+                ]
                 .where(
                   (s) =>
                       s.crop == scan.crop &&
@@ -906,9 +1001,12 @@ class HardwareController extends ChangeNotifier {
         ..clear()
         ..addAll(next);
       _sensorCrop = crop;
+      _warningCheckAt = null;
+      _warningConfirmed = null;
       await _saveSharedKit(crop);
       status.clear();
       status[crop] = 'Crop confirmed: ${crop.label}';
+      await _syncWarnings(crop);
     } catch (e) {
       status.clear();
       if (e is FormatException) rethrow;
@@ -984,7 +1082,18 @@ class HardwareController extends ChangeNotifier {
         );
       }
       if (_disposed) return;
-      if (!samples.any((r) => r.crop == reading.crop && r.id == reading.id)) {
+      final saved = readings(crop).lastOrNull;
+      final previous = _liveReadings[crop] ?? saved;
+      final duplicate =
+          previous?.deviceId == reading.deviceId && previous?.id == reading.id;
+      final saveDue =
+          saved == null ||
+          saved.deviceId != reading.deviceId ||
+          _clock().difference(_lastHistoryWrite[crop] ?? saved.receivedAt) >=
+              const Duration(seconds: 10);
+      if (!duplicate) _liveReadings[crop] = reading;
+      if (saveDue &&
+          !samples.any((r) => r.crop == reading.crop && r.id == reading.id)) {
         final next = [...samples, reading];
         // Bound storage, keeping the most recent 5,000 samples per crop.
         while (next.where((r) => r.crop == reading.crop).length > 5000) {
@@ -998,6 +1107,7 @@ class HardwareController extends ChangeNotifier {
         samples
           ..clear()
           ..addAll(next);
+        _lastHistoryWrite[crop] = _clock();
       }
       status[crop] = 'Received';
       final currentRules = notificationSettings[crop];
@@ -1010,15 +1120,18 @@ class HardwareController extends ChangeNotifier {
             crop.name: initialized.toJson(),
           });
           notificationSettings[crop] = initialized;
+          _warningCheckAt = null;
+          _warningConfirmed = null;
         }
       }
       try {
-        await _notifyReading(crop, reading);
+        if (!duplicate) await _notifyReading(crop, reading);
       } catch (_) {
         notificationIssue = AppIssue.write;
         notificationStatus =
             'Sensor reading saved, but the alert outcome could not be saved.';
       }
+      if (_pollingPauses == 0) await _syncWarnings(crop);
     } catch (e) {
       status[crop] = 'Unavailable';
       _alertTrackers[crop]?.reset();
@@ -1288,7 +1401,7 @@ class HardwareController extends ChangeNotifier {
       return;
     }
     _pollingCrop = crop;
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       final selected = _requestedPollingCrop;
       if (selected != null) unawaited(monitorTick(selected));
     });
@@ -1298,6 +1411,10 @@ class HardwareController extends ChangeNotifier {
   void selectMonitoringCrop(Crop crop) {
     if (_disposed || !polling) return;
     if (_requestedPollingCrop != crop) _alertTrackers.clear();
+    if (_requestedPollingCrop != crop) {
+      _warningCheckAt = null;
+      _warningConfirmed = null;
+    }
     _requestedPollingCrop = crop;
     if (_timer != null) _pollingCrop = crop;
     notifyListeners();
@@ -1355,8 +1472,8 @@ class HardwareController extends ChangeNotifier {
       : _timer == null
       ? 'Waiting for a sensor assignment.'
       : backgroundActive
-      ? 'Monitoring every 10 seconds · background enabled'
-      : 'Monitoring every 10 seconds';
+      ? 'Checking sensors every second · background enabled'
+      : 'Checking sensors every second';
 
   Future<void> saveNotificationSettings(
     Crop crop,
@@ -1386,6 +1503,9 @@ class HardwareController extends ChangeNotifier {
         crop.name: settings.toJson(),
       });
       notificationSettings[crop] = settings;
+      _warningCheckAt = null;
+      _warningConfirmed = null;
+      await _syncWarnings(crop);
       _alertTrackers.remove(crop);
       notificationIssue = permission ? null : AppIssue.permission;
       notificationStatus = permission
@@ -1511,6 +1631,16 @@ class HardwareController extends ChangeNotifier {
 
   /// Check only the current local minute; never replay missed slots.
   Future<void> monitorTick(Crop crop) async {
+    if (_monitorTickActive || cameraControlActive) return;
+    _monitorTickActive = true;
+    try {
+      await _monitorTick(crop);
+    } finally {
+      _monitorTickActive = false;
+    }
+  }
+
+  Future<void> _monitorTick(Crop crop) async {
     if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
       return;
     }
@@ -1546,7 +1676,11 @@ class HardwareController extends ChangeNotifier {
       }
     }
     await refresh(crop);
-    if (_disposed || !pollingActive || _requestedPollingCrop != crop || busy) {
+    if (_disposed ||
+        !pollingActive ||
+        _requestedPollingCrop != crop ||
+        busy ||
+        cameraControlActive) {
       return;
     }
     if (due && _slot(crop, _clock()) == key && _lastKitCaptureSlot != key) {
@@ -1565,12 +1699,16 @@ class HardwareController extends ChangeNotifier {
         pollingActive &&
         _requestedPollingCrop == crop &&
         !busy &&
+        (_lastAppHeartbeat == null ||
+            _clock().difference(_lastAppHeartbeat!) >=
+                const Duration(seconds: 10)) &&
         _verified['sensor']?.capabilities.contains('app_status_v1') == true) {
       // Use the same operation lock as sampling/capture for the status heartbeat.
       busy = true;
       backgroundWork = true;
       _idle = Completer<void>();
       try {
+        _lastAppHeartbeat = _clock();
         await _sendAppStatus(crop);
       } finally {
         busy = false;

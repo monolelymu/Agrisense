@@ -70,7 +70,7 @@ class _MonitoringSettingsScreenState extends State<MonitoringSettingsScreen> {
                 const SizedBox(height: 12),
                 const ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text('Monitor sensors every 10 seconds'),
+                  title: Text('Check sensors every second'),
                   subtitle: Text(
                     'Starts automatically when you connect on Home.',
                   ),
