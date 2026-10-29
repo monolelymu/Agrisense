@@ -102,12 +102,6 @@ class DiseaseExampleButton extends StatelessWidget {
                           const SizedBox(height: 8),
                           Text(note),
                         ],
-                        if (referencePhotoCredits[filename] case final credit?)
-                          ExpansionTile(
-                            tilePadding: EdgeInsets.zero,
-                            title: const Text('Photo source'),
-                            children: [SelectableText(credit)],
-                          ),
                         const SizedBox(height: 16),
                         const Text(
                           'Example only. Similar-looking symptoms can have different causes. This comparison does not confirm the result.',

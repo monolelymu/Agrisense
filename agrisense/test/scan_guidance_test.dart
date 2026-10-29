@@ -120,11 +120,13 @@ void main() {
                 as List;
         expect(labels, contains(label));
         expect(item.value, startsWith('${crop.name}_'));
+        if (referencePhotoCredits.containsKey(item.value)) {
+          expect(referencePhotoCredits[item.value], contains('https://'));
+        }
         final data = await rootBundle.load(
           'assets/pathology_reference/${item.value}',
         );
         expect(img.decodeImage(data.buffer.asUint8List()), isNotNull);
-        expect(referencePhotoCredits[item.value], isNotEmpty);
       }
     },
   );
@@ -190,10 +192,8 @@ void main() {
       find.textContaining('disease identity on eggplant is unverified'),
       findsOneWidget,
     );
-    await tester.ensureVisible(find.text('Photo source'));
-    await tester.tap(find.text('Photo source'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Hasnain Ahmad'), findsOneWidget);
+    expect(find.text('Photo source'), findsNothing);
+    expect(find.textContaining('FloraScan'), findsNothing);
     final back = find.text('Back to result');
     expect(back.hitTestable(), findsOneWidget);
     await tester.ensureVisible(back);

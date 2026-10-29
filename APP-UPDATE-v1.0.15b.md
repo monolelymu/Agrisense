@@ -37,7 +37,7 @@ phone's references and allows measuring new endpoints from Home.
   trends' original stored units, model inputs, scores and sensor assessment logic
   are unchanged. The percentage does not claim to confirm disease.
 
-No firmware, Firebase, remote-control, model or dependency changes. FloraScan
+No firmware, Firebase, remote-control, model or dependency changes. the contributing project
 was untouched. No source files were deleted.
 
 ## Files

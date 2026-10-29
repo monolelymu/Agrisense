@@ -3,6 +3,7 @@ import '../../core/app_issue.dart';
 import '../../core/widgets.dart';
 import '../../data/models.dart';
 import '../diagnosis/model_catalog.dart';
+import '../diagnosis/reference_photo_credits.dart';
 
 enum HelpDestination { scan, devices, monitoring, alerts, tutorial }
 
@@ -109,6 +110,19 @@ class HelpScreen extends StatelessWidget {
               Padding(padding: const EdgeInsets.all(16), child: Text(topic.$2)),
             ],
           ),
+        ExpansionTile(
+          title: const Text('Image licenses'),
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SelectableText(
+                referencePhotoCredits.entries
+                    .map((entry) => '${entry.key}\n${entry.value}')
+                    .join('\n\n'),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 24),
         Text('Error codes', style: Theme.of(context).textTheme.titleLarge),
         for (final item in AppIssue.all.where((e) => e.code != issue?.code))

@@ -22,7 +22,7 @@ as an update). Flutter package version: `1.0.15-a+17`.
   update. Sensor polling itself remains once per second without a loading panel.
 
 Connect → Readings → Scan → Result remains unchanged. No dependencies, model
-files, firmware or Firebase configuration were changed. FloraScan was untouched.
+files, firmware or Firebase configuration were changed. the contributing project was untouched.
 Older firmware still controls its sampling rate; this app update cannot increase
 the board's sampling rate or validate physical sensor/servo/LED behaviour.
 
@@ -41,7 +41,7 @@ See `agrisense/assets/pathology_reference/SOURCES.json` for exact photo URLs,
 authors, licence statements and file hashes; credits are also visible in-app.
 Dataset labels are illustrative, not laboratory confirmation. Eggplant downy
 mildew retains its explicit unverified-disease caveat. Spotted wilt uses a clearly
-captioned tomato fruit example. Original rights for the existing FloraScan
+captioned tomato fruit example. Original rights for the existing the contributing project
 photos and the standalone Tomato-Village nitrogen image are not established;
 this update does not claim permission for broader/commercial redistribution.
 
