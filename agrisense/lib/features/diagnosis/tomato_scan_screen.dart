@@ -11,6 +11,8 @@ import '../../core/app_issue.dart';
 import '../../core/issue_card.dart';
 import '../../data/models.dart';
 import 'tomato_classifier.dart';
+import 'disease_example.dart';
+import 'scan_guidance.dart';
 import 'tomato_scan.dart';
 import 'tomato_context_widgets.dart';
 import 'model_catalog.dart';
@@ -907,13 +909,16 @@ class TomatoResultCard extends StatelessWidget {
         if (scan.uncertain) ...[
           const Tag('UNCERTAIN', color: warning),
           const SizedBox(height: 8),
-          const Text('Try another clear photo to compare.'),
+          Text(scanRetakeGuidance(scan)),
         ],
         const Text(
           'Image prediction. Confirm the cause by inspecting the plant.',
           style: TextStyle(color: muted),
         ),
         Text(dateLabel(scan.timestamp), style: const TextStyle(color: muted)),
+        const SizedBox(height: 12),
+        Text(scanSensorSummary(scan)),
+        DiseaseExampleButton(scan: scan),
         const SizedBox(height: 24),
         Text('Top predictions', style: Theme.of(context).textTheme.titleMedium),
         for (var i = 0; i < scan.rankedPredictions.length; i++)

@@ -7,6 +7,8 @@ import 'tomato_scan.dart';
 import 'tomato_knowledge.dart';
 import 'eggplant_knowledge.dart';
 import 'chili_knowledge.dart';
+import 'disease_example.dart';
+import 'scan_guidance.dart';
 
 class SimpleResultCard extends StatelessWidget {
   const SimpleResultCard({required this.scan, super.key});
@@ -106,10 +108,13 @@ class SimpleResultCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             scan.uncertain
-                ? 'The model is unsure. Try another well-lit photo and inspect the plant.'
+                ? 'The photo result is uncertain.'
                 : entry?.explanation ??
                       'Inspect the plant and compare another clear photo.',
           ),
+          const SizedBox(height: 12),
+          Text(scanSensorSummary(scan)),
+          DiseaseExampleButton(scan: scan),
           const SizedBox(height: 12),
           const Text(
             'Top model predictions',
@@ -141,7 +146,7 @@ class SimpleResultCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             scan.uncertain
-                ? 'Take a clear, well-lit close-up of one leaf. Check both sides and nearby leaves for changes.'
+                ? scanRetakeGuidance(scan)
                 : entry?.inspect ??
                       'Check the leaf and surrounding leaves for changes.',
           ),
