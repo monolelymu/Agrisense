@@ -1,4 +1,4 @@
-import 'package:fl_chart/fl_chart.dart';
+import 'sensor_trend_card.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/hardware_controller.dart';
@@ -478,8 +478,8 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     final soilPercentage = r == null ? null : h.soilPercentage(r);
     return [
       const SectionTitle(
-        'A closer look at your crops.',
-        'Your growing conditions, all in one place.',
+        'Your plants',
+        'Soil, temperature and humidity readings.',
       ),
       SizedBox(
         width: double.infinity,
@@ -488,12 +488,12 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Connection & monitoring',
+                'Connect your kit',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 12),
               const Text(
-                'Join the same pocket Wi-Fi as your boards, then connect.',
+                'Use the same Wi-Fi on your phone and kit. Then tap Connect.',
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -503,7 +503,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                   icon: const Icon(Icons.link),
                   label: Text(
                     saving
-                        ? 'Checking your devices…'
+                        ? 'Connecting…'
                         : h.polling &&
                               (h.status[crop] == 'Unavailable' ||
                                   const [
@@ -558,7 +558,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      h.polling ? 'Monitoring is on' : 'Tap Connect to start',
+                      h.polling ? 'Updates are on' : 'Tap Connect to start',
                     ),
                   ),
                 ],
@@ -580,44 +580,44 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (r == null)
         const EmptyState(
           'No sensor readings yet',
-          'Power your kit, join the same pocket Wi-Fi, then tap Connect.',
+          'Turn on the kit. Use the same Wi-Fi on your phone, then tap Connect.',
         )
       else ...[
-        Tag(h.fresh(crop) ? 'RECENT SENSOR READING' : 'SAVED SENSOR READING'),
+        Tag(h.fresh(crop) ? 'LATEST READING' : 'OLDER READING'),
         const SizedBox(height: 8),
         Text('Received ${dateLabel(r.receivedAt)}'),
         if (!h.fresh(crop))
-          const Text(
-            'Historical reading. Read sensors again for current conditions.',
-          ),
+          const Text('This is an older reading. Connect the kit for updates.'),
         const SizedBox(height: 12),
         MetricGrid(
           children: [
             _metric(
-              'Soil moisture',
+              soilPercentage == null ? 'Soil reading' : 'Soil moisture',
               soilPercentage == null
-                  ? '${r.soilRaw} raw'
+                  ? '${r.soilRaw}'
                   : '${soilPercentage.toStringAsFixed(0)}%',
-              soilPercentage == null ? 'Sensor reading' : 'Relative moisture',
+              soilPercentage == null ? 'Soil sensor' : 'Moisture level',
             ),
             _metric(
               'Temperature',
               r.temperature == null
-                  ? 'Unavailable'
+                  ? 'No reading'
                   : '${r.temperature!.toStringAsFixed(1)}°C',
               'Air temperature',
             ),
             _metric(
               'Humidity',
               r.humidity == null
-                  ? 'Unavailable'
+                  ? 'No reading'
                   : '${r.humidity!.toStringAsFixed(0)}%',
-              'Relative humidity',
+              'Moisture in the air',
             ),
           ],
         ),
         if (r.temperature == null || r.humidity == null)
-          const Text('Temperature/humidity sensor reported a failed reading.'),
+          const Text(
+            'Temperature or humidity is missing. Check the sensor connection.',
+          ),
       ],
       const SizedBox(height: 16),
       Wrap(
@@ -631,7 +631,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
         ],
       ),
       const SizedBox(height: 24),
-      Text('Latest diagnosis', style: Theme.of(context).textTheme.titleLarge),
+      Text('Latest leaf check', style: Theme.of(context).textTheme.titleLarge),
       if (results.isEmpty)
         const Text('No saved scans for this crop yet.')
       else
@@ -872,15 +872,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     'Gas raw' => r.gasRaw.toDouble(),
     _ => r.temperature,
   };
-  double _tickStep(double value) {
-    if (value <= 0) return 1;
-    final base = math.pow(10, (math.log(value) / math.ln10).floor()).toDouble();
-    for (final multiplier in [1, 2, 5, 10]) {
-      if (base * multiplier >= value) return base * multiplier;
-    }
-    return base * 10;
-  }
-
   List<Widget> _trends() {
     final now = DateTime.now();
     final cutoff = now.subtract(Duration(days: trendDays));
@@ -895,22 +886,6 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             )
             .toList()
           ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
-    final start = readings.isEmpty ? DateTime.now() : readings.first.receivedAt;
-    final span = readings.isEmpty
-        ? 1.0
-        : math.max(
-            1.0,
-            readings.last.receivedAt.difference(start).inMilliseconds / 60000,
-          );
-    final xStep = _tickStep(span / 3);
-    final values = readings.map((r) => _value(r)!).toList();
-    final low = values.isEmpty ? 0.0 : values.reduce(math.min);
-    final high = values.isEmpty ? 1.0 : values.reduce(math.max);
-    final padding = math.max(
-      (high - low) * .1,
-      metric == 'Gas raw' ? 10.0 : 1.0,
-    );
-    final yStep = _tickStep((high - low + padding * 2) / 4);
     return [
       DropdownButtonFormField<String>(
         initialValue: metric,
@@ -944,140 +919,15 @@ class _HardwareDashboardState extends State<HardwareDashboard>
       if (readings.isEmpty)
         const EmptyState('No readings yet', 'Connect AgriSense to start.')
       else
-        Panel(
-          padding: 16,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$metric (${metric == 'Temperature'
-                    ? '°C'
-                    : metric == 'Gas raw'
-                    ? 'ADC'
-                    : '%'})',
-              ),
-              const SizedBox(height: 8),
-              Text('${readings.length} samples • from ${dateLabel(start)}'),
-              const SizedBox(height: 8),
-              Text(
-                'Latest ${values.last.toStringAsFixed(1)} · Average ${(values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1)}\n'
-                'Low ${low.toStringAsFixed(1)} · High ${high.toStringAsFixed(1)}',
-              ),
-              Text(
-                'Last reading ${dateLabel(readings.last.receivedAt)}',
-                style: const TextStyle(color: muted),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                height: 320,
-                child: LineChart(
-                  LineChartData(
-                    minX: 0,
-                    maxX: (span / xStep).ceil() * xStep,
-                    minY: ((low - padding) / yStep).floor() * yStep,
-                    maxY: ((high + padding) / yStep).ceil() * yStep,
-                    gridData: FlGridData(
-                      drawVerticalLine: false,
-                      horizontalInterval: yStep,
-                    ),
-                    borderData: FlBorderData(show: false),
-                    lineTouchData: LineTouchData(
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipItems: (spots) => spots
-                            .map(
-                              (spot) => LineTooltipItem(
-                                '${dateLabel(start.add(Duration(milliseconds: (spot.x * 60000).round())))}\n${spot.y.toStringAsFixed(1)} ${metric == 'Temperature'
-                                    ? '°C'
-                                    : metric == 'Gas raw'
-                                    ? 'ADC'
-                                    : '%'}',
-                                const TextStyle(color: accent),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 48,
-                          interval: yStep,
-                          getTitlesWidget: (value, meta) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Text(
-                              value.toStringAsFixed(yStep < 1 ? 1 : 0),
-                              style: const TextStyle(
-                                color: muted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          interval: xStep,
-                          getTitlesWidget: (value, meta) => Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Text(
-                              dateLabel(
-                                start.add(
-                                  Duration(
-                                    milliseconds: (value * 60000).round(),
-                                  ),
-                                ),
-                              ).replaceFirst(' ', '\n'),
-                              style: const TextStyle(
-                                color: muted,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        color: accent,
-                        isCurved: false,
-                        dotData: const FlDotData(show: true),
-                        spots: [
-                          for (var i = 0; i < readings.length; i++) ...[
-                            if (i > 0 &&
-                                readings[i].receivedAt
-                                        .difference(readings[i - 1].receivedAt)
-                                        .inMinutes >
-                                    30)
-                              FlSpot.nullSpot,
-                            FlSpot(
-                              readings[i].receivedAt
-                                      .difference(start)
-                                      .inMilliseconds /
-                                  60000,
-                              _value(readings[i])!,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        SensorTrendCard(
+          metric: metric,
+          unit: metric == "Temperature" ? "°C" : "%",
+          daily: trendDays != 1,
+          points: [
+            for (final reading in readings)
+              TrendPoint(reading.receivedAt, _value(reading)!),
+          ],
         ),
-      const SizedBox(height: 12),
-      if (readings.isNotEmpty)
-        const Text('Tap a point to see its reading and time.'),
     ];
   }
 
@@ -1184,14 +1034,14 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           const SizedBox(height: 12),
           Text(
             h.notificationSettings[crop]?.awaitingLimits == true
-                ? 'Sensor alerts are on. Waiting for the first fresh readings.'
+                ? 'Alerts are on. Waiting for a new reading.'
                 : h.notificationSettings[crop]?.enabled == true
                 ? 'Sensor alerts are on.'
                 : 'Sensor alerts are off.',
           ),
           const SizedBox(height: 8),
           const Text(
-            'Sensor-triggered photos are controlled separately in sensor alerts.',
+            'Set up photos taken after an alert in Edit sensor alerts.',
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -1221,7 +1071,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             Text(
               h.backgroundActive
                   ? 'Checks continue while your phone is locked.'
-                  : 'Keep the app open. Background monitoring is not active.',
+                  : 'Keep the app open for updates.',
             ),
           ],
         ],

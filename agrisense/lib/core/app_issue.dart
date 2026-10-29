@@ -11,12 +11,12 @@ class AppIssue {
   static const connection = AppIssue(
     'NET-001',
     'Device did not respond',
-    'Check device power, the saved IP address, and that your phone and board use the same trusted Wi-Fi. Then retry.',
+    'Turn on the kit. Use the same Wi-Fi on your phone and kit, then try again.',
   );
   static const address = AppIssue(
     'NET-002',
     'Check the device address',
-    'Enter the board’s private numeric IPv4 address, optionally with a port. Remove endpoint paths such as /capture.',
+    'Enter the kit address, for example 192.168.1.20. Do not add /capture.',
   );
   static const httpOff = AppIssue(
     'NET-003',
@@ -35,13 +35,13 @@ class AppIssue {
   );
   static const protocol = AppIssue(
     'DEV-003',
-    'Device response is incompatible',
-    'Check the board IP and device type in Settings → Device setup. Reload settings before retrying a change; the board may already have received it.',
+    'Cannot read this device',
+    'Check the kit address in Settings → Device setup. Reload settings before trying again.',
   );
   static const stale = AppIssue(
     'SEN-001',
     'No fresh sensor reading',
-    'Wait ten seconds and read again. Check sensor power and wiring if values remain unavailable.',
+    'Wait a moment. If readings do not appear, check sensor power and wiring.',
   );
   static const permission = AppIssue(
     'PER-001',
@@ -51,7 +51,7 @@ class AppIssue {
   static const photo = AppIssue(
     'IMG-001',
     'Photo could not be read',
-    'Choose a valid JPEG or PNG up to 15 MB, 24 megapixels and 12,000 pixels per side. Try selecting the photo again.',
+    'Choose another clear JPG or PNG photo. If it is too large, use a smaller copy.',
   );
   static const camera = AppIssue(
     'CAM-001',
@@ -60,12 +60,12 @@ class AppIssue {
   );
   static const cameraUnavailable = AppIssue(
     'CAM-002',
-    'Board reachable; camera unavailable',
-    'The board responded, but its camera is not ready. Check the camera connection and power, then retry.',
+    'Camera is not ready',
+    'Check the camera cable and power, then try again.',
   );
   static const cameraTimeout = AppIssue(
     'CAM-003',
-    'Camera communication timed out',
+    'Camera took too long',
     'The request did not finish in time. Retry the photo; use Retry connection if this continues.',
   );
   static const cameraConnection = AppIssue(
@@ -93,13 +93,13 @@ class AppIssue {
 
   static const model = AppIssue(
     'ML-001',
-    'Model could not run',
-    'Restart the app and try a clear leaf photo. If this repeats, install a verified app build with matching model and labels.',
+    'Could not check this photo',
+    'Restart the app and try another clear leaf photo. Open Help if it still fails.',
   );
   static const unsupported = AppIssue(
     'ML-002',
-    'Model not available for this crop',
-    'Choose a crop with an installed model. Sensor monitoring is available independently of disease analysis.',
+    'Photo checks are unavailable for this crop',
+    'Choose another supported crop. You can still view sensor readings.',
   );
   static const storage = AppIssue(
     'STO-001',

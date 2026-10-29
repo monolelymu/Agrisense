@@ -37,13 +37,13 @@ const chiliKnowledge = <String, TomatoKnowledge>{
   'bacterial_spot': TomatoKnowledge(
     label: 'bacterial_spot',
     category: 'Bacterial disease',
-    explanation: 'Bacterial spot can affect pepper foliage, stems and fruit.',
+    explanation: 'Bacterial spot can affect pepper leaves, stems and fruit.',
     symptoms:
-        'Look underneath leaves for small, angular wet-looking spots that later turn brown. Stems may have raised lesions, and fruit spots can be brown, rough or cracked. Other leaf spots can look similar.',
+        'Look under leaves for small wet-looking spots that turn brown. Stems may have raised spots. Fruit spots can be brown, rough or cracked.',
     inspect:
         'Inspect both leaf surfaces, stems and fruit. Similar spotting needs expert confirmation.',
     prevention:
-        'Start with healthy seed and transplants, reduce splashing onto foliage and avoid handling wet plants.',
+        'Start with healthy seed and young plants, reduce splashing onto leaves and avoid handling wet plants.',
     environment:
         'Moist foliage and humid conditions can favor spread. Air humidity does not measure leaf wetness.',
     limitation:
@@ -54,13 +54,13 @@ const chiliKnowledge = <String, TomatoKnowledge>{
   'cercospora_leaf_spot': TomatoKnowledge(
     label: 'cercospora_leaf_spot',
     category: 'Fungal disease',
-    explanation: 'Cercospora-type leaf spotting can damage Chili foliage.',
+    explanation: 'Cercospora-type leaf spotting can damage Chili leaves.',
     symptoms:
         'Look for round brown leaf spots with pale gray centers and dark brown edges. They can enlarge and join together. Similar marks on stems or pods may be more oval; severe spotting can lead to leaf drop.',
     inspect:
-        'Compare spot centers and margins; inspect petioles, stems and pods. Ask a crop specialist to distinguish similar leaf spots.',
+        'Compare spot centers and margins; inspect leaf stalks, stems and pods. Ask a plant expert to distinguish similar leaf spots.',
     prevention:
-        'Use general leaf-disease hygiene and avoid moving affected crop material between plants; seek local advice for confirmed disease.',
+        'Use basic care and avoid moving affected crop material between plants; seek local advice for confirmed disease.',
     environment:
         'The cited symptom guide does not establish a numerical temperature, humidity or exposure rule.',
     limitation:
@@ -76,7 +76,7 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     symptoms:
         'Leaves may curl and become distorted, with small new leaves and stunted growth in viral cases.',
     inspect:
-        'Inspect new growth and leaf undersides for insects, including whiteflies and thrips, and consider nonviral causes with a crop specialist.',
+        'Inspect new growth and leaf undersides for insects, including whiteflies and thrips, and consider nonviral causes with a plant expert.',
     prevention:
         'Use healthy planting material and protect seedlings from insect exposure. Obtain local confirmation before removing plants.',
     environment:
@@ -90,9 +90,9 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     label: 'healthy',
     category: 'No visible condition predicted',
     explanation:
-        'This category represents foliage without a selected visible disorder; it is not proof of plant health.',
+        'This category represents leaves without a selected visible disorder; it is not proof of plant health.',
     symptoms:
-        'No condition from the planned label set is indicated by this category.',
+        'Look for normal leaf color and shape, without unusual spots, holes or curling.',
     inspect:
         'Continue checking new growth, leaf undersides, stems and fruit for changes.',
     prevention:
@@ -110,9 +110,9 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     explanation:
         'This broad category suggests investigating nutrition and growing conditions; it does not identify a deficient nutrient.',
     symptoms:
-        'Discoloration or weak growth can have nutritional and nonnutritional causes; appearance alone is insufficient.',
+        'Yellow leaves or slow growth can have several causes. Check watering and nutrients before changing fertilizer.',
     inspect:
-        'Compare old and new growth, review watering and fertilizer history, and arrange soil or tissue testing with local agricultural support.',
+        'Check old and new leaves. Review watering and fertilizer use. Ask a plant expert about soil testing before changing fertilizer.',
     prevention:
         'Maintain drainage and consistent watering. Use test results and local advice before changing fertilizer.',
     environment:
@@ -132,7 +132,7 @@ const chiliKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Examine leaf undersides and exposed fruit. Distinguish fungal growth from dust, residues and other disorders.',
     prevention:
-        'Monitor foliage regularly and inspect nearby host plants. Seek local advice early if leaves begin dropping; simple sanitation alone may not control this disease.',
+        'Monitor leaves regularly and inspect nearby host plants. Seek local advice early if leaves begin dropping; simple sanitation alone may not control this disease.',
     environment:
         'Disease conditions vary; this app assigns no universal temperature, humidity or exposure cutoff for Chili powdery mildew.',
     limitation:

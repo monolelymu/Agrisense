@@ -133,8 +133,11 @@ void main() {
       expect(find.text('Tomato • Bacterial Spot'), findsNothing);
       await tester.tap(find.text('Tomato • Uncertain result'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Photo scores'));
+      await tester.tap(find.text('Photo scores'));
+      await tester.pumpAndSettle();
       for (final text in [
-        'Uncertain result',
+        'Not sure yet',
         'Bacterial Spot',
         'Early Blight',
         'Healthy',
@@ -146,7 +149,7 @@ void main() {
       }
       expect(find.text('Learn more'), findsNothing);
       expect(
-        find.textContaining('Take a clear, well-lit close-up'),
+        find.textContaining('Take another clear photo in good light'),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox.shrink());
@@ -161,6 +164,7 @@ void main() {
     final h = _GraphController(box)..load();
     h.samples.addAll([
       sample(now.subtract(const Duration(hours: 2))),
+      sample(now.subtract(const Duration(minutes: 119))),
       sample(now.subtract(const Duration(minutes: 1))),
     ]);
     await tester.pumpWidget(
@@ -172,8 +176,8 @@ void main() {
     );
     await openSimplePage(tester, 'Trends');
     final chart = tester.widget<LineChart>(find.byType(LineChart));
-    expect(chart.data.lineBarsData.single.spots, hasLength(3));
-    expect(chart.data.lineBarsData.single.spots[1], FlSpot.nullSpot);
+    expect(chart.data.lineBarsData.single.spots, hasLength(4));
+    expect(chart.data.lineBarsData.single.spots[2], FlSpot.nullSpot);
     expect(find.text('Reset view'), findsNothing);
     expect(find.text('Gas raw'), findsNothing);
     expect(find.byType(CropPicker), findsOneWidget);
@@ -184,14 +188,20 @@ void main() {
     await tester.tap(find.text('Humidity').last);
     await tester.pumpAndSettle();
     expect(find.byType(LineChart), findsOneWidget);
-    expect(h.readings(Crop.tomato), hasLength(2));
+    expect(h.readings(Crop.tomato), hasLength(3));
+    await tester.ensureVisible(find.byType(DropdownButtonFormField<int>));
+    await tester.tap(find.byType(DropdownButtonFormField<int>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Last 7 days').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Daily low–high · dot = average'), findsOneWidget);
     await tester.ensureVisible(find.text('Eggplant'));
     await tester.tap(find.text('Eggplant'));
     await tester.pumpAndSettle();
     expect(find.byType(LineChart), findsNothing);
     expect(find.text('No readings yet'), findsOneWidget);
     expect(find.text('Tap a point to see its reading and time.'), findsNothing);
-    expect(h.readings(Crop.tomato), hasLength(2));
+    expect(h.readings(Crop.tomato), hasLength(3));
     await tester.pumpWidget(const SizedBox.shrink());
     h.dispose();
   });

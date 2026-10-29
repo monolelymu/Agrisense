@@ -443,10 +443,10 @@ void main() {
     );
     hardware.status[Crop.tomato] = 'Received';
     await show(tester, largeText: true);
-    expect(find.text('2300 raw'), findsOneWidget);
+    expect(find.text('2300'), findsOneWidget);
     expect(find.text('26.5°C'), findsOneWidget);
     expect(find.text('61%'), findsOneWidget);
-    expect(find.text('Sensor reading'), findsOneWidget);
+    expect(find.text('Soil sensor'), findsOneWidget);
     expect(find.text('Monitoring'), findsNothing);
     hardware.assignments[Crop.tomato] = {'sensor': 'http://192.168.1.20'};
     await tester.runAsync(
@@ -457,8 +457,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('35%'), findsOneWidget);
-    expect(find.text('Relative moisture'), findsOneWidget);
-    expect(find.text('2300 raw'), findsNothing);
+    expect(find.text('Moisture level'), findsOneWidget);
+    expect(find.text('2300'), findsNothing);
     expect(find.text('26.5°C'), findsOneWidget);
     expect(find.text('61%'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -578,9 +578,9 @@ void main() {
         HardwareApp(hardware: hardware, scans: reopened, showTutorial: false),
       );
       await openSimplePage(tester, 'Camera');
-      await tester.ensureVisible(find.text('Retry photo analysis'));
+      await tester.ensureVisible(find.text('Check saved photo'));
       await tester.runAsync(() async {
-        await tester.tap(find.text('Retry photo analysis'));
+        await tester.tap(find.text('Check saved photo'));
         await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await tester.pumpAndSettle();
@@ -679,9 +679,7 @@ void main() {
         expect(find.text('Sensor: Receiving readings'), findsOneWidget);
         expect(
           find.textContaining(
-            badPhoto
-                ? 'Camera: Board reachable; camera unavailable'
-                : 'Camera: Camera ready',
+            badPhoto ? 'Camera: Camera is not ready' : 'Camera: Camera ready',
           ),
           findsOneWidget,
         );

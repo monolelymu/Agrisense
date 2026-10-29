@@ -116,7 +116,7 @@ void main() {
       });
       await tester.pumpAndSettle();
       expect(find.text('Help & troubleshooting'), findsNothing);
-      expect(find.text('A closer look at your crops.'), findsOneWidget);
+      expect(find.text('Your plants'), findsOneWidget);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       await tester.pumpWidget(
@@ -303,7 +303,7 @@ void main() {
       );
       await tester.tap(find.text('Retry'));
       expect(retried, isTrue);
-      await tester.tap(find.text('Troubleshoot'));
+      await tester.tap(find.text('Get help'));
       await tester.pumpAndSettle();
       expect(find.byType(HelpScreen), findsOneWidget);
       expect(tester.takeException(), isNull);

@@ -21,7 +21,7 @@ class CameraPhotoPreview extends StatelessWidget {
             const Text('Photo could not be displayed. Try another capture.'),
       ),
       const SizedBox(height: 8),
-      Text('Last photo • ${dateLabel(at)} • not live'),
+      Text('Saved photo • ${dateLabel(at)} • not live'),
     ],
   );
 }

@@ -64,7 +64,7 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Check rings, both leaf surfaces and fruit. Similar spots need expert confirmation.',
     prevention:
-        'Use general leaf-disease hygiene: avoid splashing foliage and clean up damaged crop material.',
+        'Use basic care: avoid splashing leaves and clean up damaged crop material.',
     environment:
         'The selected Eggplant source does not establish a numerical temperature, humidity or exposure rule.',
     limitation:
@@ -79,9 +79,9 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     symptoms:
         'General signs include pale patches above and soft gray or purplish growth underneath leaves.',
     inspect:
-        'Inspect leaf undersides and ask a crop specialist to confirm the cause; compare with other leaf diseases.',
+        'Inspect leaf undersides and ask a plant expert to confirm the cause; compare with other leaf diseases.',
     prevention:
-        'General guidance is to improve airflow and water at soil level rather than wetting foliage.',
+        'General guidance is to improve airflow and water at soil level rather than wetting leaves.',
     environment:
         'General guidance discusses damp foliage and humidity; no Eggplant-specific sensor range is established here.',
     limitation:
@@ -92,7 +92,8 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     label: 'healthy',
     category: 'No visible condition predicted',
     explanation: 'The image resembles the model’s healthy class.',
-    symptoms: 'No supported visible disorder was selected by the classifier.',
+    symptoms:
+        'Look for normal leaf color and shape, without unusual spots, holes or curling.',
     inspect:
         'Inspect new growth, undersides, stems and fruit; continue checking for pests and changes.',
     prevention:
@@ -126,11 +127,11 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Leaf spot describes damage with several possible causes; Cercospora is only one example.',
     symptoms:
-        'Pale, brown or gray lesions may enlarge; severely affected leaves can drop.',
+        'Pale, brown or gray damaged spots may enlarge; severely affected leaves can drop.',
     inspect:
         'Record spot shape, leaf underside appearance and progression; seek identification before disease-specific treatment.',
     prevention:
-        'Use healthy plants, limit foliage splash and remove badly affected material with clean tools.',
+        'Use healthy plants, limit leaves splash and remove badly affected material with clean tools.',
     environment:
         'No common numerical environmental rule is assigned to this broad label.',
     limitation:
@@ -145,9 +146,9 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     symptoms:
         'Compare younger leaves for alternating light and dark green patches rather than a uniform color. Leaves may curl; fruit can become distorted or mottled. These signs do not identify a particular virus.',
     inspect:
-        'Check younger leaves, nearby plants and possible vectors. Confirm the virus with professional testing where available.',
+        'Check younger leaves, nearby plants and possible insects that spread disease. Confirm the virus with professional testing where available.',
     prevention:
-        'Use healthy transplants and discuss vector and weed-host management with local extension advice.',
+        'Use healthy young plants and discuss control of insects and weeds with local farming advice.',
     environment:
         'Transmission involves infected hosts and vectors; these sensors cannot establish infection.',
     limitation:
@@ -160,11 +161,11 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     explanation:
         'Phomopsis-type disease can affect seedlings, leaves, stems and fruit.',
     symptoms:
-        'Brown leaf lesions, stem damage and soft decaying fruit may occur.',
+        'Brown leaf damaged spots, stem damage and soft decaying fruit may occur.',
     inspect:
         'Inspect stems and fruit as well as the leaf. Ask for confirmation when rot or seedling collapse is present.',
     prevention:
-        'Use healthy planting material, clean tools and remove infected crop debris; reduce splash onto foliage.',
+        'Use healthy planting material, clean tools and remove infected crop debris; reduce splash onto leaves.',
     environment:
         'Spread can involve rain splash and infected debris. A reported laboratory growth temperature is not an infection threshold.',
     limitation:
@@ -174,7 +175,7 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
   'powdery_mildew': TomatoKnowledge(
     label: 'powdery_mildew',
     category: 'Possible fungal disease',
-    explanation: 'Powdery mildew fungi can affect Eggplant foliage.',
+    explanation: 'Powdery mildew fungi can affect Eggplant leaves.',
     symptoms:
         'White patches or yellowing can occur; inspect both surfaces because appearance varies.',
     inspect:
@@ -196,7 +197,7 @@ const eggplantKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Check drainage, watering, roots and progression. Seek diagnosis for persistent wilt or plant collapse.',
     prevention:
-        'Maintain drainage and use healthy transplants. Get the cause identified before changing disease management.',
+        'Maintain drainage and use healthy young plants. Get the cause identified before changing disease management.',
     environment:
         'Air readings and calibrated soil moisture provide context but cannot distinguish bacterial, fungal or physical causes.',
     limitation:

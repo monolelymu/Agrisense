@@ -36,27 +36,14 @@ const referencePhotoCredits = <String, String>{
 
 const referencePhotoNotes = <String, String>{
   "chili_powdery_mildew.jpg":
-      "Powdery mildew on pepper. Appearance varies between pepper varieties.",
-  "eggplant_alternaria_leaf_spot.jpg":
-      "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
+      "Powdery mildew on pepper. Leaves may look different.",
   "eggplant_downy_mildew.jpg":
-      "Dataset label: Downy mildew. The disease identity on eggplant is unverified; compare symptoms and seek expert confirmation.",
-  "eggplant_phomopsis_blight.jpg":
-      "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
-  "tomato_bacterial_spot.jpg":
-      "Dataset-labelled example; not independently laboratory-confirmed.",
-  "tomato_mosaic_virus.jpg":
-      "Dataset-labelled example; not independently laboratory-confirmed.",
+      "Example labeled downy mildew. Ask a plant expert to check the cause.",
   "tomato_nitrogen_deficiency.jpg":
-      "Dataset-labelled nitrogen-deficiency example. Similar yellowing can have other causes.",
-  "tomato_spider_mites.jpg":
-      "Dataset-labelled example; not independently laboratory-confirmed.",
+      "Other problems can also cause yellow leaves.",
   "tomato_spotted_wilt_virus.jpg":
-      "Spotted wilt symptoms on tomato fruit. Leaf symptoms can look different.",
-  "tomato_target_spot.jpg":
-      "Dataset-labelled example; not independently laboratory-confirmed.",
+      "This example shows tomato fruit. Leaf signs may look different.",
   "tomato_whitefly.jpg":
-      "Whitefly immature stages on a tomato leaf, including stages parasitized by a beneficial wasp.",
-  "eggplant_powdery_mildew.jpg":
-      "Powdery mildew on eggplant. Inspect both sides of the leaf.",
+      "Young whiteflies on a tomato leaf. Some have been attacked by helpful insects.",
+  "eggplant_powdery_mildew.jpg": "Check both sides of the leaf.",
 };

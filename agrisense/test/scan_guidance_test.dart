@@ -61,35 +61,35 @@ void main() {
     'uploads never use a sensor assessment, including saved legacy data',
     () {
       final scan = _scan(source: 'upload', evidence: EvidenceState.notMatching);
-      expect(scanSensorSummary(scan), startsWith('Photo-only result.'));
+      expect(scanSensorSummary(scan), startsWith('Photo only.'));
       expect(scanRetakeGuidance(scan), isNot(contains('did not match')));
     },
   );
 
   test('missing and unknown-version context stay photo-only', () {
     final scan = _scan();
-    expect(scanSensorSummary(scan), startsWith('Photo-only result.'));
+    expect(scanSensorSummary(scan), startsWith('Photo only.'));
     final legacy = TomatoScan.fromJson({
       ...scan.toJson(),
       'assessment': {'version': 999},
     });
-    expect(scanSensorSummary(legacy), startsWith('Photo-only result.'));
+    expect(scanSensorSummary(legacy), startsWith('Photo only.'));
   });
 
   test('agreement does not confirm disease; mismatch cannot rule it out', () {
     expect(
       scanSensorSummary(_scan(evidence: EvidenceState.currentMatch)),
-      contains('do not confirm'),
+      contains('cannot confirm'),
     );
     expect(
       scanSensorSummary(_scan(evidence: EvidenceState.notMatching)),
-      contains('older infection is still possible'),
+      contains('take another photo'),
     );
     for (final state in [
       EvidenceState.partial,
       EvidenceState.durationNotEstablished,
     ]) {
-      expect(scanSensorSummary(_scan(evidence: state)), contains('not enough'));
+      expect(scanSensorSummary(_scan(evidence: state)), contains('Not enough'));
     }
   });
 
@@ -146,16 +146,14 @@ void main() {
         ),
       );
       await show(.5);
-      expect(
-        find.textContaining('image is uncertain and the sensor'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Sensor readings differ'), findsOneWidget);
       await show(.9);
       expect(find.text('Possible Early Blight'), findsOneWidget);
-      expect(
-        find.textContaining('Please take another clear photo'),
-        findsNothing,
-      );
+      expect(find.textContaining('Take another clear photo'), findsNothing);
+      expect(find.text('90.0%'), findsNothing);
+      await tester.ensureVisible(find.text('Photo scores'));
+      await tester.tap(find.text('Photo scores'));
+      await tester.pumpAndSettle();
       expect(find.text('90.0%'), findsOneWidget);
     },
   );
@@ -185,11 +183,11 @@ void main() {
     await tester.tap(find.text('See example'));
     await tester.pumpAndSettle();
     expect(find.text('Your photo'), findsOneWidget);
-    expect(find.text('Reference example'), findsOneWidget);
+    expect(find.text('Example photo'), findsOneWidget);
     expect(find.byType(Image), findsNWidgets(2));
     expect(find.text('Example photo unavailable.'), findsNothing);
     expect(
-      find.textContaining('disease identity on eggplant is unverified'),
+      find.textContaining('Ask a plant expert to check the cause'),
       findsOneWidget,
     );
     expect(find.text('Photo source'), findsNothing);
@@ -246,16 +244,13 @@ void main() {
       });
       expect(
         scanSensorMeasurements(withSample()),
-        contains('Soil moisture: 2300 raw'),
+        contains('Soil reading: 2300'),
       );
       expect(
         scanSensorMeasurements(withSample()),
-        contains('Air temperature: 26.5 °C'),
+        contains('Temperature: 26.5 °C'),
       );
-      expect(
-        scanSensorMeasurements(withSample()),
-        contains('Humidity: 61.2% RH'),
-      );
+      expect(scanSensorMeasurements(withSample()), contains('Humidity: 61.2%'));
       expect(
         scanSensorMeasurements(withSample(calibrated: true)),
         contains('Soil moisture: 42.5%'),
@@ -298,7 +293,7 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Uncertain result'), findsOneWidget);
+      expect(find.text('Not sure yet'), findsOneWidget);
       expect(find.text('See example'), findsOneWidget);
       expect(find.text('What to look for'), findsOneWidget);
       expect(find.text('Typical signs'), findsNothing);
@@ -309,10 +304,7 @@ void main() {
         find.text(label == 'healthy' ? 'Healthy appearance' : 'Typical signs'),
         findsOneWidget,
       );
-      expect(
-        find.textContaining('Please take another clear photo'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Take another clear photo'), findsOneWidget);
       expect(tester.takeException(), isNull, reason: '$crop/$label');
     }
   });

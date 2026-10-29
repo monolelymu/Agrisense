@@ -33,9 +33,7 @@ class SimpleResultCard extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'These websites explain symptoms and plant care. Internet access is needed.',
-            ),
+            const Text('Plant care websites. Internet needed.'),
             const SizedBox(height: 12),
             for (final source in sources)
               Padding(
@@ -58,7 +56,7 @@ class SimpleResultCard extends StatelessWidget {
                       ScaffoldMessenger.of(sheetContext).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'Could not open the website. Check your browser and internet connection.',
+                            'Cannot open the website. Check your internet connection.',
                           ),
                         ),
                       );
@@ -94,7 +92,7 @@ class SimpleResultCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             scan.uncertain
-                ? 'Uncertain result'
+                ? 'Not sure yet'
                 : scan.label == 'healthy'
                 ? 'Looks healthy in this photo'
                 : 'Possible ${scan.displayLabel}',
@@ -108,9 +106,11 @@ class SimpleResultCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             scan.uncertain
-                ? 'The photo result is uncertain.'
+                ? 'Try a closer view of one leaf in good light.'
+                : scan.label == 'healthy'
+                ? 'Keep checking new leaves and nearby plants.'
                 : entry?.explanation ??
-                      'Inspect the plant and compare another clear photo.',
+                      'Check the leaf and take another clear photo.',
           ),
           const SizedBox(height: 12),
           Text(scanSensorSummary(scan)),
@@ -139,43 +139,35 @@ class SimpleResultCard extends StatelessWidget {
                       Text(entry.symptoms),
                       const SizedBox(height: 12),
                       const Text(
-                        'Check similar symptoms',
+                        'Care tips',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      Text(entry.inspect),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'These are reference signs to compare with your plant. The photo model does not verify each sign.',
-                      ),
+                      Text(entry.prevention),
                     ],
                   ),
                 ),
               ],
             ),
           const SizedBox(height: 12),
-          const Text(
-            'Top model predictions',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text('Photo scores'),
+            children: [
+              for (final prediction in predictions.take(3))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(prediction.displayLabel)),
+                      const SizedBox(width: 12),
+                      Text('${(prediction.score * 100).toStringAsFixed(1)}%'),
+                    ],
+                  ),
+                ),
+              const Text('A high score does not prove disease.'),
+            ],
           ),
-          const SizedBox(height: 8),
-          for (final prediction in predictions.take(3))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(child: Text(prediction.displayLabel)),
-                  const SizedBox(width: 12),
-                  Text('${(prediction.score * 100).toStringAsFixed(1)}%'),
-                ],
-              ),
-            ),
-          const Text(
-            'Model scores show possibilities, not confirmed disease probabilities.',
-            style: TextStyle(color: muted),
-          ),
-          if (predictions.length < 3)
-            const Text('This saved record has fewer than three predictions.'),
           const SizedBox(height: 12),
           const Text(
             'What to do next',
@@ -186,15 +178,11 @@ class SimpleResultCard extends StatelessWidget {
             scan.uncertain
                 ? scanRetakeGuidance(scan)
                 : entry?.inspect ??
-                      'Check the leaf and surrounding leaves for changes.',
+                      'Check this leaf and nearby leaves for changes.',
           ),
-          if (!scan.uncertain && entry != null) ...[
-            const SizedBox(height: 8),
-            Text(entry.prevention),
-          ],
           const SizedBox(height: 12),
           const Text(
-            'Photo prediction, not a confirmed diagnosis.',
+            'Check the plant before treating it.',
             style: TextStyle(color: muted),
           ),
           if (!scan.uncertain && entry != null && entry.sources.isNotEmpty) ...[

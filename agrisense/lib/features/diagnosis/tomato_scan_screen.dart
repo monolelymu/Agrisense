@@ -219,7 +219,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       result = null;
       saved = false;
       page = 1;
-      activity = 'Analyzing ${selectedCrop.label.toLowerCase()} photo…';
+      activity = 'Checking ${selectedCrop.label.toLowerCase()} photo…';
     });
     if (await photo.length() > maxPhotoBytes) {
       throw const FormatException('Choose a photo smaller than 15 MB.');
@@ -249,7 +249,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
       busy = true;
       error = null;
       issue = null;
-      activity = 'Capturing ${selectedCrop.label} camera photo…';
+      activity = 'Taking a photo…';
     });
     try {
       final bytes = await widget.hardware!.capture(selectedCrop);
@@ -261,7 +261,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         bytes,
       );
       if (!mounted) return;
-      setState(() => activity = 'Analyzing camera photo…');
+      setState(() => activity = 'Checking photo…');
       await _analyzeCameraOriginal(original);
     } catch (e) {
       issue =
@@ -316,7 +316,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
         setState(() {
           busy = true;
           error = null;
-          activity = 'Analyzing saved photo…';
+          activity = 'Checking saved photo…';
         });
         try {
           await _analyzeCameraOriginal(original);
@@ -422,13 +422,13 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('A camera photo is saved and waiting for analysis.'),
+                const Text('A saved photo still needs checking.'),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: busy
                       ? null
                       : () => _retryCameraOriginal(pending.first),
-                  child: const Text('Retry photo analysis'),
+                  child: const Text('Check saved photo'),
                 ),
               ],
             ),
@@ -499,7 +499,7 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
               const SizedBox(height: 12),
               Text(
                 cameraReady
-                    ? 'Automatic checks use this camera.'
+                    ? 'Show one leaf clearly in good light.'
                     : 'Camera not connected. Tap Connect on Home.',
               ),
               if (!supported)
@@ -639,14 +639,12 @@ class _TomatoScanScreenState extends State<TomatoScanScreen> {
           ),
           if (widget.hardware!.address(crop, 'camera').isEmpty) ...[
             const SizedBox(height: 8),
-            const Text(
-              'Assign this crop’s camera in Devices to capture a photo.',
-            ),
+            const Text('Connect the camera in Settings → Device setup.'),
           ],
           if (!widget.hardware!.allowLocalHttp) ...[
             const SizedBox(height: 8),
             const Text(
-              'Local hardware access is off. Enable it in Devices to use the camera.',
+              'Open Settings → Device setup and turn on local hardware access.',
             ),
           ],
         ],

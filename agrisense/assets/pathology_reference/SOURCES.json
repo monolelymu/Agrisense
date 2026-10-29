@@ -56,7 +56,7 @@
     "author": "Scot Nelson",
     "license": "CC0",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "caption": "Powdery mildew on pepper. Appearance varies between pepper varieties.",
+    "caption": "Powdery mildew on pepper. Leaves may look different.",
     "sha256": "9e1c28a5e9e50e887bd0e90e44785fc1003381af57177a94637aa56e3d0a25b1",
     "modified": false
   },
@@ -67,7 +67,7 @@
     "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
     "license": "CC BY 4.0",
     "license_url": "https://creativecommons.org/licenses/by/4.0/",
-    "caption": "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "225d29e68dc7048875f984f9de0c73d9582934cb6d82081afaeb2389c6f1ad0d",
     "modified": false
   },
@@ -78,7 +78,7 @@
     "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
     "license": "CC BY 4.0",
     "license_url": "https://creativecommons.org/licenses/by/4.0/",
-    "caption": "Dataset label: Downy mildew. The disease identity on eggplant is unverified; compare symptoms and seek expert confirmation.",
+    "caption": "Example labeled downy mildew. Ask a plant expert to check the cause.",
     "sha256": "68229f357218629cc8f38749afbc7dc39ec921744b8f63af458292f8c7eb547b",
     "modified": false
   },
@@ -129,7 +129,7 @@
     "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
     "license": "CC BY 4.0",
     "license_url": "https://creativecommons.org/licenses/by/4.0/",
-    "caption": "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "bf838f3917fc6bb13173317f74aeeb0598a46956ad3fe4b162f6f581ed92d493",
     "modified": false
   },
@@ -150,7 +150,7 @@
     "author": "PlantVillage — Hughes, Salathé and Mohanty",
     "license": "CC BY-SA 3.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "3320c46706d434c028aa93fde868140c48604a328844f2b1c553d020bdc9db06",
     "modified": false
   },
@@ -223,7 +223,7 @@
     "author": "PlantVillage — Hughes, Salathé and Mohanty",
     "license": "CC BY-SA 3.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "478ead03f1f962f60ae3455b90affd170c8b6a5cca95a60d1cf5e32b68f8bd0c",
     "modified": false
   },
@@ -234,7 +234,7 @@
     "author": "Mamta Gehlot, Raj Kumar Saxena and G. C. Gandhi — Tomato-Village",
     "license": "Public research dataset; standalone image license not specified",
     "license_url": "https://github.com/mamta-joshi-gehlot/Tomato-Village",
-    "caption": "Dataset-labelled nitrogen-deficiency example. Similar yellowing can have other causes.",
+    "caption": "Other problems can also cause yellow leaves.",
     "sha256": "36e776cb3f134e6f98fb2addeac97abf3132f6c0bf8b1c2383df14b5a51fb838",
     "modified": false
   },
@@ -277,7 +277,7 @@
     "author": "PlantVillage — Hughes, Salathé and Mohanty",
     "license": "CC BY-SA 3.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "e7a0bfcde5d0dbec10505a121587fdac55ccf4cafe4262e85545f2673f8dd1a6",
     "modified": false
   },
@@ -288,7 +288,7 @@
     "author": "Downtowngal",
     "license": "CC0",
     "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "caption": "Spotted wilt symptoms on tomato fruit. Leaf symptoms can look different.",
+    "caption": "This example shows tomato fruit. Leaf signs may look different.",
     "sha256": "159ec3e45f22e4f22f4eba6572f9345f5dc543e81a3b1680a4fe35dac52c0676",
     "modified": false
   },
@@ -299,7 +299,7 @@
     "author": "PlantVillage — Hughes, Salathé and Mohanty",
     "license": "CC BY-SA 3.0",
     "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "caption": "",
     "sha256": "58572ee41dd4623a564ac34234be9866e442243c94ce4e72c6b9ac0ab565ac73",
     "modified": false
   },
@@ -310,7 +310,7 @@
     "author": "Goldlocki",
     "license": "CC BY-SA 3.0",
     "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
-    "caption": "Whitefly immature stages on a tomato leaf, including stages parasitized by a beneficial wasp.",
+    "caption": "Young whiteflies on a tomato leaf. Some have been attacked by helpful insects.",
     "sha256": "3e18386876aae0a883f8ee565b0f9a0b67bcdf90c320661eced9fdcb36bce410",
     "modified": false
   },
@@ -331,7 +331,7 @@
     "author": "Scot Nelson",
     "license": "CC0",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-    "caption": "Powdery mildew on eggplant. Inspect both sides of the leaf.",
+    "caption": "Check both sides of the leaf.",
     "sha256": "04f855ef8475492a4efb44c93d12ff6028d58d970b8f731107ec3b8ba156289e",
     "modified": false
   }

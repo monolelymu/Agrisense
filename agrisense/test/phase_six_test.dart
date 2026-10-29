@@ -165,7 +165,7 @@ void main() {
             scale,
           ),
         );
-        expect(find.text('Connection & monitoring'), findsOneWidget);
+        expect(find.text('Connect your kit'), findsOneWidget);
         expect(
           find.text(
             'Historical reading. Read sensors again for current conditions.',

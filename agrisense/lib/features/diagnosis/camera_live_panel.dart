@@ -53,9 +53,8 @@ class _CameraLivePanelState extends State<CameraLivePanel> {
               height: 220,
               fit: BoxFit.contain,
               gaplessPlayback: true,
-              errorBuilder: (_, _, _) => const Text(
-                'Live photo could not be displayed. Refresh a still photo.',
-              ),
+              errorBuilder: (_, _, _) =>
+                  const Text('Cannot show the camera view. Tap Refresh photo.'),
             ),
             const SizedBox(height: 8),
           ] else if (h.lastCameraPhoto != null)
@@ -78,11 +77,11 @@ class _CameraLivePanelState extends State<CameraLivePanel> {
           Text(
             h.canStream
                 ? live.status
-                : 'Connect AgriSense to start a supported live feed.',
+                : 'Connect the kit to see the camera view.',
             style: TextStyle(color: live.fresh ? accent : muted),
           ),
           if (live.status.startsWith('Reconnecting')) ...[
-            const Text('Still photos remain available.'),
+            const Text('You can still try Refresh photo.'),
             TextButton(
               onPressed: live.retry,
               child: const Text('Retry live view'),

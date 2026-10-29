@@ -520,13 +520,13 @@ class HardwareController extends ChangeNotifier {
           ? 'Conflicting ${conflicts.join(' and ')} identities. Keep only your intended kit powered and retry.'
           : found.isEmpty && legacy.isEmpty
           ? discoveryFailed
-                ? 'Discovery could not run. Check phone Wi-Fi and local network permissions, then retry.'
-                : 'No kit found. Power both boards and join the same pocket Wi-Fi, then retry.'
+                ? 'Cannot find the kit. Check Wi-Fi and app permissions, then retry.'
+                : 'No kit found. Turn on the kit and use the same Wi-Fi, then retry.'
           : found.length == 2 && _blockedRoles.isEmpty
-          ? 'Kit found. Monitoring will continue automatically.'
+          ? 'Kit connected. Readings will update automatically.'
           : legacy.isNotEmpty
-          ? 'Using saved board addresses. Flash the discovery firmware for automatic address recovery.'
-          : 'Kit partly connected. Missing or unready boards will be retried automatically.';
+          ? 'Using the saved kit connection.'
+          : 'Kit partly connected. Retrying the missing device…';
     } finally {
       busy = false;
       backgroundWork = false;
@@ -1637,10 +1637,10 @@ class HardwareController extends ChangeNotifier {
 
   String cameraMessage(Crop crop) => switch (cameraStatus[crop]) {
     'Received' => 'Camera ready',
-    'Camera unavailable' => 'Board reachable; camera unavailable',
+    'Camera unavailable' => 'Camera is not ready',
     'Capture failed' => 'Photo capture failed. Try again.',
-    'Timed out' => 'Communication timed out. Retrying…',
-    'Unreachable' || 'Unavailable' => 'Board did not respond. Retrying…',
+    'Timed out' => 'Camera took too long. Retrying…',
+    'Unreachable' || 'Unavailable' => 'Camera did not respond. Retrying…',
     _ => 'Not checked. Tap Connect.',
   };
 

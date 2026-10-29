@@ -21,10 +21,7 @@ class IssueCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${issue.title} · ${issue.code}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(issue.title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(issue.recovery),
           const SizedBox(height: 12),
@@ -45,7 +42,7 @@ class IssueCard extends StatelessWidget {
                     builder: (_) => HelpScreen(issue: issue),
                   ),
                 ),
-                child: const Text('Troubleshoot'),
+                child: const Text('Get help'),
               ),
             ],
           ),

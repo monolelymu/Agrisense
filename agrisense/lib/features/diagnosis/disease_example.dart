@@ -86,7 +86,7 @@ class DiseaseExampleButton extends StatelessWidget {
                               const Text('Photo unavailable.'),
                         ),
                         const SizedBox(height: 16),
-                        const Text('Reference example'),
+                        const Text('Example photo'),
                         const SizedBox(height: 8),
                         Image.asset(
                           'assets/pathology_reference/$filename',
@@ -104,7 +104,7 @@ class DiseaseExampleButton extends StatelessWidget {
                         ],
                         const SizedBox(height: 16),
                         const Text(
-                          'Example only. Similar-looking symptoms can have different causes. This comparison does not confirm the result.',
+                          'Example only. Your plant may look different.',
                         ),
                       ],
                     ),

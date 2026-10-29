@@ -26,29 +26,27 @@ List<String> scanSensorMeasurements(TomatoScan scan) {
       ? sample.soil
       : local?.percentage(sample.soilRaw);
   String value(double? n, String unit) =>
-      n == null ? 'Unavailable' : '${n.toStringAsFixed(1)}$unit';
+      n == null ? 'No reading' : '${n.toStringAsFixed(1)}$unit';
   return [
-    'Readings at photo time',
-    'Soil moisture: ${soil == null ? '${sample.soilRaw} raw' : value(soil, '%')}',
-    'Air temperature: ${value(sample.temperature, ' °C')}',
-    'Humidity: ${value(sample.humidity, '% RH')}',
+    'Readings when photo was taken',
+    soil == null
+        ? 'Soil reading: ${sample.soilRaw}'
+        : 'Soil moisture: ${value(soil, '%')}',
+    'Temperature: ${value(sample.temperature, ' °C')}',
+    'Humidity: ${value(sample.humidity, '%')}',
   ];
 }
 
 String scanSensorSummary(TomatoScan scan) => switch (_evidence(scan)?.state) {
   EvidenceState.currentMatch || EvidenceState.favorableHistory =>
-    'At photo time, sensor conditions supported this possibility. They do not confirm disease.',
+    'Sensor readings fit this result. They cannot confirm disease.',
   EvidenceState.notMatching =>
-    'At photo time, sensor conditions did not match this possibility. An older infection is still possible.',
+    'Sensor readings differ from this result. Check the leaf and take another photo.',
   EvidenceState.partial || EvidenceState.durationNotEstablished =>
-    'The saved sensor readings are not enough to check this possibility.',
-  EvidenceState.notAssessable =>
-    'These sensors cannot check this condition. The result is based on the photo.',
-  EvidenceState.noContext || null =>
-    'Photo-only result. No usable sensor readings are linked to this photo.',
+    'Not enough sensor readings to compare.',
+  EvidenceState.notAssessable => 'These sensors cannot check this problem.',
+  EvidenceState.noContext || null => 'Photo only. No matching sensor readings.',
 };
 
 String scanRetakeGuidance(TomatoScan scan) =>
-    _evidence(scan)?.state == EvidenceState.notMatching
-    ? 'Please take another clear photo. The image is uncertain and the sensor conditions did not match. Use good light and photograph one leaf from another angle.'
-    : 'Please take another clear photo. Use good light and photograph one leaf from another angle. Check both sides and nearby leaves.';
+    'Take another clear photo in good light. Show one leaf.';

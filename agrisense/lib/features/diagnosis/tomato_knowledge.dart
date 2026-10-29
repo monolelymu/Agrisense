@@ -139,7 +139,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Check both leaf surfaces and fruit. Similar spots have other causes.',
     prevention:
-        'Use healthy transplants, water at the base and avoid handling wet plants.',
+        'Use healthy young plants, water at the base and avoid handling wet plants.',
     environment:
         'Warm conditions around 23.9–30 °C, high humidity and rain or overhead watering favor disease.',
     limitation:
@@ -155,7 +155,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
   'early_blight': TomatoKnowledge(
     label: 'early_blight',
     category: 'Fungal disease',
-    explanation: 'Early blight damages foliage and may affect stems and fruit.',
+    explanation: 'Early blight damages leaves and may affect stems and fruit.',
     symptoms:
         'Look first at older, lower leaves for brown spots with rings like a target. Yellow tissue may surround the spots, and badly affected leaves can dry and fall.',
     inspect:
@@ -178,7 +178,8 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     category: 'No visible condition predicted',
     explanation:
         'The model did not identify one of its other supported conditions in this image.',
-    symptoms: 'No specific disease symptom is implied by this label.',
+    symptoms:
+        'Look for normal leaf color and shape, without unusual spots, holes or curling.',
     inspect:
         'Continue checking new growth, leaf undersides and the whole plant.',
     prevention:
@@ -192,13 +193,13 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
   'late_blight': TomatoKnowledge(
     label: 'late_blight',
     category: 'Oomycete disease',
-    explanation: 'Late blight can spread rapidly through foliage and fruit.',
+    explanation: 'Late blight can spread rapidly through leaves and fruit.',
     symptoms:
         'Small wet-looking patches can quickly become large purple-brown blotches with an oily appearance. Gray-white growth may occur around patches underneath leaves. Stems and firm brown fruit can also be affected.',
     inspect:
         'Check the undersides and nearby plants. Seek local agricultural advice promptly if symptoms spread rapidly.',
     prevention:
-        'Use healthy planting material, improve airflow and avoid prolonged wet foliage.',
+        'Use healthy planting material, improve airflow and avoid prolonged wet leaves.',
     environment:
         'UC IPM reports infection in about 10 hours when average temperature is 15.6–25.6 °C and RH is above 90%.',
     limitation:
@@ -221,7 +222,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Look for active larvae in fresh mines; the generic label does not identify a pest species.',
     prevention:
-        'Inspect transplants and preserve natural enemies; remove heavily affected material when appropriate.',
+        'Inspect young plants and preserve helpful insects; remove heavily affected material when appropriate.',
     environment:
         'The installed environmental sensors do not detect larvae or establish pest identity.',
     limitation:
@@ -232,7 +233,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     label: 'leaf_mold',
     category: 'Fungal disease',
     explanation:
-        'Tomato leaf molds affect foliage, particularly in humid protected growing areas.',
+        'Tomato leaf molds affect leaves, particularly in humid protected growing areas.',
     symptoms:
         'Compare yellow patches on the upper leaf surface with olive-brown, velvety growth underneath the same area. Inspect both surfaces; a yellow patch alone is not enough to identify common tomato leaf mold.',
     inspect:
@@ -318,7 +319,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
   'powdery_mildew': TomatoKnowledge(
     label: 'powdery_mildew',
     category: 'Fungal disease',
-    explanation: 'Powdery mildew affects living foliage and may weaken plants.',
+    explanation: 'Powdery mildew affects living leaves and may weaken plants.',
     symptoms:
         'Yellow patches and sometimes white powdery growth on leaf surfaces.',
     inspect:
@@ -334,11 +335,11 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
   'septoria_leaf_spot': TomatoKnowledge(
     label: 'septoria_leaf_spot',
     category: 'Fungal disease',
-    explanation: 'Septoria leaf spot can cause spotting and loss of foliage.',
+    explanation: 'Septoria leaf spot can cause spotting and loss of leaves.',
     symptoms:
         'Small spots with dark margins, pale centers and sometimes tiny black dots.',
     inspect:
-        'Inspect lower foliage and spot centers; bacterial spots and other fungi can look similar.',
+        'Inspect lower leaves and spot centers; bacterial spots and other fungi can look similar.',
     prevention:
         'Reduce leaf wetness and soil splash, improve airflow and remove crop debris.',
     environment:
@@ -379,7 +380,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Inspect for thrips and symptoms on the whole plant; obtain confirmation when practical.',
     prevention:
-        'Use healthy transplants, inspect for thrips and manage nearby infected host plants with local advice.',
+        'Use healthy young plants, inspect for thrips and manage nearby infected host plants with local advice.',
     environment:
         'Temperature and humidity cannot establish that thrips carry the virus.',
     limitation:
@@ -391,11 +392,11 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     category: 'Fungal disease',
     explanation: 'Target spot can damage leaves, stems and fruit.',
     symptoms:
-        'Brown spots may enlarge with pale centers and concentric rings; fruit can develop sunken lesions.',
+        'Brown spots may enlarge with pale centers and rings inside the spots; fruit can develop sunken damaged spots.',
     inspect:
         'Compare with early blight and bacterial spots, and inspect fruit as well as leaves.',
     prevention:
-        'Improve airflow, reduce prolonged wet foliage and inspect plants regularly.',
+        'Improve airflow, reduce prolonged wet leaves and inspect plants regularly.',
     environment:
         'UF/IFAS reports favorable temperatures around 28.3–32.2 °C, high humidity and 16–44 hours of continuous leaf wetness.',
     limitation:
@@ -420,7 +421,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Look beneath leaves for adults and immature stages. Whitefly presence does not prove virus infection.',
     prevention:
-        'Inspect transplants, monitor leaf undersides and preserve natural enemies.',
+        'Inspect young plants, monitor leaf undersides and preserve helpful insects.',
     environment:
         'Sensors cannot identify whitefly species, abundance or whether they carry a virus.',
     limitation:
@@ -437,7 +438,7 @@ const tomatoKnowledge = <String, TomatoKnowledge>{
     inspect:
         'Inspect new growth and whiteflies; arrange confirmation if symptoms persist or spread.',
     prevention:
-        'Start with healthy transplants, inspect for whiteflies and follow local advice on affected plants.',
+        'Start with healthy young plants, inspect for whiteflies and follow local advice on affected plants.',
     environment:
         'Suitable weather does not establish infection or identify a virus-carrying whitefly.',
     limitation:
