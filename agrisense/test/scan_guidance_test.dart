@@ -246,7 +246,7 @@ void main() {
       });
       expect(
         scanSensorMeasurements(withSample()),
-        contains('Soil moisture: 2300 raw (uncalibrated)'),
+        contains('Soil moisture: 2300 raw'),
       );
       expect(
         scanSensorMeasurements(withSample()),
@@ -258,7 +258,7 @@ void main() {
       );
       expect(
         scanSensorMeasurements(withSample(calibrated: true)),
-        contains('Soil moisture: 42.5% (calibrated)'),
+        contains('Soil moisture: 42.5%'),
       );
       expect(scanSensorMeasurements(withSample(age: 31)), isEmpty);
       expect(scanSensorMeasurements(withSample(age: -1)), isEmpty);

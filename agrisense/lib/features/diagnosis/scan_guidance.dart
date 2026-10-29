@@ -1,6 +1,7 @@
 import 'tomato_assessment.dart';
 import 'tomato_scan.dart';
 import '../../data/hardware_client.dart';
+import '../../data/soil_calibration.dart';
 
 // Use only the assessment frozen with the photo; never today's live readings.
 EnvironmentalEvidence? _evidence(TomatoScan scan) => scan.source == 'upload'
@@ -18,11 +19,17 @@ List<String> scanSensorMeasurements(TomatoScan scan) {
     return const [];
   }
   if (!recentCropSample(sample, scan.timestamp, scan.crop)) return const [];
+  final local = SoilCalibration.tryFromJson(
+    scan.sensorContext!['soil_display_calibration'],
+  );
+  final soil = sample.soilCalibrated
+      ? sample.soil
+      : local?.percentage(sample.soilRaw);
   String value(double? n, String unit) =>
       n == null ? 'Unavailable' : '${n.toStringAsFixed(1)}$unit';
   return [
     'Readings at photo time',
-    'Soil moisture: ${sample.soilCalibrated ? value(sample.soil, '% (calibrated)') : '${sample.soilRaw} raw (uncalibrated)'}',
+    'Soil moisture: ${soil == null ? '${sample.soilRaw} raw' : value(soil, '%')}',
     'Air temperature: ${value(sample.temperature, ' °C')}',
     'Humidity: ${value(sample.humidity, '% RH')}',
   ];

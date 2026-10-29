@@ -11,6 +11,8 @@ import 'package:agrisense/data/board_discovery.dart';
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/kit_warning.dart';
 import 'package:agrisense/data/models.dart';
+import 'package:agrisense/data/soil_calibration.dart';
+import 'package:agrisense/features/diagnosis/scan_guidance.dart';
 import 'package:agrisense/features/diagnosis/simple_result_card.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:image/image.dart' as img;
@@ -94,6 +96,59 @@ void main() {
     await box.close();
     await directory.delete(recursive: true);
   });
+
+  test(
+    'phone soil reference persists per kit and freezes with scans without changing sensor rules',
+    () async {
+      await h.refresh(Crop.tomato);
+      final reading = h.latest(Crop.tomato)!;
+      final rulesBefore = h.notificationSettings[Crop.tomato]!.toJson();
+      await h.saveSoilCalibration(
+        Crop.tomato,
+        SoilCalibration(dry: 3000, wet: 1000),
+      );
+      expect(h.soilPercentage(reading), 50);
+      expect(reading.soil, isNull);
+      expect(reading.soilCalibrated, isFalse);
+      final boardCalibrated = HardwareSample.fromSaved({
+        ...reading.toJson(),
+        'soil_calibrated': true,
+        'soil_pct': 72.0,
+      });
+      expect(h.soilPercentage(boardCalibrated), 72);
+      expect(h.notificationSettings[Crop.tomato]!.toJson(), rulesBefore);
+      final restored = HardwareController(box, clock: () => now)..load();
+      restored.assignments[Crop.tomato] = h.assignments[Crop.tomato]!;
+      expect(restored.soilPercentage(reading), 50);
+      restored.assignments[Crop.tomato] = {
+        'sensor': 'http://192.168.1.21',
+        'sensorId': 'different-kit',
+      };
+      expect(restored.soilPercentage(reading), isNull);
+      restored.dispose();
+      final scan = h.attachScanContext(
+        TomatoScan(
+          id: 'soil',
+          timestamp: now,
+          label: 'early_blight',
+          score: .9,
+          preview: Uint8List(0),
+          modelVersion: 'unchanged',
+          source: 'camera',
+        ),
+        at: now,
+      );
+      expect(scanSensorMeasurements(scan), contains('Soil moisture: 50.0%'));
+      await h.saveSoilCalibration(
+        Crop.tomato,
+        SoilCalibration(dry: 4000, wet: 0),
+      );
+      await h.saveSoilCalibration(Crop.tomato, null);
+      expect(h.soilPercentage(reading), isNull);
+      expect(scanSensorMeasurements(scan), contains('Soil moisture: 50.0%'));
+      expect(scan.score, .9);
+    },
+  );
 
   test(
     'live values update without shortening history; duplicates do not refresh age',

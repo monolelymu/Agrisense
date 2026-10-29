@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce/hive.dart';
 import '../data/hardware_client.dart';
+import '../data/soil_calibration.dart';
 import '../data/board_discovery.dart';
 import '../data/app_alert_event.dart';
 import 'app_alerts_bridge.dart';
@@ -780,6 +781,40 @@ class HardwareController extends ChangeNotifier {
     return items.isEmpty ? null : items.last;
   }
 
+  String? _soilCalibrationKey(Crop crop, [HardwareSample? sample]) {
+    final endpoint = address(crop, 'sensor');
+    if (endpoint.isEmpty) return null;
+    sample ??= latest(crop);
+    final assignedId = assignments[crop]?['sensorId'] ?? '';
+    if (assignedId.isNotEmpty &&
+        sample != null &&
+        sample.deviceId != assignedId) {
+      return null;
+    }
+    final id = assignedId.isNotEmpty ? assignedId : sample?.deviceId ?? '';
+    return 'soil-display-calibration-v1/${id.isNotEmpty ? 'id:$id' : 'address:$endpoint'}';
+  }
+
+  SoilCalibration? soilCalibration(Crop crop, [HardwareSample? sample]) {
+    final key = _soilCalibrationKey(crop, sample);
+    return key == null ? null : SoilCalibration.tryFromJson(box.get(key));
+  }
+
+  double? soilPercentage(HardwareSample sample) => sample.soilCalibrated
+      ? sample.soil
+      : soilCalibration(sample.crop, sample)?.percentage(sample.soilRaw);
+
+  Future<void> saveSoilCalibration(Crop crop, SoilCalibration? value) async {
+    final key = _soilCalibrationKey(crop);
+    if (key == null) throw const FormatException('Connect your sensor first.');
+    if (value == null) {
+      await box.delete(key);
+    } else {
+      await box.put(key, value.toJson());
+    }
+    if (!_disposed) notifyListeners();
+  }
+
   bool fresh(Crop crop) {
     final sample = latest(crop);
     return status[crop] == 'Received' &&
@@ -831,7 +866,15 @@ class HardwareController extends ChangeNotifier {
     );
     return TomatoScan.fromJson({
       ...scan.toJson(),
-      'sensor_context': sample.toJson(),
+      'sensor_context': {
+        ...sample.toJson(),
+        if (!sample.soilCalibrated &&
+            soilCalibration(scan.crop, sample) != null)
+          'soil_display_calibration': soilCalibration(
+            scan.crop,
+            sample,
+          )!.toJson(),
+      },
       'assessment': assessment.toJson(),
     });
   }

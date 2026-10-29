@@ -20,6 +20,7 @@ import '../diagnosis/crop_knowledge_screen.dart';
 import '../diagnosis/simple_result_card.dart';
 import '../../data/daily_photo_schedule.dart';
 import 'photo_times_sheet.dart';
+import 'soil_calibration_screen.dart';
 import 'app_alerts_screen.dart';
 import 'watering_reminder_card.dart';
 import '../../data/app_alert_event.dart';
@@ -474,6 +475,7 @@ class _HardwareDashboardState extends State<HardwareDashboard>
 
   List<Widget> _dashboard(List<TomatoScan> results) {
     final r = h.latest(crop);
+    final soilPercentage = r == null ? null : h.soilPercentage(r);
     return [
       const SectionTitle(
         'A closer look at your crops.',
@@ -593,12 +595,10 @@ class _HardwareDashboardState extends State<HardwareDashboard>
           children: [
             _metric(
               'Soil moisture',
-              !r.soilCalibrated
+              soilPercentage == null
                   ? '${r.soilRaw} raw'
-                  : r.soil == null
-                  ? 'Unavailable'
-                  : '${r.soil!.toStringAsFixed(0)}%',
-              r.soilCalibrated ? 'Soil moisture' : 'Uncalibrated sensor reading',
+                  : '${soilPercentage.toStringAsFixed(0)}%',
+              soilPercentage == null ? 'Sensor reading' : 'Relative moisture',
             ),
             _metric(
               'Temperature',
@@ -778,6 +778,16 @@ class _HardwareDashboardState extends State<HardwareDashboard>
     ],
     const Text(
       'This camera and sensor connection is shared across all crops. Changing the crop on Home does not change the sensor firmware configuration. Saved history stays unchanged.',
+    ),
+    const SizedBox(height: 16),
+    ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Soil percentage'),
+      subtitle: const Text('Set dry and wet reference readings'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: locked || h.address(crop, 'sensor').isEmpty
+          ? null
+          : () => _openSettings(SoilCalibrationScreen(hardware: h, crop: crop)),
     ),
     const SizedBox(height: 16),
     Text('Connection tests', style: Theme.of(context).textTheme.titleLarge),

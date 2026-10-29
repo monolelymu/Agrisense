@@ -9,6 +9,7 @@ import 'package:agrisense/features/monitoring/notification_settings_screen.dart'
 import 'package:agrisense/data/hardware_client.dart';
 import 'package:agrisense/data/board_discovery.dart';
 import 'package:agrisense/data/models.dart';
+import 'package:agrisense/data/soil_calibration.dart';
 import 'package:agrisense/data/daily_photo_schedule.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan_screen.dart';
@@ -445,8 +446,21 @@ void main() {
     expect(find.text('2300 raw'), findsOneWidget);
     expect(find.text('26.5°C'), findsOneWidget);
     expect(find.text('61%'), findsOneWidget);
-    expect(find.text('Uncalibrated sensor reading'), findsOneWidget);
+    expect(find.text('Sensor reading'), findsOneWidget);
     expect(find.text('Monitoring'), findsNothing);
+    hardware.assignments[Crop.tomato] = {'sensor': 'http://192.168.1.20'};
+    await tester.runAsync(
+      () => hardware.saveSoilCalibration(
+        Crop.tomato,
+        SoilCalibration(dry: 3000, wet: 1000),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('35%'), findsOneWidget);
+    expect(find.text('Relative moisture'), findsOneWidget);
+    expect(find.text('2300 raw'), findsNothing);
+    expect(find.text('26.5°C'), findsOneWidget);
+    expect(find.text('61%'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
