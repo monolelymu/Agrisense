@@ -114,8 +114,10 @@ class SimpleResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(scanSensorSummary(scan)),
+          for (final measurement in scanSensorMeasurements(scan))
+            Text(measurement),
           DiseaseExampleButton(scan: scan),
-          if (!scan.uncertain && scan.label != 'healthy' && entry != null)
+          if (entry != null)
             ExpansionTile(
               key: ValueKey('symptoms-${scan.crop.name}-${scan.label}'),
               tilePadding: EdgeInsets.zero,
@@ -127,9 +129,11 @@ class SimpleResultCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Typical signs',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      Text(
+                        scan.label == 'healthy'
+                            ? 'Healthy appearance'
+                            : 'Typical signs',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(entry.symptoms),

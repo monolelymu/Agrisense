@@ -6,6 +6,8 @@ import 'package:agrisense/features/diagnosis/scan_guidance.dart';
 import 'package:agrisense/features/diagnosis/simple_result_card.dart';
 import 'package:agrisense/features/diagnosis/tomato_assessment.dart';
 import 'package:agrisense/features/diagnosis/tomato_scan.dart';
+import 'package:agrisense/features/diagnosis/reference_photo_credits.dart';
+import 'package:agrisense/data/hardware_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,6 +96,19 @@ void main() {
   test(
     'each reference matches a current model label and decodes offline',
     () async {
+      final expected = <(Crop, String)>{};
+      for (final crop in Crop.values) {
+        final labels =
+            jsonDecode(
+                  await rootBundle.loadString(
+                    'assets/models/${crop.name}_labels.json',
+                  ),
+                )
+                as List;
+        expected.addAll(labels.cast<String>().map((label) => (crop, label)));
+      }
+      expect(expected.length, 32);
+      expect(diseaseExamples.keys.toSet(), expected);
       for (final item in diseaseExamples.entries) {
         final (crop, label) = item.key;
         final labels =
@@ -109,6 +124,7 @@ void main() {
           'assets/pathology_reference/${item.value}',
         );
         expect(img.decodeImage(data.buffer.asUint8List()), isNotNull);
+        expect(referencePhotoCredits[item.value], isNotEmpty);
       }
     },
   );
@@ -157,7 +173,11 @@ void main() {
           ).copyWith(textScaler: TextScaler.linear(1.5)),
           child: child!,
         ),
-        home: Scaffold(body: DiseaseExampleButton(scan: _scan())),
+        home: Scaffold(
+          body: DiseaseExampleButton(
+            scan: _scan(crop: Crop.eggplant, label: 'downy_mildew'),
+          ),
+        ),
       ),
     );
     await tester.tap(find.text('See example'));
@@ -166,6 +186,14 @@ void main() {
     expect(find.text('Reference example'), findsOneWidget);
     expect(find.byType(Image), findsNWidgets(2));
     expect(find.text('Example photo unavailable.'), findsNothing);
+    expect(
+      find.textContaining('disease identity on eggplant is unverified'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.text('Photo source'));
+    await tester.tap(find.text('Photo source'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Hasnain Ahmad'), findsOneWidget);
     final back = find.text('Back to result');
     expect(back.hitTestable(), findsOneWidget);
     await tester.ensureVisible(back);
@@ -180,7 +208,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: DiseaseExampleButton(scan: _scan(label: 'powdery_mildew')),
+        home: DiseaseExampleButton(scan: _scan(label: 'unsupported_condition')),
       ),
     );
     expect(find.text('See example'), findsNothing);
@@ -192,5 +220,100 @@ void main() {
       ),
     );
     expect(find.text('See example'), findsNothing);
+  });
+
+  test(
+    'saved measurements retain units and reject unrelated or stale context',
+    () {
+      TomatoScan withSample({
+        bool calibrated = false,
+        int age = 0,
+        Crop crop = Crop.tomato,
+        String source = 'camera',
+      }) => TomatoScan.fromJson({
+        ..._scan(source: source).toJson(),
+        'sensor_context': HardwareSample(
+          id: 'sample',
+          crop: crop,
+          receivedAt: _at.subtract(Duration(seconds: age)),
+          temperature: 26.5,
+          humidity: 61.2,
+          soil: calibrated ? 42.5 : null,
+          soilRaw: 2300,
+          gasRaw: 400,
+          soilCalibrated: calibrated,
+        ).toJson(),
+      });
+      expect(
+        scanSensorMeasurements(withSample()),
+        contains('Soil moisture: 2300 raw (uncalibrated)'),
+      );
+      expect(
+        scanSensorMeasurements(withSample()),
+        contains('Air temperature: 26.5 °C'),
+      );
+      expect(
+        scanSensorMeasurements(withSample()),
+        contains('Humidity: 61.2% RH'),
+      );
+      expect(
+        scanSensorMeasurements(withSample(calibrated: true)),
+        contains('Soil moisture: 42.5% (calibrated)'),
+      );
+      expect(scanSensorMeasurements(withSample(age: 31)), isEmpty);
+      expect(scanSensorMeasurements(withSample(age: -1)), isEmpty);
+      expect(scanSensorMeasurements(withSample(crop: Crop.chili)), isEmpty);
+      expect(scanSensorMeasurements(withSample(source: 'upload')), isEmpty);
+      final invalid = TomatoScan.fromJson({
+        ...withSample().toJson(),
+        'sensor_context': {'temp_c': 99},
+      });
+      expect(scanSensorMeasurements(invalid), isEmpty);
+    },
+  );
+
+  testWidgets('all 32 labels retain collapsed guidance on uncertain results', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final (crop, label) in diseaseExamples.keys) {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SimpleResultCard(
+                key: ValueKey('$crop-$label'),
+                scan: _scan(crop: crop, label: label),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Uncertain result'), findsOneWidget);
+      expect(find.text('See example'), findsOneWidget);
+      expect(find.text('What to look for'), findsOneWidget);
+      expect(find.text('Typical signs'), findsNothing);
+      await tester.ensureVisible(find.text('What to look for'));
+      await tester.tap(find.text('What to look for'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(label == 'healthy' ? 'Healthy appearance' : 'Typical signs'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Please take another clear photo'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull, reason: '$crop/$label');
+    }
   });
 }

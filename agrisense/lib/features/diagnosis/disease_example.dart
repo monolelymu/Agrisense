@@ -2,9 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../../data/models.dart';
 import 'tomato_scan.dart';
+import 'reference_photo_credits.dart';
 
 // Explicit matches only. Never substitute a different disease or crop image.
 const diseaseExamples = <(Crop, String), String>{
+  (Crop.tomato, 'bacterial_spot'): 'tomato_bacterial_spot.jpg',
+  (Crop.tomato, 'leaf_miner'): 'tomato_leaf_miner.jpg',
+  (Crop.tomato, 'magnesium_deficiency'): 'tomato_magnesium_deficiency.jpg',
+  (Crop.tomato, 'mosaic_virus'): 'tomato_mosaic_virus.jpg',
+  (Crop.tomato, 'nitrogen_deficiency'): 'tomato_nitrogen_deficiency.jpg',
+  (Crop.tomato, 'potassium_deficiency'): 'tomato_potassium_deficiency.jpg',
+  (Crop.tomato, 'powdery_mildew'): 'tomato_powdery_mildew.jpg',
+  (Crop.tomato, 'spider_mites'): 'tomato_spider_mites.jpg',
+  (Crop.tomato, 'spotted_wilt_virus'): 'tomato_spotted_wilt_virus.jpg',
+  (Crop.tomato, 'target_spot'): 'tomato_target_spot.jpg',
+  (Crop.tomato, 'whitefly'): 'tomato_whitefly.jpg',
   (Crop.tomato, 'early_blight'): 'tomato_early_blight.jpg',
   (Crop.tomato, 'late_blight'): 'tomato_late_blight.jpg',
   (Crop.tomato, 'healthy'): 'tomato_healthy.jpg',
@@ -12,6 +24,10 @@ const diseaseExamples = <(Crop, String), String>{
   (Crop.tomato, 'septoria_leaf_spot'): 'tomato_septoria_leaf_spot.jpg',
   (Crop.tomato, 'yellow_leaf_curl_virus'): 'tomato_yellow_leaf_curl.jpg',
   (Crop.eggplant, 'healthy'): 'eggplant_healthy.jpg',
+  (Crop.eggplant, 'alternaria_leaf_spot'): 'eggplant_alternaria_leaf_spot.jpg',
+  (Crop.eggplant, 'downy_mildew'): 'eggplant_downy_mildew.jpg',
+  (Crop.eggplant, 'phomopsis_blight'): 'eggplant_phomopsis_blight.jpg',
+  (Crop.eggplant, 'powdery_mildew'): 'eggplant_powdery_mildew.jpg',
   (Crop.eggplant, 'insect_pest'): 'eggplant_insect_pest.jpg',
   (Crop.eggplant, 'leaf_spot'): 'eggplant_leaf_spot.jpg',
   (Crop.eggplant, 'mosaic_virus'): 'eggplant_mosaic_virus.jpg',
@@ -21,6 +37,7 @@ const diseaseExamples = <(Crop, String), String>{
   (Crop.chili, 'cercospora_leaf_spot'): 'chili_cercospora_leaf_spot.jpg',
   (Crop.chili, 'leaf_curl'): 'chili_curl_virus.jpg',
   (Crop.chili, 'nutrient_deficiency'): 'chili_nutrition_deficiency.jpg',
+  (Crop.chili, 'powdery_mildew'): 'chili_powdery_mildew.jpg',
 };
 
 class DiseaseExampleButton extends StatelessWidget {
@@ -74,12 +91,23 @@ class DiseaseExampleButton extends StatelessWidget {
                         Image.asset(
                           'assets/pathology_reference/$filename',
                           height: 200,
+                          cacheWidth: 1024,
                           fit: BoxFit.contain,
                           semanticLabel:
                               '${scan.crop.label} ${scan.displayLabel} example',
                           errorBuilder: (_, _, _) =>
                               const Text('Example photo unavailable.'),
                         ),
+                        if (referencePhotoNotes[filename] case final note?) ...[
+                          const SizedBox(height: 8),
+                          Text(note),
+                        ],
+                        if (referencePhotoCredits[filename] case final credit?)
+                          ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            title: const Text('Photo source'),
+                            children: [SelectableText(credit)],
+                          ),
                         const SizedBox(height: 16),
                         const Text(
                           'Example only. Similar-looking symptoms can have different causes. This comparison does not confirm the result.',

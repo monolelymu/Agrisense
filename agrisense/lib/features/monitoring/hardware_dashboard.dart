@@ -594,11 +594,11 @@ class _HardwareDashboardState extends State<HardwareDashboard>
             _metric(
               'Soil moisture',
               !r.soilCalibrated
-                  ? 'Monitoring'
+                  ? '${r.soilRaw} raw'
                   : r.soil == null
                   ? 'Unavailable'
                   : '${r.soil!.toStringAsFixed(0)}%',
-              r.soilCalibrated ? 'Soil moisture' : 'Warnings track changes',
+              r.soilCalibrated ? 'Soil moisture' : 'Uncalibrated sensor reading',
             ),
             _metric(
               'Temperature',

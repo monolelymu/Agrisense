@@ -1,0 +1,338 @@
+[
+  {
+    "filename": "chili_bacterial_spot.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/chili_bacterial_spot.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "83b0b918358a95894e64a2367b54fdbf02028e9271e429bcc8d37f60e89bbbef",
+    "modified": false
+  },
+  {
+    "filename": "chili_cercospora_leaf_spot.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/chili_cercospora_leaf_spot.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "41bcb70258d4fb18a11b0852adc1f334465024c2afd425f2a80ba56f95ec6406",
+    "modified": false
+  },
+  {
+    "filename": "chili_curl_virus.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/chili_curl_virus.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "7c740aa791ffbdb8e83f91bb58145355c462af594f09cacfbc5ce56a8ef2109c",
+    "modified": false
+  },
+  {
+    "filename": "chili_healthy.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/chili_healthy.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "68a33a969ee6fc8ae2ddaafc023fa0bd4b195aa098b89fae586f2e6fdbd90bb7",
+    "modified": false
+  },
+  {
+    "filename": "chili_nutrition_deficiency.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/chili_nutrition_deficiency.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "b5e349e017de8499b11cc247d02e8fb93a6bb39250e232a9192f4b33d25c1467",
+    "modified": false
+  },
+  {
+    "filename": "chili_powdery_mildew.jpg",
+    "source": "https://www.flickr.com/photos/scotnelson/5836333879",
+    "download": "https://live.staticflickr.com/3649/5836333879_ea94f9cc4a_b.jpg",
+    "author": "Scot Nelson",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "caption": "Powdery mildew on pepper. Appearance varies between pepper varieties.",
+    "sha256": "9e1c28a5e9e50e887bd0e90e44785fc1003381af57177a94637aa56e3d0a25b1",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_alternaria_leaf_spot.jpg",
+    "source": "https://data.mendeley.com/datasets/6k94t3fydy/1",
+    "download": "https://data.mendeley.com/public-files/datasets/6k94t3fydy/files/a596076b-d6f0-49b0-83ab-0205fbcbf233/file_downloaded",
+    "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "caption": "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
+    "sha256": "225d29e68dc7048875f984f9de0c73d9582934cb6d82081afaeb2389c6f1ad0d",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_downy_mildew.jpg",
+    "source": "https://data.mendeley.com/datasets/6k94t3fydy/1",
+    "download": "https://data.mendeley.com/public-files/datasets/6k94t3fydy/files/103cbea1-b400-4eec-83ce-70c8f8115e97/file_downloaded",
+    "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "caption": "Dataset label: Downy mildew. The disease identity on eggplant is unverified; compare symptoms and seek expert confirmation.",
+    "sha256": "68229f357218629cc8f38749afbc7dc39ec921744b8f63af458292f8c7eb547b",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_healthy.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/eggplant_healthy.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "9fb780f9570e5a88183f403b1218117addf6ece1f0b04b867951dd20abbff2e4",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_insect_pest.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/eggplant_insect_pest.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "2f360da41fbcec03d3ccf3dec7b7a4c4dae1baf78fcb0e002f2505c4c08f63b7",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_leaf_spot.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/eggplant_leaf_spot.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "285b54b69c9b630a59d9a72f8b2c663cc046a571ed1c39f35f10d1893f4fc3c1",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_mosaic_virus.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/eggplant_mosaic_virus.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "04bc2303fdaa6b148a940ad34300347e9f1b18196fe4f370a77ae7fcfae14bcb",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_phomopsis_blight.jpg",
+    "source": "https://data.mendeley.com/datasets/6k94t3fydy/1",
+    "download": "https://data.mendeley.com/public-files/datasets/6k94t3fydy/files/2b61dd5c-145c-4c06-a789-a7e77c6c227f/file_downloaded",
+    "author": "Hasnain Ahmad, Gargy Roy and Md. Umaid Hasan",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "caption": "Dataset-labelled eggplant example; not independently laboratory-confirmed.",
+    "sha256": "bf838f3917fc6bb13173317f74aeeb0598a46956ad3fe4b162f6f581ed92d493",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_wilt.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/eggplant_wilt.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "b6cd7602e7476d6e89d411cd1bf21b617414281fd8dd5ee478c79388714bf9e2",
+    "modified": false
+  },
+  {
+    "filename": "tomato_bacterial_spot.jpg",
+    "source": "https://github.com/spMohanty/PlantVillage-Dataset/blob/master/raw/color/Tomato___Bacterial_spot/00416648-be6e-4bd4-bc8d-82f43f8a7240___GCREC_Bact.Sp%203110.JPG",
+    "download": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/master/raw/color/Tomato___Bacterial_spot/00416648-be6e-4bd4-bc8d-82f43f8a7240___GCREC_Bact.Sp%203110.JPG",
+    "author": "PlantVillage — Hughes, Salathé and Mohanty",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "sha256": "3320c46706d434c028aa93fde868140c48604a328844f2b1c553d020bdc9db06",
+    "modified": false
+  },
+  {
+    "filename": "tomato_early_blight.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_early_blight.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "b8f662b94164ab228787d88682aa362b4320ebc6c36291a2e02d40f7bf3b20b6",
+    "modified": false
+  },
+  {
+    "filename": "tomato_healthy.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_healthy.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "6fbd29d89ddd1ecc570a87356f17cce12f0433922d5954da7884a3d193922098",
+    "modified": false
+  },
+  {
+    "filename": "tomato_late_blight.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_late_blight.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "75f868120058bd0b51b04b8288b160cf96c5578650c3bf7424794a87417d7fd0",
+    "modified": false
+  },
+  {
+    "filename": "tomato_leaf_miner.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tomate_Blatt_Minierfliegenschaden.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Tomate_Blatt_Minierfliegenschaden.jpg",
+    "author": "Goldlocki",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "",
+    "sha256": "f1c107eacb01ec780c735f14c340a2611edb6f13e9a2bacdc953f68f7ac86ea1",
+    "modified": false
+  },
+  {
+    "filename": "tomato_magnesium_deficiency.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:TomateBlattMgMangel.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/1/17/TomateBlattMgMangel.jpg",
+    "author": "Goldlocki",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "",
+    "sha256": "28316eb6a8413de30d1a5b771f10832c792e4f6511a581a9b92b39ea0f31e1cc",
+    "modified": false
+  },
+  {
+    "filename": "tomato_mold_leaf.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_mold_leaf.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "8e5b085581fe1bb16b7ea7b5fa5c727b282237b67112b8a6489830de4caefbea",
+    "modified": false
+  },
+  {
+    "filename": "tomato_mosaic_virus.jpg",
+    "source": "https://github.com/spMohanty/PlantVillage-Dataset/blob/master/raw/color/Tomato___Tomato_mosaic_virus/000ec6ea-9063-4c33-8abe-d58ca8a88878___PSU_CG%202169.JPG",
+    "download": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/master/raw/color/Tomato___Tomato_mosaic_virus/000ec6ea-9063-4c33-8abe-d58ca8a88878___PSU_CG%202169.JPG",
+    "author": "PlantVillage — Hughes, Salathé and Mohanty",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "sha256": "478ead03f1f962f60ae3455b90affd170c8b6a5cca95a60d1cf5e32b68f8bd0c",
+    "modified": false
+  },
+  {
+    "filename": "tomato_nitrogen_deficiency.jpg",
+    "source": "https://github.com/mamta-joshi-gehlot/Tomato-Village/blob/main/Variant-a(Multiclass%20Classification)/test/Nitrogen%20Deficiency/IMG20220323180110_1.jpg",
+    "download": "https://raw.githubusercontent.com/mamta-joshi-gehlot/Tomato-Village/main/Variant-a(Multiclass%20Classification)/test/Nitrogen%20Deficiency/IMG20220323180110_1.jpg",
+    "author": "Mamta Gehlot, Raj Kumar Saxena and G. C. Gandhi — Tomato-Village",
+    "license": "Public research dataset; standalone image license not specified",
+    "license_url": "https://github.com/mamta-joshi-gehlot/Tomato-Village",
+    "caption": "Dataset-labelled nitrogen-deficiency example. Similar yellowing can have other causes.",
+    "sha256": "36e776cb3f134e6f98fb2addeac97abf3132f6c0bf8b1c2383df14b5a51fb838",
+    "modified": false
+  },
+  {
+    "filename": "tomato_potassium_deficiency.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tomate_Blatt_Kalimangel.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/8/88/Tomate_Blatt_Kalimangel.jpg",
+    "author": "Goldlocki",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "",
+    "sha256": "7fa75b935f2584a60f9be17f8960f0f5c3a1eed1bddb6b5de5efa61b602bd949",
+    "modified": false
+  },
+  {
+    "filename": "tomato_powdery_mildew.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tomate_Mehltau_Blatt.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/a/ae/Tomate_Mehltau_Blatt.jpg",
+    "author": "Goldlocki",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "",
+    "sha256": "250a0cdbec067bc7e4774b355f939c4c48d6ba349d4cf6c31a1da885cd79935d",
+    "modified": false
+  },
+  {
+    "filename": "tomato_septoria_leaf_spot.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_septoria_leaf_spot.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "ebd63b3f9b13c1b0b5a20b83061226cca99180d3924f037f927af444d391c1a9",
+    "modified": false
+  },
+  {
+    "filename": "tomato_spider_mites.jpg",
+    "source": "https://github.com/spMohanty/PlantVillage-Dataset/blob/master/raw/color/Tomato___Spider_mites%20Two-spotted_spider_mite/002835d1-c18e-4471-aa6e-8d8c29585e9b___Com.G_SpM_FL%208584.JPG",
+    "download": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/master/raw/color/Tomato___Spider_mites%20Two-spotted_spider_mite/002835d1-c18e-4471-aa6e-8d8c29585e9b___Com.G_SpM_FL%208584.JPG",
+    "author": "PlantVillage — Hughes, Salathé and Mohanty",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "sha256": "e7a0bfcde5d0dbec10505a121587fdac55ccf4cafe4262e85545f2673f8dd1a6",
+    "modified": false
+  },
+  {
+    "filename": "tomato_spotted_wilt_virus.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tomato_with_Tomato_Spotted_Wilt_Virus.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/7/72/Tomato_with_Tomato_Spotted_Wilt_Virus.jpg",
+    "author": "Downtowngal",
+    "license": "CC0",
+    "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "caption": "Spotted wilt symptoms on tomato fruit. Leaf symptoms can look different.",
+    "sha256": "159ec3e45f22e4f22f4eba6572f9345f5dc543e81a3b1680a4fe35dac52c0676",
+    "modified": false
+  },
+  {
+    "filename": "tomato_target_spot.jpg",
+    "source": "https://github.com/spMohanty/PlantVillage-Dataset/blob/master/raw/color/Tomato___Target_Spot/002213fb-b620-4593-b9ac-6a6cc119b100___Com.G_TgS_FL%208360.JPG",
+    "download": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/master/raw/color/Tomato___Target_Spot/002213fb-b620-4593-b9ac-6a6cc119b100___Com.G_TgS_FL%208360.JPG",
+    "author": "PlantVillage — Hughes, Salathé and Mohanty",
+    "license": "CC BY-SA 3.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "Dataset-labelled example; not independently laboratory-confirmed.",
+    "sha256": "58572ee41dd4623a564ac34234be9866e442243c94ce4e72c6b9ac0ab565ac73",
+    "modified": false
+  },
+  {
+    "filename": "tomato_whitefly.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Tomate_Blatt_Eier_Wei%C3%9Fe_Fliege_parasitiert.jpg",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/0/0f/Tomate_Blatt_Eier_Wei%C3%9Fe_Fliege_parasitiert.jpg",
+    "author": "Goldlocki",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "caption": "Whitefly immature stages on a tomato leaf, including stages parasitized by a beneficial wasp.",
+    "sha256": "3e18386876aae0a883f8ee565b0f9a0b67bcdf90c320661eced9fdcb36bce410",
+    "modified": false
+  },
+  {
+    "filename": "tomato_yellow_leaf_curl.jpg",
+    "source": "FloraScan/mobile/assets/pathology_reference/tomato_yellow_leaf_curl.jpg",
+    "author": "FloraScan supplied training example; original author unverified",
+    "license": "Copied with project owner permission; original image rights unverified",
+    "license_url": "",
+    "caption": "",
+    "sha256": "fc034eba315aa8f57c3bca3d6dd8c8663405184cc73740cf0a4e4286c97861f8",
+    "modified": false
+  },
+  {
+    "filename": "eggplant_powdery_mildew.jpg",
+    "source": "https://www.flickr.com/photos/scotnelson/15886189885",
+    "download": "https://live.staticflickr.com/8617/15886189885_aa4726b703_b.jpg",
+    "author": "Scot Nelson",
+    "license": "CC0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "caption": "Powdery mildew on eggplant. Inspect both sides of the leaf.",
+    "sha256": "04f855ef8475492a4efb44c93d12ff6028d58d970b8f731107ec3b8ba156289e",
+    "modified": false
+  }
+]

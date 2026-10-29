@@ -1,10 +1,32 @@
 import 'tomato_assessment.dart';
 import 'tomato_scan.dart';
+import '../../data/hardware_client.dart';
 
 // Use only the assessment frozen with the photo; never today's live readings.
 EnvironmentalEvidence? _evidence(TomatoScan scan) => scan.source == 'upload'
     ? null
     : TomatoAssessment.tryFromJson(scan.assessment)?.evidence;
+
+/// Display the measurements frozen with the photo, never live values or an
+/// uncalibrated soil ADC value presented as a percentage.
+List<String> scanSensorMeasurements(TomatoScan scan) {
+  if (scan.source == 'upload' || scan.sensorContext == null) return const [];
+  HardwareSample sample;
+  try {
+    sample = HardwareSample.fromSaved(scan.sensorContext!);
+  } catch (_) {
+    return const [];
+  }
+  if (!recentCropSample(sample, scan.timestamp, scan.crop)) return const [];
+  String value(double? n, String unit) =>
+      n == null ? 'Unavailable' : '${n.toStringAsFixed(1)}$unit';
+  return [
+    'Readings at photo time',
+    'Soil moisture: ${sample.soilCalibrated ? value(sample.soil, '% (calibrated)') : '${sample.soilRaw} raw (uncalibrated)'}',
+    'Air temperature: ${value(sample.temperature, ' °C')}',
+    'Humidity: ${value(sample.humidity, '% RH')}',
+  ];
+}
 
 String scanSensorSummary(TomatoScan scan) => switch (_evidence(scan)?.state) {
   EvidenceState.currentMatch || EvidenceState.favorableHistory =>

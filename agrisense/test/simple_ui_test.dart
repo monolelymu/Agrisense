@@ -395,6 +395,7 @@ void main() {
         'sensorId': 'sensor-one',
       };
       await show(tester);
+      final before = tester.getTopLeft(find.text('Tomato overview'));
       client.readGate = Completer<void>();
       late Future<void> reading;
       await tester.runAsync(() async {
@@ -402,6 +403,7 @@ void main() {
       });
       await tester.pump();
       expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(tester.getTopLeft(find.text('Tomato overview')), before);
       expect(
         tester
             .widget<NavigationBar>(find.byType(NavigationBar))
@@ -421,6 +423,33 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
+
+  testWidgets('Home shows actual uncalibrated soil, temperature and humidity', (
+    tester,
+  ) async {
+    hardware.samples.add(
+      HardwareSample(
+        id: 'raw-reading',
+        crop: Crop.tomato,
+        receivedAt: DateTime.now(),
+        temperature: 26.5,
+        humidity: 61,
+        soil: null,
+        soilRaw: 2300,
+        gasRaw: 400,
+        soilCalibrated: false,
+      ),
+    );
+    hardware.status[Crop.tomato] = 'Received';
+    await show(tester, largeText: true);
+    expect(find.text('2300 raw'), findsOneWidget);
+    expect(find.text('26.5°C'), findsOneWidget);
+    expect(find.text('61%'), findsOneWidget);
+    expect(find.text('Uncalibrated sensor reading'), findsOneWidget);
+    expect(find.text('Monitoring'), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets(
     'photo times can be cleared and editing an off schedule keeps it off',
@@ -637,8 +666,8 @@ void main() {
         expect(
           find.textContaining(
             badPhoto
-              ? 'Camera: Board reachable; camera unavailable'
-              : 'Camera: Camera ready',
+                ? 'Camera: Board reachable; camera unavailable'
+                : 'Camera: Camera ready',
           ),
           findsOneWidget,
         );

@@ -127,6 +127,26 @@ void main() {
   });
 
   test(
+    'quiet reconnect keeps the connection message stable while searching',
+    () async {
+      h.connectionStatus =
+          'Kit partly connected. Missing boards will be retried.';
+      discovery.gate = Completer<void>();
+      final work = h.connectKit(Crop.tomato, quietly: true);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        h.connectionStatus,
+        'Kit partly connected. Missing boards will be retried.',
+      );
+      expect(h.userBusy, isFalse);
+      discovery.gate!.complete();
+      discovery.gate = null;
+      await work;
+      expect(h.connectionStatus, contains('No kit found'));
+    },
+  );
+
+  test(
     'first connection verifies both roles and persists shared identity without pairing codes',
     () async {
       boards.identities['http://192.168.8.20'] = identity(

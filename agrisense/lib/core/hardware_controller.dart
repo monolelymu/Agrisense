@@ -389,7 +389,7 @@ class HardwareController extends ChangeNotifier {
     busy = true;
     backgroundWork = quietly;
     _idle = Completer<void>();
-    connectionStatus = 'Looking for your AgriSense kit…';
+    if (!quietly) connectionStatus = 'Looking for your AgriSense kit…';
     notifyListeners();
     final found = <String, (String, BoardIdentity)>{};
     final legacy = <String>{};
